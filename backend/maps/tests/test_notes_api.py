@@ -36,3 +36,19 @@ def test_owner_preview_sees_all_sections(boston):
     sections = resp.json()[0]["sections"]
     assert [s["visibility"] for s in sections] == ["visible", "visible"]
     assert sections[1]["content"] == "secret"
+
+
+def test_guest_cannot_see_fully_hidden_note(boston):
+    # A note whose sections are all hidden to the viewer must NOT appear at all
+    # (no title / coordinate leak).
+    secret = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="SECRET",
+        point=Point(-71.0, 42.0),
+    )
+    Section.objects.create(note=secret, order=0, content="hush", rule_type=Section.RuleType.PRIVATE)
+    titles = {n["title"] for n in Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()}
+    assert "SECRET" not in titles  # fully-private note omitted for the guest
+    assert "Castle Island" in titles  # the note with a public section still shows

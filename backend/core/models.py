@@ -19,6 +19,10 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
         default_manager_name = "objects"
+        # base_manager_name = the UNFILTERED manager so related lookups / prefetch
+        # still resolve soft-deleted parents (FK integrity). default_manager_name =
+        # the SoftDeleteManager so normal queries / the API hide soft-deleted rows.
+        # Subclasses must NOT override these to the plain manager (would leak deleted rows).
         base_manager_name = "all_objects"
 
     def save(self, *args, **kwargs):

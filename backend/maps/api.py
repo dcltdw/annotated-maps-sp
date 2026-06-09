@@ -33,6 +33,8 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                     content=section.content if vis is Visibility.VISIBLE else None,
                 )
             )
+        if not visible_sections:
+            continue
         out.append(
             NoteOut(
                 id=note.id,
