@@ -43,3 +43,17 @@ class TenantScopedModel(BaseModel):
 
     class Meta:
         abstract = True
+
+
+class AuditEvent(BaseModel):
+    """Append-only log of security- and content-relevant events. Never updated or deleted."""
+
+    tenant = models.ForeignKey(Tenant, null=True, on_delete=models.SET_NULL, related_name="+")
+    actor_id = models.UUIDField(null=True, blank=True)
+    action = models.CharField(max_length=100)
+    target_type = models.CharField(max_length=100, blank=True)
+    target_id = models.UUIDField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    def __str__(self) -> str:
+        return f"{self.action}"
