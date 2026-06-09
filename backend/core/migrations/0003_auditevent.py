@@ -8,59 +8,58 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0002_base_models'),
+        ("core", "0002_base_models"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='tenant',
-            options={'base_manager_name': 'all_objects', 'default_manager_name': 'objects'},
+            name="tenant",
+            options={"base_manager_name": "all_objects", "default_manager_name": "objects"},
         ),
         migrations.AlterModelManagers(
-            name='tenant',
+            name="tenant",
             managers=[
-                ('all_objects', django.db.models.manager.Manager()),
-                ('objects', django.db.models.manager.Manager()),
+                ("all_objects", django.db.models.manager.Manager()),
+                ("objects", django.db.models.manager.Manager()),
             ],
         ),
         migrations.CreateModel(
-            name='AuditEvent',
+            name="AuditEvent",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4, editable=False, primary_key=True, serialize=False
                     ),
                 ),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('version', models.PositiveIntegerField(default=0)),
-                ('deleted_at', models.DateTimeField(blank=True, null=True)),
-                ('actor_id', models.UUIDField(blank=True, null=True)),
-                ('action', models.CharField(max_length=100)),
-                ('target_type', models.CharField(blank=True, max_length=100)),
-                ('target_id', models.UUIDField(blank=True, null=True)),
-                ('metadata', models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("version", models.PositiveIntegerField(default=0)),
+                ("deleted_at", models.DateTimeField(blank=True, null=True)),
+                ("actor_id", models.UUIDField(blank=True, null=True)),
+                ("action", models.CharField(max_length=100)),
+                ("target_type", models.CharField(blank=True, max_length=100)),
+                ("target_id", models.UUIDField(blank=True, null=True)),
+                ("metadata", models.JSONField(blank=True, default=dict)),
                 (
-                    'tenant',
+                    "tenant",
                     models.ForeignKey(
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
-                        related_name='+',
-                        to='core.tenant',
+                        related_name="+",
+                        to="core.tenant",
                     ),
                 ),
             ],
             options={
-                'abstract': False,
-                'base_manager_name': 'all_objects',
-                'default_manager_name': 'objects',
+                "abstract": False,
+                "base_manager_name": "all_objects",
+                "default_manager_name": "objects",
             },
             managers=[
-                ('all_objects', django.db.models.manager.Manager()),
-                ('objects', django.db.models.manager.Manager()),
+                ("all_objects", django.db.models.manager.Manager()),
+                ("objects", django.db.models.manager.Manager()),
             ],
         ),
     ]

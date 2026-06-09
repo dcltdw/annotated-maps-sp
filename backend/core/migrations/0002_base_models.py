@@ -6,27 +6,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0001_enable_postgis'),
+        ("core", "0001_enable_postgis"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Tenant',
+            name="Tenant",
             fields=[
-                ('id', models.UUIDField(
-                    default=uuid.uuid4, editable=False, primary_key=True, serialize=False
-                )),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('version', models.PositiveIntegerField(default=0)),
-                ('deleted_at', models.DateTimeField(blank=True, null=True)),
-                ('name', models.CharField(max_length=200)),
-                ('slug', models.SlugField(unique=True)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("version", models.PositiveIntegerField(default=0)),
+                ("deleted_at", models.DateTimeField(blank=True, null=True)),
+                ("name", models.CharField(max_length=200)),
+                ("slug", models.SlugField(unique=True)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]
