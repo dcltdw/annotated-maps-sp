@@ -41,7 +41,10 @@ class Tenant(BaseModel):
 class TenantScopedModel(BaseModel):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="+")
 
-    class Meta:
+    class Meta(BaseModel.Meta):
+        # Inherit BaseModel.Meta so default_manager_name/base_manager_name carry
+        # over — otherwise scoped subclasses silently default to the UNFILTERED
+        # manager (soft-deleted rows would leak through default queries / the API).
         abstract = True
 
 
