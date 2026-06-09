@@ -14,6 +14,10 @@ from pathlib import Path
 
 import environ
 
+from core.logging import configure_logging
+
+configure_logging()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -50,6 +54,7 @@ GDAL_LIBRARY_PATH = env("GDAL_LIBRARY_PATH", default=None)
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    "core.middleware.ObservabilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]
