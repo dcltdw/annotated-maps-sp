@@ -5,21 +5,20 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0004_identity'),
+        ("core", "0004_identity"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='group',
-            options={'base_manager_name': 'all_objects', 'default_manager_name': 'objects'},
+            name="group",
+            options={"base_manager_name": "all_objects", "default_manager_name": "objects"},
         ),
         migrations.AlterModelManagers(
-            name='group',
+            name="group",
             managers=[
-                ('all_objects', django.db.models.manager.Manager()),
-                ('objects', django.db.models.manager.Manager()),
+                ("all_objects", django.db.models.manager.Manager()),
+                ("objects", django.db.models.manager.Manager()),
             ],
         ),
     ]
