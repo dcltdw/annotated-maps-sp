@@ -1,6 +1,7 @@
 import pytest
 from django.db import connection
 
+
 @pytest.mark.django_db
 def test_postgis_extension_is_available():
     with connection.cursor() as cur:
