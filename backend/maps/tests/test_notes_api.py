@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from django.contrib.gis.geos import Point
 from django.test import Client
@@ -52,3 +54,55 @@ def test_guest_cannot_see_fully_hidden_note(boston):
     titles = {n["title"] for n in Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()}
     assert "SECRET" not in titles  # fully-private note omitted for the guest
     assert "Castle Island" in titles  # the note with a public section still shows
+
+
+def test_contributor_creates_a_point_note(boston):
+    payload = {
+        "title": "My spot",
+        "lng": -71.05,
+        "lat": 42.35,
+        "sections": [{"order": 0, "content": "hi", "rule_type": "public"}],
+    }
+    resp = Client().post(
+        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+    new_id = resp.json()["id"]
+    assert Note.objects.filter(id=new_id, author=boston["owner"]).exists()
+
+
+def test_guest_cannot_create(boston):
+    resp = Client().post(
+        f"/api/v1/maps/{boston['map'].id}/notes",
+        data=json.dumps({"title": "x", "lng": -71.0, "lat": 42.0, "sections": []}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403
+
+
+def test_author_can_soft_delete_own_note(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    resp = Client().delete(f"/api/v1/notes/{note.id}?preview_as={boston['owner'].id}")
+    assert resp.status_code == 204
+    assert Note.objects.filter(id=note.id).count() == 0  # hidden by default manager
+    assert Note.all_objects.filter(id=note.id).count() == 1  # soft-deleted, still present
+
+
+def test_non_author_cannot_delete(boston):
+    other = User.objects.create(display_name="Someone else")
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    resp = Client().delete(f"/api/v1/notes/{note.id}?preview_as={other.id}")
+    assert resp.status_code == 403
+    assert Note.objects.filter(id=note.id).count() == 1  # not deleted

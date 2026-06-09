@@ -18,3 +18,22 @@ class NoteOut(Schema):
     lng: float | None
     lat: float | None
     sections: list[SectionOut]
+
+
+class SectionIn(Schema):
+    order: int = 0
+    content: str
+    rule_type: str
+    rule_params: dict = {}
+    teaser: bool = False
+
+
+class NoteIn(Schema):
+    title: str = ""
+    lng: float
+    lat: float
+    sections: list[SectionIn] = []
+
+
+class NoteCreated(Schema):
+    id: UUID

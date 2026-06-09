@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from django.contrib.gis.geos import Point
 from django.shortcuts import get_object_or_404
 from ninja import Router
+from ninja.errors import HttpError
 
+from core.models import User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
-from maps.models import Map
-from maps.schemas import NoteOut, SectionOut
+from maps.models import Map, Note, Section
+from maps.schemas import NoteCreated, NoteIn, NoteOut, SectionOut
 from maps.visibility import section_visibility
 
 router = Router()
@@ -45,3 +48,37 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
             )
         )
     return out
+
+
+@router.post("/maps/{map_id}/notes", response={201: NoteCreated})
+def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None = None):
+    the_map = get_object_or_404(Map, id=map_id)
+    if preview_as is None:
+        raise HttpError(403, "Sign in (preview-as) to add notes.")
+    author = get_object_or_404(User, id=preview_as)
+    note = Note.objects.create(
+        tenant=the_map.tenant,
+        map=the_map,
+        author=author,
+        title=payload.title,
+        point=Point(payload.lng, payload.lat),
+    )
+    for s in payload.sections:
+        Section.objects.create(
+            note=note,
+            order=s.order,
+            content=s.content,
+            rule_type=s.rule_type,
+            rule_params=s.rule_params,
+            teaser=s.teaser,
+        )
+    return 201, {"id": note.id}
+
+
+@router.delete("/notes/{note_id}", response={204: None})
+def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
+    note = get_object_or_404(Note, id=note_id)
+    if preview_as is None or note.author_id != preview_as:
+        raise HttpError(403, "You can only delete your own notes.")
+    note.soft_delete()
+    return 204, None
