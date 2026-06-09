@@ -45,6 +45,41 @@ class TenantScopedModel(BaseModel):
         abstract = True
 
 
+class User(BaseModel):
+    display_name = models.CharField(max_length=200)
+    reputation = models.PositiveIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return self.display_name
+
+
+class Group(TenantScopedModel):
+    name = models.CharField(max_length=200)
+    members = models.ManyToManyField(User, related_name="groups", blank=True)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Membership(BaseModel):
+    class Role(models.TextChoices):
+        OWNER = "owner"
+        CONTRIBUTOR = "contributor"
+        VIEWER = "viewer"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="memberships")
+    role = models.CharField(max_length=20, choices=Role.choices)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "tenant"], name="unique_user_per_tenant"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} @ {self.tenant} ({self.role})"
+
+
 class AuditEvent(BaseModel):
     """Append-only log of security- and content-relevant events. Never updated or deleted."""
 
