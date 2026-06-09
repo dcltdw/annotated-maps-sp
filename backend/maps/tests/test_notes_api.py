@@ -106,3 +106,44 @@ def test_non_author_cannot_delete(boston):
     resp = Client().delete(f"/api/v1/notes/{note.id}?preview_as={other.id}")
     assert resp.status_code == 403
     assert Note.objects.filter(id=note.id).count() == 1  # not deleted
+
+
+def test_malformed_section_fails_closed_not_500(boston):
+    # A section written with a bad rule_type (e.g. via a future bug or direct DB write)
+    # must NOT 500 the list — it fails closed (owner-only → hidden for the guest).
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="ok",
+        point=Point(-71.0, 42.0),
+    )
+    Section.objects.create(
+        note=note, order=0, content="public ok", rule_type=Section.RuleType.PUBLIC
+    )
+    Section.objects.create(
+        note=note,
+        order=1,
+        content="broken",
+        rule_type="bogus",  # invalid, direct write
+    )
+    resp = Client().get(f"/api/v1/maps/{boston['map'].id}/notes")
+    assert resp.status_code == 200  # no 500
+    shown = next(n for n in resp.json() if n["id"] == str(note.id))
+    # broken section hidden (fails closed), not leaked
+    assert all(s["content"] != "broken" for s in shown["sections"])
+
+
+def test_create_rejects_invalid_rule_type(boston):
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "sections": [{"order": 0, "content": "c", "rule_type": "bogus"}],
+    }
+    resp = Client().post(
+        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert resp.status_code == 422
