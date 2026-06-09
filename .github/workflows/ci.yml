@@ -1,0 +1,55 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env: { POSTGRES_DB: annotated_maps, POSTGRES_USER: annotated_maps, POSTGRES_PASSWORD: localdev }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U annotated_maps" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgis://annotated_maps:localdev@localhost:5432/annotated_maps
+      DJANGO_SECRET_KEY: ci-insecure
+      DJANGO_DEBUG: "false"
+      SECURE_SSL_REDIRECT: "false"   # CORRECTION: don't 301 the test client under DEBUG=false
+      DJANGO_ALLOWED_HOSTS: "localhost,testserver"
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GDAL/GEOS (Django GIS native libs)   # CORRECTION
+        run: sudo apt-get update && sudo apt-get install -y binutils libproj-dev gdal-bin libgdal-dev libgeos-dev
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy .
+      - run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test -- --run
+      - run: npm run build
+
+  pr-rigor:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python .github/scripts/check_pr_body.py
