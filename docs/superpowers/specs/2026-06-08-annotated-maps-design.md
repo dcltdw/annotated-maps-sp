@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-08
 - **Status:** Draft for review
-- **Revision:** r1 — incorporates review round 1 (layers + multi-region membership, Private split, demo trivial-auth + 7-day lifecycle, read-only guests).
+- **Revision:** r1 — incorporates review round 1 (layers + multi-region membership, Private split, demo trivial-auth + 7-day lifecycle, read-only guests). · r2 — adds the production-lenses doc + foundation seams (PostGIS, etc.); see §15.
 - **Scope of this document:** the full production target as the north star, and the detailed design of **Slice A** (the first buildable slice).
 
 ---
@@ -34,7 +34,7 @@ The product is **domain-neutral**: D&D and "places I love around Boston" are two
 | Backend | **Django + Django Ninja** (typed endpoints + automatic OpenAPI), Django ORM + migrations, Django auth primitives as the "vetted libs" base |
 | Frontend | **React + TypeScript SPA, installable PWA**, built with Vite; **MapLibre GL** for both slippy maps and static-image overlays |
 | API | **API-first**, versioned, OpenAPI contract with a generated typed client shared by web (and future native) |
-| Database | **PostgreSQL**, with **Row-Level Security** as the tenant-isolation enforcement (switched on with auth; column threaded from day one) |
+| Database | **PostgreSQL** + **PostGIS** (geometry as GeoJSON/WKB), with **Row-Level Security** as the tenant-isolation enforcement (switched on with auth; `tenant_id` column threaded from day one) |
 | Async | **Postgres-backed task queue (Procrastinate)** — no Redis, no extra cost; behind an `EmailSender`/job interface |
 | Object storage | **S3-compatible (Cloudflare R2)** for map files, served via short-lived **signed URLs**; behind a storage interface (local in dev) |
 | Auth strategy | **Self-implemented on vetted libraries.** Slice A ships a **trivial** username+password registration/login for the public demo; production-grade auth (email verification, 2FA, reset, lockout, full RBAC) replaces it later behind the same seam |
@@ -79,7 +79,7 @@ Neutral vocabulary (D&D/real-world terms are presentation-layer labels over thes
 - **Collection** — the **unified grouping primitive**: a note belongs to **many collections**, and one membership mechanism + one **authorization-aware bulk-operation path** serve all of them. Each collection has a **`kind`**:
   - **label** — a lightweight tenant-scoped **tag**.
   - **layer** — a **toggleable display** grouping (e.g. "Restaurants", "Running routes", "Secrets"); controls visualization, **not** permission.
-  - **region/boundary** — adds **geometry**; membership may be explicit or **derived from a point falling inside**; also anchors notes and acts as a **spatial selector**.
+  - **region/boundary** — adds **geometry** (PostGIS, GeoJSON/WKB); membership may be explicit or **derived from a point falling inside** (spatial query); also anchors notes and acts as a **spatial selector**.
 
   Kind-specific attributes (region geometry, layer toggle state) hang off the base collection.
 
@@ -181,3 +181,11 @@ Shared schema + `tenant_id` on every domain row, threaded from day one. Enforcem
 ## 14. Non-goals (Slice A)
 
 Production-grade authentication (email verification, 2FA, reset, lockout), admin UI, the D&D preset, native mobile, reputation earning, and tenant-resolution-by-subdomain are explicitly **not** in Slice A — each is a named, seamed, deferred slice.
+
+## 15. Production lenses & foundation seams
+
+The full catalogue of big-picture lenses a production version must address — security, scalability (scale **out**, not up), reliability, observability, data governance/compliance, i18n/a11y, interoperability, mobile/offline, and business/legal — lives in **`docs/architecture/production-lenses.md`**, triaged into *foundation-now / seam-and-defer / note-and-revisit*. Most are out of Slice A by design.
+
+The following **foundation-now seams** are cheap structural choices that are painful to retrofit, so Slice A's groundwork **builds them in** (only PostGIS is a genuine scope addition; the rest are disciplines/structure):
+
+1. **PostGIS + GeoJSON/WKB** geometry  ·  2. stateless app tier + connection pooling  ·  3. **API versioning under `/api/v1`**  ·  4. observability context (request/tenant/user IDs in structured logs)  ·  5. **expand-contract migrations from migration #1**  ·  6. GDPR-able delete/export mechanism (generalizing the 7-day demo purge)  ·  7. idempotency + optimistic concurrency (version field)  ·  8. i18n structure + a11y "never color alone"  ·  9. **OSM/ODbL attribution & licensing**  ·  10. audit-log seam.
