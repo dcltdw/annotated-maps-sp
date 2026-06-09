@@ -8,6 +8,7 @@ dependencies = [
     "django-cors-headers>=4.4",
     "django-environ>=0.13.0",
     "django-ninja>=1.3",
+    "gunicorn>=26.0.0",
     "psycopg[binary]>=3.2",
     "structlog>=26.1.0",
 ]

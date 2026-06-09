@@ -1,0 +1,28 @@
+previews:
+  generation: automatic
+services:
+  - type: web
+    name: annotated-maps-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/v1/health
+    preDeployCommand: uv run python manage.py migrate
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # Neon connection string, set per-environment
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: GIT_SHA
+        fromCommit: true
+  - type: web
+    name: annotated-maps-web
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
