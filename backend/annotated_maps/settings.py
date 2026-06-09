@@ -53,11 +53,18 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 GDAL_LIBRARY_PATH = env("GDAL_LIBRARY_PATH", default=None)
 
 MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "core.middleware.ObservabilityMiddleware",
+    "core.middleware.SecurityHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]
+
+# Django's SecurityMiddleware would emit Referrer-Policy: same-origin by default,
+# conflicting with the strict-origin-when-cross-origin our custom middleware sets.
+# Setting to None lets our SecurityHeadersMiddleware own that header exclusively.
+SECURE_REFERRER_POLICY = None
 
 ROOT_URLCONF = 'annotated_maps.urls'
 
@@ -102,3 +109,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 API_VERSION = "1.0.0"
 GIT_SHA = env("GIT_SHA", default="dev")
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
