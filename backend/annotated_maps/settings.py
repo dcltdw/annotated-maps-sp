@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "corsheaders",
     "core",
+    "maps",
 ]
 
 DATABASES = {"default": env.db("DATABASE_URL")}

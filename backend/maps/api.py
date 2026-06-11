@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+from uuid import UUID
+
+from django.contrib.gis.geos import Point
+from django.shortcuts import get_object_or_404
+from ninja import Router
+from ninja.errors import HttpError
+
+from core.models import User
+from core.visibility import Visibility
+from core.visibility.resolve import resolve_viewer
+from maps.models import Map, Note, Section
+from maps.schemas import NoteCreated, NoteIn, NoteOut, SectionOut
+from maps.visibility import section_visibility
+
+router = Router()
+
+
+@router.get("/maps/{map_id}/notes", response=list[NoteOut])
+def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
+    the_map = get_object_or_404(Map, id=map_id)
+    viewer = resolve_viewer(preview_as, the_map.tenant)
+    out: list[NoteOut] = []
+    for note in the_map.notes.select_related("author").prefetch_related("sections"):
+        visible_sections: list[SectionOut] = []
+        for section in note.sections.all():
+            vis = section_visibility(section, viewer, owner_id=note.author_id)
+            if vis is Visibility.HIDDEN:
+                continue
+            visible_sections.append(
+                SectionOut(
+                    id=section.id,
+                    order=section.order,
+                    visibility=vis.value,
+                    content=section.content if vis is Visibility.VISIBLE else None,
+                )
+            )
+        if not visible_sections:
+            continue
+        out.append(
+            NoteOut(
+                id=note.id,
+                title=note.title,
+                lng=note.point.x if note.point else None,
+                lat=note.point.y if note.point else None,
+                sections=visible_sections,
+            )
+        )
+    return out
+
+
+@router.post("/maps/{map_id}/notes", response={201: NoteCreated})
+def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None = None):
+    the_map = get_object_or_404(Map, id=map_id)
+    if preview_as is None:
+        raise HttpError(403, "Sign in (preview-as) to add notes.")
+    author = get_object_or_404(User, id=preview_as)
+    note = Note.objects.create(
+        tenant=the_map.tenant,
+        map=the_map,
+        author=author,
+        title=payload.title,
+        point=Point(payload.lng, payload.lat),
+    )
+    for s in payload.sections:
+        Section.objects.create(
+            note=note,
+            order=s.order,
+            content=s.content,
+            rule_type=s.rule_type,
+            rule_params=s.rule_params,
+            teaser=s.teaser,
+        )
+    return 201, {"id": note.id}
+
+
+@router.delete("/notes/{note_id}", response={204: None})
+def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
+    note = get_object_or_404(Note, id=note_id)
+    if preview_as is None or note.author_id != preview_as:
+        raise HttpError(403, "You can only delete your own notes.")
+    note.soft_delete()
+    return 204, None
