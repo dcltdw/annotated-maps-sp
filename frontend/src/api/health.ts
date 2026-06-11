@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api/v1";
+import { API_BASE } from "./apiBase";
 
 export async function fetchHealth(): Promise<{ status: string; version: string }> {
   const res = await fetch(`${API_BASE}/health`);
