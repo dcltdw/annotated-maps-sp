@@ -63,3 +63,17 @@ class NoteIn(Schema):
 
 class NoteCreated(Schema):
     id: UUID
+
+
+class MapOut(Schema):
+    id: UUID
+    name: str
+    lng: float
+    lat: float
+    zoom: int
+
+
+class ViewerOut(Schema):
+    id: UUID
+    display_name: str
+    reputation: int

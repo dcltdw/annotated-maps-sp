@@ -7,14 +7,34 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
-from core.models import User
+from core.models import Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
-from maps.schemas import NoteCreated, NoteIn, NoteOut, SectionOut
+from maps.schemas import MapOut, NoteCreated, NoteIn, NoteOut, SectionOut, ViewerOut
 from maps.visibility import section_label, section_visibility
 
 router = Router()
+
+
+@router.get("/maps", response=list[MapOut])
+def list_maps(request):
+    return [
+        MapOut(id=m.id, name=m.name, lng=m.center.x, lat=m.center.y, zoom=m.default_zoom)
+        for m in Map.objects.all()
+    ]
+
+
+@router.get("/maps/{map_id}/viewers", response=list[ViewerOut])
+def list_viewers(request, map_id: UUID):
+    # Demo scaffolding: the seeded members of this map's tenant, for the preview-as switcher.
+    # FIXME(A5): replaced by real authenticated identity.
+    the_map = get_object_or_404(Map, id=map_id)
+    user_ids = Membership.objects.filter(tenant=the_map.tenant).values_list("user_id", flat=True)
+    return [
+        ViewerOut(id=u.id, display_name=u.display_name, reputation=u.reputation)
+        for u in User.objects.filter(id__in=user_ids).order_by("reputation")
+    ]
 
 
 @router.get("/maps/{map_id}/notes", response=list[NoteOut])
