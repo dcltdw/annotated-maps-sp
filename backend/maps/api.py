@@ -12,7 +12,7 @@ from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
 from maps.schemas import NoteCreated, NoteIn, NoteOut, SectionOut
-from maps.visibility import section_visibility
+from maps.visibility import section_label, section_visibility
 
 router = Router()
 
@@ -34,6 +34,8 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                     order=section.order,
                     visibility=vis.value,
                     content=section.content if vis is Visibility.VISIBLE else None,
+                    rule_type=section.rule_type,
+                    rule_label=section_label(section),
                 )
             )
         if not visible_sections:

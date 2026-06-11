@@ -13,6 +13,8 @@ class SectionOut(Schema):
     order: int
     visibility: str  # "visible" | "teaser"
     content: str | None  # null when teaser (redacted)
+    rule_type: str
+    rule_label: str
 
 
 class NoteOut(Schema):
