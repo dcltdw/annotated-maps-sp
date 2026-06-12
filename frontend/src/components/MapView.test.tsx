@@ -70,3 +70,12 @@ test("clicking a marker calls onSelect with the note id", () => {
   fireEvent.click(markerEls[0]);
   expect(onSelect).toHaveBeenCalledWith("n1");
 });
+
+test("hovering a marker shows its popup and leaving removes it", () => {
+  render(<MapView center={[-71, 42]} zoom={12} notes={[notes[0]]} onSelect={() => {}} />);
+  const popup = Popup.mock.results[0].value;
+  fireEvent.mouseEnter(markerEls[0]);
+  expect(popup.addTo).toHaveBeenCalled();
+  fireEvent.mouseLeave(markerEls[0]);
+  expect(popup.remove).toHaveBeenCalled();
+});

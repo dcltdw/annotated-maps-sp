@@ -19,7 +19,7 @@ export function MapScreen() {
       .then((maps) => {
         const m = maps[0] ?? null;
         setMap(m);
-        if (m) fetchViewers(m.id).then(setViewers);
+        if (m) fetchViewers(m.id).then(setViewers).catch(() => setViewers([]));
         else setLoadError(true);
       })
       .catch(() => setLoadError(true));
@@ -30,9 +30,13 @@ export function MapScreen() {
     // Guard against a slow earlier fetch resolving after a faster later one when the
     // viewer is switched quickly — only the latest request may set state.
     let active = true;
-    fetchNotes(map.id, previewAs).then((ns) => {
-      if (active) setNotes(ns);
-    });
+    fetchNotes(map.id, previewAs)
+      .then((ns) => {
+        if (active) setNotes(ns);
+      })
+      .catch(() => {
+        if (active) setNotes([]); // fail visible-empty rather than showing a stale slice
+      });
     return () => {
       active = false;
     };
@@ -64,7 +68,9 @@ export function MapScreen() {
             onSelect={handleSelect}
           />
           {selected && !panelOpen && (
-            <button className="reopen" onClick={() => setPanelOpen(true)}>◀ note</button>
+            <button className="reopen" aria-label="Reopen note panel" onClick={() => setPanelOpen(true)}>
+              ◀ note
+            </button>
           )}
         </div>
         {selected && panelOpen && (

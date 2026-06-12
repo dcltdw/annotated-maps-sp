@@ -11,6 +11,7 @@ body {
 .screen { height: 100vh; display: flex; flex-direction: column; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #8883; flex-wrap: wrap; }
 .switcher { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.switcher__label { opacity: .65; }
 .switcher button { padding: 4px 10px; border-radius: 999px; border: 1px solid #888; background: transparent; cursor: pointer; }
 .switcher button[aria-pressed="true"] { border-color: #16a34a; background: rgba(22,163,74,.14); font-weight: 600; }
 .stage { flex: 1; display: flex; min-height: 0; }
@@ -26,3 +27,4 @@ body {
 .note-panel .section__chip { font-size: 10px; font-weight: 700; text-transform: uppercase; display: block; }
 .note-panel .section__locked { font-style: italic; opacity: .7; }
 .note-panel__sections { padding: 0; margin: 6px 0; }
+.loading { padding: 2rem; font-size: 1rem; opacity: .8; }
