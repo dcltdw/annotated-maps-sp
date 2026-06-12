@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchMaps, fetchNotes, fetchViewers } from "./api/maps";
 import type { MapOut, NoteOut, Viewer } from "./api/types";
-import { MapView } from "./components/MapView";
 import { NotePanel } from "./components/NotePanel";
 import { PreviewSwitcher } from "./components/PreviewSwitcher";
+
+// Lazy so maplibre-gl splits into its own chunk, loaded only when the map screen mounts.
+const MapView = lazy(() => import("./components/MapView").then((m) => ({ default: m.MapView })));
 
 export function MapScreen() {
   const [map, setMap] = useState<MapOut | null>(null);
@@ -65,12 +67,9 @@ export function MapScreen() {
       </header>
       <div className="stage">
         <div className="map-wrap">
-          <MapView
-            center={[map.lng, map.lat]}
-            zoom={map.zoom}
-            notes={notes}
-            onSelect={handleSelect}
-          />
+          <Suspense fallback={<div className="map" />}>
+            <MapView center={[map.lng, map.lat]} zoom={map.zoom} notes={notes} onSelect={handleSelect} />
+          </Suspense>
           {selected && !panelOpen && (
             <button className="reopen" aria-label={t("screen.reopenAria")} onClick={() => setPanelOpen(true)}>
               {t("screen.reopen")}
