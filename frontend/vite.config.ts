@@ -21,5 +21,5 @@ export default defineConfig({
       "/api": "http://localhost:8000",
     },
   },
-  test: { environment: "jsdom", globals: true, setupFiles: "./src/setupTests.ts" },
+  test: { environment: "jsdom", globals: true, setupFiles: "./src/setupTests.ts", exclude: ["**/node_modules/**", "e2e/**"] },
 });

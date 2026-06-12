@@ -2,6 +2,7 @@ import maplibregl from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { NoteOut } from "../api/types";
+import { escapeHtml } from "../lib/escapeHtml";
 import { colorFor } from "../ruleColors";
 
 interface Props {
@@ -11,17 +12,18 @@ interface Props {
   onSelect: (noteId: string) => void;
 }
 
-// FIXME(A5): note.title / s.content are injected raw into the popup HTML. The demo
-// data is seeded and trusted; escape these before user-authored notes are supported.
-function peekHtml(note: NoteOut): string {
+// User-controlled fields (title, content, group/rule labels) are HTML-escaped
+// before being injected into the popup. colorFor() returns only fixed hex codes.
+export function peekHtml(note: NoteOut): string {
   const rows = note.sections
-    .map((s) =>
-      s.visibility === "teaser"
-        ? `<span style="color:${colorFor(s.rule_type)}">🔒 ${s.rule_label}</span>`
-        : `<span style="color:${colorFor(s.rule_type)}">● ${s.rule_label}</span> ${s.content ?? ""}`,
-    )
+    .map((s) => {
+      const label = escapeHtml(s.rule_label);
+      return s.visibility === "teaser"
+        ? `<span style="color:${colorFor(s.rule_type)}">🔒 ${label}</span>`
+        : `<span style="color:${colorFor(s.rule_type)}">● ${label}</span> ${escapeHtml(s.content ?? "")}`;
+    })
     .join("<br>");
-  return `<div style="font:13px system-ui;line-height:1.45;color:#111"><b>${note.title}</b><br>${rows}</div>`;
+  return `<div style="font:13px system-ui;line-height:1.45;color:#111"><b>${escapeHtml(note.title)}</b><br>${rows}</div>`;
 }
 
 interface Placed {

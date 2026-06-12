@@ -40,7 +40,7 @@ vi.mock("maplibre-gl", () => ({
   default: { Map: MapCtor, Marker, Popup, NavigationControl: vi.fn(function () { return {}; }) },
 }));
 
-import { MapView } from "./MapView";
+import { MapView, peekHtml } from "./MapView";
 import type { NoteOut } from "../api/types";
 
 afterEach(() => {
@@ -78,4 +78,21 @@ test("hovering a marker shows its popup and leaving removes it", () => {
   expect(popup.addTo).toHaveBeenCalled();
   fireEvent.mouseLeave(markerEls[0]);
   expect(popup.remove).toHaveBeenCalled();
+});
+
+test("peekHtml escapes user-controlled note fields", () => {
+  const html = peekHtml({
+    id: "x",
+    title: "<b>pwn</b>",
+    lng: 0,
+    lat: 0,
+    sections: [
+      { id: "s", order: 0, visibility: "visible", content: "<script>", rule_type: "public", rule_label: "<i>lbl</i>" },
+    ],
+  });
+  expect(html).not.toContain("<b>pwn</b>"); // title
+  expect(html).not.toContain("<script>"); // content
+  expect(html).not.toContain("<i>lbl</i>"); // rule_label
+  expect(html).toContain("&lt;script&gt;");
+  expect(html).toContain("&lt;i&gt;lbl&lt;/i&gt;");
 });
