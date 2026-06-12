@@ -13,6 +13,8 @@ class SectionOut(Schema):
     order: int
     visibility: str  # "visible" | "teaser"
     content: str | None  # null when teaser (redacted)
+    rule_type: str
+    rule_label: str
 
 
 class NoteOut(Schema):
@@ -61,3 +63,17 @@ class NoteIn(Schema):
 
 class NoteCreated(Schema):
     id: UUID
+
+
+class MapOut(Schema):
+    id: UUID
+    name: str
+    lng: float
+    lat: float
+    zoom: int
+
+
+class ViewerOut(Schema):
+    id: UUID
+    display_name: str
+    reputation: int

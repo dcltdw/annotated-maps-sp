@@ -4,8 +4,9 @@ import pytest
 from django.contrib.gis.geos import Point
 from django.test import Client
 
-from core.models import Tenant, User
+from core.models import Group, Tenant, User
 from maps.models import Map, Note, Section
+from maps.visibility import section_label
 
 
 @pytest.fixture
@@ -147,3 +148,38 @@ def test_create_rejects_invalid_rule_type(boston):
         content_type="application/json",
     )
     assert resp.status_code == 422
+
+
+def test_sections_carry_type_and_friendly_label(boston):
+    resp = Client().get(f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}")
+    assert resp.status_code == 200
+    sections = resp.json()[0]["sections"]
+    by_type = {s["rule_type"]: s for s in sections}
+    assert by_type["public"]["rule_label"] == "Public"
+    assert by_type["private"]["rule_label"] == "Private"
+
+
+def test_section_label_attribute_gate_humanizes_attribute_and_threshold():
+    section = Section(
+        rule_type=Section.RuleType.ATTRIBUTE_GATE,
+        rule_params={"attribute": "reputation", "threshold": 50},
+    )
+    assert section_label(section) == "Reputation ≥ 50"
+
+
+def test_section_label_audience_resolves_group_names(db):
+    t = Tenant.objects.create(name="T", slug="t")
+    g = Group.objects.create(tenant=t, name="Running club")
+    section = Section(rule_type=Section.RuleType.AUDIENCE, rule_params={"group_ids": [str(g.id)]})
+    assert section_label(section) == "Running club"
+
+
+def test_section_label_audience_without_groups_says_friends():
+    section = Section(rule_type=Section.RuleType.AUDIENCE, rule_params={})
+    assert section_label(section) == "Friends"
+
+
+def test_section_label_malformed_params_falls_back_to_restricted():
+    # rule_params is not a mapping → params.get raises AttributeError → fail-soft label.
+    section = Section(rule_type=Section.RuleType.ATTRIBUTE_GATE, rule_params="bad")
+    assert section_label(section) == "Restricted"

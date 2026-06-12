@@ -18,9 +18,13 @@ def build_boston_demo() -> dict:
         display_name="Reputable Local", defaults={"reputation": 60}
     )
 
-    Membership.objects.get_or_create(
-        user=owner, tenant=tenant, defaults={"role": Membership.Role.OWNER}
-    )
+    for user, role in [
+        (owner, Membership.Role.OWNER),
+        (friend, Membership.Role.CONTRIBUTOR),
+        (runner, Membership.Role.CONTRIBUTOR),
+        (local, Membership.Role.CONTRIBUTOR),
+    ]:
+        Membership.objects.get_or_create(user=user, tenant=tenant, defaults={"role": role})
     club, _ = Group.objects.get_or_create(tenant=tenant, name="Running club")
     club.members.set([runner])
 

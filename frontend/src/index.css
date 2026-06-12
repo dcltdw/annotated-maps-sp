@@ -7,3 +7,24 @@
 body {
   margin: 0;
 }
+
+.screen { height: 100vh; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #8883; flex-wrap: wrap; }
+.switcher { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.switcher__label { opacity: .65; }
+.switcher button { padding: 4px 10px; border-radius: 999px; border: 1px solid #888; background: transparent; cursor: pointer; }
+.switcher button[aria-pressed="true"] { border-color: #16a34a; background: rgba(22,163,74,.14); font-weight: 600; }
+.stage { flex: 1; display: flex; min-height: 0; }
+.map-wrap { position: relative; flex: 1.3; min-width: 0; }
+.map { position: absolute; inset: 0; }
+.reopen { position: absolute; top: 50%; transform: translateY(-50%); right: 0; z-index: 5; background: #111e; color: #fff; border: none; border-radius: 6px 0 0 6px; padding: 12px 9px; cursor: pointer; }
+/* Note surfaces are explicitly light — never theme-inherited (the popover-contrast lesson). */
+.note-panel { flex: 1; min-width: 280px; max-width: 380px; overflow: auto; background: #fff; color: #111; border-left: 1px solid #ddd; padding: 10px 12px; }
+.note-panel__head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 13px; }
+.note-panel__head button { background: none; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; padding: 2px 7px; }
+.note-panel__empty { font-style: italic; opacity: .7; }
+.note-panel .section { list-style: none; border-left: 3px solid; padding: 6px 9px; margin: 8px 0; border-radius: 4px; background: #f7f7f8; }
+.note-panel .section__chip { font-size: 10px; font-weight: 700; text-transform: uppercase; display: block; }
+.note-panel .section__locked { font-style: italic; opacity: .7; }
+.note-panel__sections { padding: 0; margin: 6px 0; }
+.loading { padding: 2rem; font-size: 1rem; opacity: .8; }
