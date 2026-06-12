@@ -1,1 +1,13 @@
-{ "health.title": "API status", "health.ok": "Connected", "health.error": "Unavailable" }
+{
+  "app.title": "Annotated Maps",
+  "screen.loading": "Loading map…",
+  "screen.error": "Couldn’t load the map. Is the backend running?",
+  "screen.reopen": "◀ note",
+  "screen.reopenAria": "Reopen note panel",
+  "switcher.label": "Viewing as",
+  "switcher.guest": "Guest",
+  "switcher.viewer": "Viewer",
+  "notePanel.collapse": "Collapse panel",
+  "notePanel.empty": "Nothing here for {{viewer}}.",
+  "notePanel.locked": "Locked — join to unlock."
+}

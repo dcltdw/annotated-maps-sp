@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { NoteOut } from "../api/types";
 import { colorFor } from "../ruleColors";
 
@@ -8,14 +9,15 @@ interface Props {
 }
 
 export function NotePanel({ note, viewerLabel, onCollapse }: Props) {
+  const { t } = useTranslation();
   return (
     <aside className="note-panel">
       <header className="note-panel__head">
         <span>📌 {note.title} · {viewerLabel}</span>
-        <button aria-label="Collapse panel" onClick={onCollapse}>✕</button>
+        <button aria-label={t("notePanel.collapse")} onClick={onCollapse}>✕</button>
       </header>
       {note.sections.length === 0 ? (
-        <p className="note-panel__empty">Nothing here for {viewerLabel}.</p>
+        <p className="note-panel__empty">{t("notePanel.empty", { viewer: viewerLabel })}</p>
       ) : (
         <ul className="note-panel__sections">
           {note.sections.map((s) => (
@@ -26,7 +28,7 @@ export function NotePanel({ note, viewerLabel, onCollapse }: Props) {
               {s.visibility === "visible" ? (
                 s.content ? <p>{s.content}</p> : null
               ) : (
-                <p className="section__locked">Locked — join to unlock.</p>
+                <p className="section__locked">{t("notePanel.locked")}</p>
               )}
             </li>
           ))}

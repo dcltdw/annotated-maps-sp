@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fetchMaps, fetchNotes, fetchViewers } from "./api/maps";
 import type { MapOut, NoteOut, Viewer } from "./api/types";
 import { MapView } from "./components/MapView";
@@ -13,6 +14,7 @@ export function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchMaps()
@@ -43,20 +45,22 @@ export function MapScreen() {
   }, [map, previewAs]);
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
-  const viewerLabel = previewAs ? viewers.find((v) => v.id === previewAs)?.display_name ?? "Viewer" : "Guest";
+  const viewerLabel = previewAs
+    ? viewers.find((v) => v.id === previewAs)?.display_name ?? t("switcher.viewer")
+    : t("switcher.guest");
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
     setPanelOpen(true);
   }, []);
 
-  if (loadError) return <p className="loading">Couldn’t load the map. Is the backend running?</p>;
-  if (!map) return <p className="loading">Loading map…</p>;
+  if (loadError) return <p className="loading">{t("screen.error")}</p>;
+  if (!map) return <p className="loading">{t("screen.loading")}</p>;
 
   return (
     <div className="screen">
       <header className="topbar">
-        <strong>Annotated Maps · {map.name}</strong>
+        <strong>{t("app.title")} · {map.name}</strong>
         <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
       </header>
       <div className="stage">
@@ -68,8 +72,8 @@ export function MapScreen() {
             onSelect={handleSelect}
           />
           {selected && !panelOpen && (
-            <button className="reopen" aria-label="Reopen note panel" onClick={() => setPanelOpen(true)}>
-              ◀ note
+            <button className="reopen" aria-label={t("screen.reopenAria")} onClick={() => setPanelOpen(true)}>
+              {t("screen.reopen")}
             </button>
           )}
         </div>
