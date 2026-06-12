@@ -14,5 +14,12 @@ export default defineConfig({
       },
     }),
   ],
+  // Dev: proxy the API to the Django backend so the SPA is same-origin (no CORS).
+  // Prod builds reach the API via VITE_API_BASE instead (see src/api/apiBase.ts).
+  server: {
+    proxy: {
+      "/api": "http://localhost:8000",
+    },
+  },
   test: { environment: "jsdom", globals: true, setupFiles: "./src/setupTests.ts" },
 });

@@ -39,7 +39,17 @@ The `.env.example` already has this line commented out. This is not needed on Li
 cd frontend && npm install && npm run dev
 ```
 
-Dev server: http://localhost:5173
+Dev server: http://localhost:5173 — the Vite dev server proxies `/api` to the
+Django backend on :8000, so run the backend alongside it.
+
+To see the Boston demo (the section-visibility "Viewing as" map), seed it once:
+
+```bash
+cd backend && uv run python manage.py seed_demo
+```
+
+Then open the dev server and switch personas (Guest / A Friend / Run-club Member /
+Reputable Local / owner) to watch the markers and note panel re-filter live.
 
 ## Tests
 
