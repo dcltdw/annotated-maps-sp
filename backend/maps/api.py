@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from django.contrib.gis.geos import Point
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
@@ -18,6 +19,8 @@ from maps.schemas import (
     NoteEditOut,
     NoteIn,
     NoteOut,
+    NoteUpdated,
+    NoteUpdateIn,
     SectionEditOut,
     SectionOut,
     ViewerOut,
@@ -148,3 +151,28 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
         raise HttpError(403, "You can only delete your own notes.")
     note.soft_delete()
     return 204, None
+
+
+@router.put("/notes/{note_id}", response={200: NoteUpdated})
+def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID | None = None):
+    note = get_object_or_404(Note, id=note_id)
+    if preview_as is None or note.author_id != preview_as:
+        raise HttpError(403, "You can only edit your own notes.")
+    if note.version != payload.version:
+        raise HttpError(409, "This note changed elsewhere — reload to edit.")
+    with transaction.atomic():
+        note.title = payload.title
+        note.point = Point(payload.lng, payload.lat)
+        note.save()  # BaseModel.save() bumps version
+        note.sections.all().delete()  # replace wholesale (revision history is a later slice)
+        for s in payload.sections:
+            Section.objects.create(
+                note=note,
+                order=s.order,
+                content=s.content,
+                rule_type=s.rule_type,
+                rule_params=s.rule_params,
+                teaser=s.teaser,
+                teaser_text=s.teaser_text,
+            )
+    return 200, {"id": note.id, "version": note.version}

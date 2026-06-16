@@ -347,3 +347,83 @@ def test_non_author_cannot_get_edit(boston):
     other = User.objects.create(display_name="Nope")
     assert Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={other.id}").status_code == 403
     assert Client().get(f"/api/v1/notes/{note.id}/edit").status_code == 403  # guest
+
+
+def _put(note_id, payload, who):
+    return Client().put(
+        f"/api/v1/notes/{note_id}?preview_as={who}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+def test_author_edits_own_note(boston):
+    note = _note_with_sections(boston)
+    payload = {
+        "title": "Edited",
+        "lng": -71.04,
+        "lat": 42.37,
+        "version": note.version,
+        "sections": [{"order": 0, "content": "only one now", "rule_type": "public"}],
+    }
+    resp = _put(note.id, payload, boston["owner"].id)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == str(note.id)
+    assert resp.json()["version"] == note.version + 1
+    note.refresh_from_db()
+    assert note.title == "Edited"
+    assert note.sections.count() == 1  # replaced wholesale
+
+
+def test_edit_rejects_invalid_body(boston):
+    # NoteUpdateIn inherits NoteIn's validators — a malformed edit body 422s before the handler.
+    note = _note_with_sections(boston)
+    payload = {"title": "  ", "lng": -71.0, "lat": 42.0, "version": note.version,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}]}
+    assert _put(note.id, payload, boston["owner"].id).status_code == 422
+
+
+def test_edit_version_conflict_returns_409(boston):
+    note = _note_with_sections(boston)
+    stale = note.version
+    note.title = "bumped"
+    note.save()  # version advances under us
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": stale,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _put(note.id, payload, boston["owner"].id).status_code == 409
+
+
+def test_non_author_cannot_edit(boston):
+    note = _note_with_sections(boston)
+    other = User.objects.create(display_name="Nope")
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": note.version,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _put(note.id, payload, other.id).status_code == 403
+
+
+def test_guest_cannot_edit(boston):
+    note = _note_with_sections(boston)
+    resp = Client().put(
+        f"/api/v1/notes/{note.id}",
+        data=json.dumps(
+            {
+                "title": "x",
+                "lng": -71.0,
+                "lat": 42.0,
+                "version": note.version,
+                "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+            }
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403

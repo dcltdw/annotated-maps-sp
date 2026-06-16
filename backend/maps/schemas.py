@@ -106,6 +106,15 @@ class NoteEditOut(Schema):
     sections: list[SectionEditOut]
 
 
+class NoteUpdateIn(NoteIn):
+    version: int
+
+
+class NoteUpdated(Schema):
+    id: UUID
+    version: int
+
+
 class NoteCreated(Schema):
     id: UUID
 
