@@ -309,3 +309,41 @@ def test_create_stores_teaser_text(boston):
     section = note.sections.first()
     assert section is not None
     assert section.teaser_text == "psst"
+
+
+def _note_with_sections(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Editable",
+        point=Point(-71.03, 42.36),
+    )
+    Section.objects.create(note=note, order=0, content="pub", rule_type=Section.RuleType.PUBLIC)
+    Section.objects.create(
+        note=note,
+        order=1,
+        content="gate",
+        rule_type=Section.RuleType.ATTRIBUTE_GATE,
+        rule_params={"attribute": "reputation", "threshold": 50},
+        teaser=True,
+        teaser_text="earn it",
+    )
+    return note
+
+
+def test_author_gets_raw_note_for_edit(boston):
+    note = _note_with_sections(boston)
+    body = Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={boston['owner'].id}").json()
+    assert body["title"] == "Editable"
+    assert body["version"] == note.version
+    gate = body["sections"][1]
+    assert gate["rule_params"]["threshold"] == 50
+    assert gate["teaser"] is True and gate["teaser_text"] == "earn it"
+
+
+def test_non_author_cannot_get_edit(boston):
+    note = _note_with_sections(boston)
+    other = User.objects.create(display_name="Nope")
+    assert Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={other.id}").status_code == 403
+    assert Client().get(f"/api/v1/notes/{note.id}/edit").status_code == 403  # guest

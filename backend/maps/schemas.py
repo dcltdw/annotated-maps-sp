@@ -88,6 +88,24 @@ class NoteIn(Schema):
         return v
 
 
+class SectionEditOut(Schema):
+    order: int
+    content: str
+    rule_type: str
+    rule_params: dict
+    teaser: bool
+    teaser_text: str
+
+
+class NoteEditOut(Schema):
+    id: UUID
+    title: str
+    lng: float | None
+    lat: float | None
+    version: int
+    sections: list[SectionEditOut]
+
+
 class NoteCreated(Schema):
     id: UUID
 

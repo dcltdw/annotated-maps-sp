@@ -11,7 +11,17 @@ from core.models import Group, Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
-from maps.schemas import GroupOut, MapOut, NoteCreated, NoteIn, NoteOut, SectionOut, ViewerOut
+from maps.schemas import (
+    GroupOut,
+    MapOut,
+    NoteCreated,
+    NoteEditOut,
+    NoteIn,
+    NoteOut,
+    SectionEditOut,
+    SectionOut,
+    ViewerOut,
+)
 from maps.visibility import section_label, section_visibility
 
 router = Router()
@@ -104,6 +114,31 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
             teaser_text=s.teaser_text,
         )
     return 201, {"id": note.id}
+
+
+@router.get("/notes/{note_id}/edit", response=NoteEditOut)
+def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
+    note = get_object_or_404(Note, id=note_id)
+    if preview_as is None or note.author_id != preview_as:
+        raise HttpError(403, "You can only edit your own notes.")
+    return NoteEditOut(
+        id=note.id,
+        title=note.title,
+        lng=note.point.x if note.point else None,
+        lat=note.point.y if note.point else None,
+        version=note.version,
+        sections=[
+            SectionEditOut(
+                order=s.order,
+                content=s.content,
+                rule_type=s.rule_type,
+                rule_params=s.rule_params,
+                teaser=s.teaser,
+                teaser_text=s.teaser_text,
+            )
+            for s in note.sections.all()
+        ],
+    )
 
 
 @router.delete("/notes/{note_id}", response={204: None})
