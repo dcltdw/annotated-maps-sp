@@ -36,6 +36,7 @@ class Section(BaseModel):
     rule_type = models.CharField(max_length=20, choices=RuleType.choices)
     rule_params = models.JSONField(default=dict, blank=True)
     teaser = models.BooleanField(default=False)
+    teaser_text = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:
         ordering = ["order"]

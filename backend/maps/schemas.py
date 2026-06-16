@@ -15,10 +15,12 @@ class SectionOut(Schema):
     content: str | None  # null when teaser (redacted)
     rule_type: str
     rule_label: str
+    teaser_text: str | None  # the custom hook, only for locked (teaser) sections
 
 
 class NoteOut(Schema):
     id: UUID
+    author_id: UUID
     title: str
     lng: float | None
     lat: float | None

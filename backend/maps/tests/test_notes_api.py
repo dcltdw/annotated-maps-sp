@@ -183,3 +183,47 @@ def test_section_label_malformed_params_falls_back_to_restricted():
     # rule_params is not a mapping → params.get raises AttributeError → fail-soft label.
     section = Section(rule_type=Section.RuleType.ATTRIBUTE_GATE, rule_params="bad")
     assert section_label(section) == "Restricted"
+
+
+def test_teaser_section_returns_custom_teaser_text_and_note_returns_author(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Hook note",
+        point=Point(-71.02, 42.34),
+    )
+    Section.objects.create(note=note, order=0, content="public", rule_type=Section.RuleType.PUBLIC)
+    Section.objects.create(
+        note=note,
+        order=1,
+        content="secret",
+        rule_type=Section.RuleType.PRIVATE,
+        teaser=True,
+        teaser_text="ask me nicely",
+    )
+    notes = Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()
+    data = next(n for n in notes if n["title"] == "Hook note")
+    assert data["author_id"] == str(boston["owner"].id)
+    teaser = next(s for s in data["sections"] if s["visibility"] == "teaser")
+    assert teaser["teaser_text"] == "ask me nicely"
+    public = next(s for s in data["sections"] if s["visibility"] == "visible")
+    assert public["teaser_text"] is None  # only locked sections carry the hook
+
+
+def test_locked_section_with_empty_teaser_text_returns_null(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Empty hook",
+        point=Point(-71.0, 42.0),
+    )
+    Section.objects.create(note=note, order=0, content="public", rule_type=Section.RuleType.PUBLIC)
+    Section.objects.create(
+        note=note, order=1, content="secret", rule_type=Section.RuleType.PRIVATE, teaser=True
+    )  # teaser=True, teaser_text defaults to ""
+    notes = Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()
+    data = next(n for n in notes if n["title"] == "Empty hook")
+    teaser = next(s for s in data["sections"] if s["visibility"] == "teaser")
+    assert teaser["teaser_text"] is None  # empty hook collapses to null, not ""

@@ -56,6 +56,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                     content=section.content if vis is Visibility.VISIBLE else None,
                     rule_type=section.rule_type,
                     rule_label=section_label(section),
+                    teaser_text=(section.teaser_text or None) if vis is Visibility.TEASER else None,
                 )
             )
         if not visible_sections:
@@ -63,6 +64,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
         out.append(
             NoteOut(
                 id=note.id,
+                author_id=note.author_id,
                 title=note.title,
                 lng=note.point.x if note.point else None,
                 lat=note.point.y if note.point else None,
