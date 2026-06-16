@@ -77,7 +77,14 @@ def test_contributor_creates_a_point_note(boston):
 def test_guest_cannot_create(boston):
     resp = Client().post(
         f"/api/v1/maps/{boston['map'].id}/notes",
-        data=json.dumps({"title": "x", "lng": -71.0, "lat": 42.0, "sections": []}),
+        data=json.dumps(
+            {
+                "title": "x",
+                "lng": -71.0,
+                "lat": 42.0,
+                "sections": [{"content": "c", "rule_type": "public"}],
+            }
+        ),
         content_type="application/json",
     )
     assert resp.status_code == 403
@@ -227,3 +234,78 @@ def test_locked_section_with_empty_teaser_text_returns_null(boston):
     data = next(n for n in notes if n["title"] == "Empty hook")
     teaser = next(s for s in data["sections"] if s["visibility"] == "teaser")
     assert teaser["teaser_text"] is None  # empty hook collapses to null, not ""
+
+
+def _post(boston, payload):
+    return Client().post(
+        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+def test_create_rejects_empty_title(boston):
+    assert (
+        _post(
+            boston,
+            {
+                "title": "  ",
+                "lng": -71.0,
+                "lat": 42.0,
+                "sections": [{"content": "c", "rule_type": "public"}],
+            },
+        ).status_code
+        == 422
+    )
+
+
+def test_create_rejects_zero_sections(boston):
+    resp = _post(boston, {"title": "x", "lng": -71.0, "lat": 42.0, "sections": []})
+    assert resp.status_code == 422
+
+
+def test_create_rejects_empty_section_content(boston):
+    assert (
+        _post(
+            boston,
+            {
+                "title": "x",
+                "lng": -71.0,
+                "lat": 42.0,
+                "sections": [{"content": " ", "rule_type": "public"}],
+            },
+        ).status_code
+        == 422
+    )
+
+
+def test_create_rejects_audience_without_target(boston):
+    resp = _post(
+        boston,
+        {
+            "title": "x",
+            "lng": -71.0,
+            "lat": 42.0,
+            "sections": [{"content": "c", "rule_type": "audience", "rule_params": {}}],
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_create_stores_teaser_text(boston):
+    resp = _post(
+        boston,
+        {
+            "title": "x",
+            "lng": -71.0,
+            "lat": 42.0,
+            "sections": [
+                {"content": "c", "rule_type": "private", "teaser": True, "teaser_text": "psst"}
+            ],
+        },
+    )
+    assert resp.status_code == 201
+    note = Note.objects.get(id=resp.json()["id"])
+    section = note.sections.first()
+    assert section is not None
+    assert section.teaser_text == "psst"

@@ -33,6 +33,7 @@ class SectionIn(Schema):
     rule_type: str
     rule_params: dict = {}
     teaser: bool = False
+    teaser_text: str = ""
 
     @field_validator("rule_type")
     @classmethod
@@ -41,12 +42,22 @@ class SectionIn(Schema):
             raise ValueError(f"invalid rule_type {v!r}")
         return v
 
+    @field_validator("content")
+    @classmethod
+    def _content_nonempty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("content is required")
+        return v
+
     @model_validator(mode="after")
     def _rule_params_match_type(self) -> SectionIn:
         if self.rule_type == Section.RuleType.AUDIENCE:
-            for key in ("user_ids", "group_ids"):
-                for raw in self.rule_params.get(key, []):
-                    UUID(str(raw))  # ValueError if not a UUID
+            user_ids = self.rule_params.get("user_ids", [])
+            group_ids = self.rule_params.get("group_ids", [])
+            if not user_ids and not group_ids:
+                raise ValueError("audience requires at least one user or group")
+            for raw in [*user_ids, *group_ids]:
+                UUID(str(raw))  # ValueError if not a UUID
         elif self.rule_type == Section.RuleType.ATTRIBUTE_GATE:
             if "attribute" not in self.rule_params:
                 raise ValueError("attribute_gate requires 'attribute'")
@@ -61,6 +72,20 @@ class NoteIn(Schema):
     lng: float
     lat: float
     sections: list[SectionIn] = []
+
+    @field_validator("title")
+    @classmethod
+    def _title_nonempty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("title is required")
+        return v
+
+    @field_validator("sections")
+    @classmethod
+    def _at_least_one_section(cls, v: list[SectionIn]) -> list[SectionIn]:
+        if not v:
+            raise ValueError("a note needs at least one section")
+        return v
 
 
 class NoteCreated(Schema):

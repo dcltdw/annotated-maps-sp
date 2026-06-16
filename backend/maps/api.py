@@ -95,6 +95,7 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
             rule_type=s.rule_type,
             rule_params=s.rule_params,
             teaser=s.teaser,
+            teaser_text=s.teaser_text,
         )
     return 201, {"id": note.id}
 
