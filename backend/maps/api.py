@@ -7,11 +7,11 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
-from core.models import Membership, User
+from core.models import Group, Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
-from maps.schemas import MapOut, NoteCreated, NoteIn, NoteOut, SectionOut, ViewerOut
+from maps.schemas import GroupOut, MapOut, NoteCreated, NoteIn, NoteOut, SectionOut, ViewerOut
 from maps.visibility import section_label, section_visibility
 
 router = Router()
@@ -35,6 +35,12 @@ def list_viewers(request, map_id: UUID):
         ViewerOut(id=u.id, display_name=u.display_name, reputation=u.reputation)
         for u in User.objects.filter(id__in=user_ids).order_by("reputation")
     ]
+
+
+@router.get("/maps/{map_id}/groups", response=list[GroupOut])
+def list_groups(request, map_id: UUID):
+    the_map = get_object_or_404(Map, id=map_id)
+    return [GroupOut(id=g.id, name=g.name) for g in Group.objects.filter(tenant=the_map.tenant)]
 
 
 @router.get("/maps/{map_id}/notes", response=list[NoteOut])

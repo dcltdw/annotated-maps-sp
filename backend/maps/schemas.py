@@ -104,3 +104,8 @@ class ViewerOut(Schema):
     id: UUID
     display_name: str
     reputation: int
+
+
+class GroupOut(Schema):
+    id: UUID
+    name: str
