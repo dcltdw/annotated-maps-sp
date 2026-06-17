@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Group, SectionInput } from "../api/types";
 import { colorFor } from "../ruleColors";
 
@@ -19,6 +20,7 @@ interface Props {
 // Purely controlled: renders straight from `section` and emits every change via
 // onChange. The parent (NoteEditor) owns the sections array — single source of truth.
 export function SectionEditor({ section, groups, onChange, onRemove }: Props) {
+  const { t } = useTranslation();
   const set = (patch: Partial<SectionInput>) => onChange({ ...section, ...patch });
 
   function pickRule(rule: string) {
@@ -52,7 +54,7 @@ export function SectionEditor({ section, groups, onChange, onRemove }: Props) {
             {LABEL[r]}
           </button>
         ))}
-        <button type="button" className="ed-section__remove" aria-label="Remove section" onClick={onRemove}>
+        <button type="button" className="ed-section__remove" aria-label={t("editor.removeSection")} onClick={onRemove}>
           ✕
         </button>
       </div>
@@ -93,14 +95,14 @@ export function SectionEditor({ section, groups, onChange, onRemove }: Props) {
 
       <textarea
         className="ed-input"
-        aria-label="Section content"
+        aria-label={t("editor.sectionContent")}
         value={section.content}
         onChange={(e) => set({ content: e.target.value })}
       />
 
       {section.rule_type !== "public" && (
         <label className="ed-teaser">
-          Teaser (shown locked to others)
+          {t("editor.teaser")}
           <input
             type="text"
             value={section.teaser_text}

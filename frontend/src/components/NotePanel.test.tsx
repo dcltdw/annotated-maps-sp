@@ -53,3 +53,34 @@ test("shows the section's custom teaser text when present", () => {
   render(<NotePanel note={note} viewerLabel="Guest" onCollapse={() => {}} />);
   expect(screen.getByText("ask me nicely")).toBeInTheDocument();
 });
+
+test("canEdit=true renders edit and delete buttons that fire their callbacks", async () => {
+  const onEdit = vi.fn();
+  const onDelete = vi.fn();
+  // Stub window.confirm to return true
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  render(
+    <NotePanel
+      note={note}
+      viewerLabel="Owner"
+      onCollapse={() => {}}
+      canEdit
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />,
+  );
+  expect(screen.getByRole("button", { name: /edit note/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /delete note/i })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /edit note/i }));
+  expect(onEdit).toHaveBeenCalledOnce();
+  await userEvent.click(screen.getByRole("button", { name: /delete note/i }));
+  expect(window.confirm).toHaveBeenCalled();
+  expect(onDelete).toHaveBeenCalledOnce();
+  vi.restoreAllMocks();
+});
+
+test("canEdit=false (default) renders neither edit nor delete button", () => {
+  render(<NotePanel note={note} viewerLabel="Guest" onCollapse={() => {}} canEdit={false} />);
+  expect(screen.queryByRole("button", { name: /edit note/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /delete note/i })).not.toBeInTheDocument();
+});

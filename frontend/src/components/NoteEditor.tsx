@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Group, NoteEdit, NoteInput, NoteUpdateInput, SectionInput } from "../api/types";
 import { SectionEditor } from "./SectionEditor";
 
@@ -17,16 +18,17 @@ interface Props {
 }
 
 export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, onCancel }: Props) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [sections, setSections] = useState<SectionInput[]>(existing?.sections ?? [blankSection(0)]);
   const [error, setError] = useState<string | null>(null);
 
   function save() {
-    if (!title.trim()) return setError("Title is required.");
-    if (sections.length === 0) return setError("Add at least one section.");
-    if (sections.some((s) => !s.content.trim())) return setError("Every section needs content.");
+    if (!title.trim()) return setError(t("editor.titleRequired"));
+    if (sections.length === 0) return setError(t("editor.oneSection"));
+    if (sections.some((s) => !s.content.trim())) return setError(t("editor.contentRequired"));
     if (sections.some((s) => s.rule_type === "audience" && ((s.rule_params.group_ids as string[]) ?? []).length === 0))
-      return setError("Audience sections need at least one group.");
+      return setError(t("editor.audienceGroup"));
     const ordered = sections.map((s, i) => ({ ...s, order: i }));
     const base: NoteInput = { title: title.trim(), lng, lat, sections: ordered };
     onSave(existing ? { ...base, version: existing.version } : base);
@@ -35,11 +37,11 @@ export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, on
   return (
     <aside className="note-editor">
       <header className="note-editor__head">
-        <span>{existing ? "✎ Edit note" : "📝 New note"} · as {authorLabel}</span>
-        <button type="button" aria-label="Cancel" onClick={onCancel}>✕</button>
+        <span>{existing ? t("editor.editNote") : t("editor.newNote")} · {t("editor.as")} {authorLabel}</span>
+        <button type="button" aria-label={t("editor.cancel")} onClick={onCancel}>✕</button>
       </header>
       <div className="ed-field">
-        <label htmlFor="note-title">Title</label>
+        <label htmlFor="note-title">{t("editor.title")}</label>
         <input
           id="note-title"
           className="ed-input"
@@ -65,12 +67,12 @@ export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, on
         ))}
       </ul>
       <button type="button" className="ed-add" onClick={() => setSections((p) => [...p, blankSection(p.length)])}>
-        ＋ Add section
+        {t("editor.addSection")}
       </button>
       {error && <p className="ed-error" role="alert">{error}</p>}
       <div className="note-editor__actions">
-        <button type="button" className="mock-button" onClick={save}>Save note</button>
-        <button type="button" onClick={onCancel}>Cancel</button>
+        <button type="button" className="mock-button" onClick={save}>{t("editor.save")}</button>
+        <button type="button" onClick={onCancel}>{t("editor.cancel")}</button>
       </div>
     </aside>
   );
