@@ -28,7 +28,7 @@ export function NotePanel({ note, viewerLabel, onCollapse }: Props) {
               {s.visibility === "visible" ? (
                 s.content ? <p>{s.content}</p> : null
               ) : (
-                <p className="section__locked">{t("notePanel.locked")}</p>
+                <p className="section__locked">{s.teaser_text ?? t("notePanel.locked")}</p>
               )}
             </li>
           ))}

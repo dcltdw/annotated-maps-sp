@@ -49,8 +49,8 @@ afterEach(() => {
 });
 
 const notes: NoteOut[] = [
-  { id: "n1", title: "A", lng: -71, lat: 42, sections: [] },
-  { id: "n2", title: "B", lng: -71.1, lat: 42.1, sections: [] },
+  { id: "n1", author_id: "u1", title: "A", lng: -71, lat: 42, sections: [] },
+  { id: "n2", author_id: "u1", title: "B", lng: -71.1, lat: 42.1, sections: [] },
 ];
 
 test("adds a marker per note", () => {
@@ -59,7 +59,7 @@ test("adds a marker per note", () => {
 });
 
 test("skips notes without coordinates", () => {
-  const withNull: NoteOut[] = [...notes, { id: "n3", title: "C", lng: null, lat: null, sections: [] }];
+  const withNull: NoteOut[] = [...notes, { id: "n3", author_id: "u1", title: "C", lng: null, lat: null, sections: [] }];
   render(<MapView center={[-71, 42]} zoom={12} notes={withNull} onSelect={() => {}} />);
   expect(Marker).toHaveBeenCalledTimes(2);
 });
@@ -83,11 +83,12 @@ test("hovering a marker shows its popup and leaving removes it", () => {
 test("peekHtml escapes user-controlled note fields", () => {
   const html = peekHtml({
     id: "x",
+    author_id: "u1",
     title: "<b>pwn</b>",
     lng: 0,
     lat: 0,
     sections: [
-      { id: "s", order: 0, visibility: "visible", content: "<script>", rule_type: "public", rule_label: "<i>lbl</i>" },
+      { id: "s", order: 0, visibility: "visible", content: "<script>", rule_type: "public", rule_label: "<i>lbl</i>", teaser_text: null },
     ],
   });
   expect(html).not.toContain("<b>pwn</b>"); // title
@@ -95,4 +96,19 @@ test("peekHtml escapes user-controlled note fields", () => {
   expect(html).not.toContain("<i>lbl</i>"); // rule_label
   expect(html).toContain("&lt;script&gt;");
   expect(html).toContain("&lt;i&gt;lbl&lt;/i&gt;");
+});
+
+test("peekHtml escapes a teaser section's teaser_text hook", () => {
+  const html = peekHtml({
+    id: "x",
+    author_id: "u1",
+    title: "Spot",
+    lng: 0,
+    lat: 0,
+    sections: [
+      { id: "s", order: 0, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Club", teaser_text: "<img onerror=1>" },
+    ],
+  });
+  expect(html).not.toContain("<img onerror=1>");
+  expect(html).toContain("&lt;img onerror=1&gt;");
 });

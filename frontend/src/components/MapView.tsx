@@ -19,7 +19,9 @@ export function peekHtml(note: NoteOut): string {
     .map((s) => {
       const label = escapeHtml(s.rule_label);
       return s.visibility === "teaser"
-        ? `<span style="color:${colorFor(s.rule_type)}">🔒 ${label}</span>`
+        ? `<span style="color:${colorFor(s.rule_type)}">🔒 ${label}</span>${
+            s.teaser_text ? " " + escapeHtml(s.teaser_text) : ""
+          }`
         : `<span style="color:${colorFor(s.rule_type)}">● ${label}</span> ${escapeHtml(s.content ?? "")}`;
     })
     .join("<br>");

@@ -6,8 +6,8 @@ vi.mock("./api/maps", () => ({
   fetchMaps: vi.fn().mockResolvedValue([{ id: "m1", name: "Boston", lng: -71, lat: 42, zoom: 12 }]),
   fetchViewers: vi.fn().mockResolvedValue([{ id: "u1", display_name: "Owner", reputation: 100 }]),
   fetchNotes: vi.fn().mockResolvedValue([
-    { id: "n1", title: "Castle Island", lng: -71, lat: 42, sections: [
-      { id: "s1", order: 0, visibility: "visible", content: "scenic", rule_type: "public", rule_label: "Public" },
+    { id: "n1", author_id: "u1", title: "Castle Island", lng: -71, lat: 42, sections: [
+      { id: "s1", order: 0, visibility: "visible", content: "scenic", rule_type: "public", rule_label: "Public", teaser_text: null },
     ] },
   ]),
 }));

@@ -5,10 +5,10 @@ import { NotePanel } from "./NotePanel";
 import type { NoteOut } from "../api/types";
 
 const note: NoteOut = {
-  id: "n1", title: "Castle Island", lng: -71, lat: 42,
+  id: "n1", title: "Castle Island", lng: -71, lat: 42, author_id: "u1",
   sections: [
-    { id: "s1", order: 0, visibility: "visible", content: "scenic loop", rule_type: "public", rule_label: "Public" },
-    { id: "s2", order: 1, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Running club" },
+    { id: "s1", order: 0, visibility: "visible", content: "scenic loop", rule_type: "public", rule_label: "Public", teaser_text: null },
+    { id: "s2", order: 1, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Running club", teaser_text: "ask me nicely" },
   ],
 };
 
@@ -17,7 +17,7 @@ test("renders visible content and a locked teaser, and collapses", async () => {
   render(<NotePanel note={note} viewerLabel="Owner" onCollapse={onCollapse} />);
   expect(screen.getByText("scenic loop")).toBeInTheDocument();
   expect(screen.getByText(/Running club/)).toBeInTheDocument();
-  expect(screen.getByText(/Locked/i)).toBeInTheDocument();
+  expect(screen.getByText("ask me nicely")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: /collapse/i }));
   expect(onCollapse).toHaveBeenCalledOnce();
 });
@@ -40,10 +40,16 @@ test("never renders a teaser section's content, even if present", () => {
         content: "members-only secret",
         rule_type: "audience",
         rule_label: "Running club",
+        teaser_text: null,
       },
     ],
   };
   render(<NotePanel note={leaky} viewerLabel="Guest" onCollapse={() => {}} />);
   expect(screen.queryByText("members-only secret")).not.toBeInTheDocument();
   expect(screen.getByText(/Locked/i)).toBeInTheDocument();
+});
+
+test("shows the section's custom teaser text when present", () => {
+  render(<NotePanel note={note} viewerLabel="Guest" onCollapse={() => {}} />);
+  expect(screen.getByText("ask me nicely")).toBeInTheDocument();
 });

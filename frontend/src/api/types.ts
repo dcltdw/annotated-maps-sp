@@ -7,9 +7,11 @@ export interface SectionOut {
   content: string | null;
   rule_type: string;
   rule_label: string;
+  teaser_text: string | null;
 }
 export interface NoteOut {
   id: string;
+  author_id: string;
   title: string;
   lng: number | null;
   lat: number | null;
