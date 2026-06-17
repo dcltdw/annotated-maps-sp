@@ -164,7 +164,10 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
         note.title = payload.title
         note.point = Point(payload.lng, payload.lat)
         note.save()  # BaseModel.save() bumps version
-        note.sections.all().delete()  # replace wholesale (revision history is a later slice)
+        # Replace sections wholesale. NB: QuerySet.delete() HARD-deletes (Section is
+        # soft-deletable, but .delete() issues a SQL DELETE) — intentional for now;
+        # the future revision-history slice will need to soft-delete/snapshot instead.
+        note.sections.all().delete()
         for s in payload.sections:
             Section.objects.create(
                 note=note,
