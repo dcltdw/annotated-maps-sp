@@ -378,8 +378,13 @@ def test_author_edits_own_note(boston):
 def test_edit_rejects_invalid_body(boston):
     # NoteUpdateIn inherits NoteIn's validators — a malformed edit body 422s before the handler.
     note = _note_with_sections(boston)
-    payload = {"title": "  ", "lng": -71.0, "lat": 42.0, "version": note.version,
-        "sections": [{"order": 0, "content": "c", "rule_type": "public"}]}
+    payload = {
+        "title": "  ",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": note.version,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
     assert _put(note.id, payload, boston["owner"].id).status_code == 422
 
 
