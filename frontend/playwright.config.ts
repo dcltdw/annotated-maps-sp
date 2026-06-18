@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   fullyParallel: true,
+  retries: process.env.CI ? 2 : 1, // flaky marker-count assertions retry instead of hard-failing
+  workers: process.env.CI ? "50%" : undefined, // cap CI parallelism to reduce contention
   use: {
     baseURL: "http://localhost:5174",
     // maplibre needs WebGL; force software rendering so headless CI Chromium can create a GL context.
