@@ -131,6 +131,10 @@ class NoteUpdateIn(NoteIn):
     version: int
 
 
+class AppendUpdateIn(AppendIn):
+    version: int
+
+
 class NoteUpdated(Schema):
     id: UUID
     version: int

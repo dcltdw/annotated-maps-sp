@@ -568,3 +568,89 @@ def test_append_rejects_zero_sections(boston):
         point=Point(-71.0, 42.0),
     )
     assert _append(parent.id, {"sections": []}, boston["owner"].id).status_code == 422
+
+
+def _make_append(boston, author):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    ap = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=author,
+        parent=parent,
+        title="T",
+    )
+    Section.objects.create(note=ap, order=0, content="orig", rule_type=Section.RuleType.PUBLIC)
+    return ap
+
+
+def test_author_edits_own_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    payload = {
+        "title": "T2",
+        "version": ap.version,
+        "sections": [{"order": 0, "content": "new", "rule_type": "public"}],
+    }
+    resp = Client().put(
+        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200 and resp.json()["version"] == ap.version + 1
+    ap.refresh_from_db()
+    assert ap.title == "T2" and ap.sections.first().content == "new"
+
+
+def test_non_author_cannot_edit_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    payload = {
+        "version": ap.version,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    assert (
+        Client()
+        .put(
+            f"/api/v1/appends/{ap.id}?preview_as={boston['owner'].id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        .status_code
+        == 403
+    )
+
+
+def test_append_edit_version_conflict_409(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    stale = ap.version
+    ap.title = "bumped"
+    ap.save()
+    payload = {
+        "version": stale,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    assert (
+        Client()
+        .put(
+            f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        .status_code
+        == 409
+    )
+
+
+def test_delete_and_edit_endpoints_work_on_an_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    edit = Client().get(f"/api/v1/notes/{ap.id}/edit?preview_as={friend.id}").json()
+    assert edit["title"] == "T" and edit["lng"] is None  # append has no point
+    assert Client().delete(f"/api/v1/notes/{ap.id}?preview_as={friend.id}").status_code == 204
+    assert Note.objects.filter(id=ap.id).count() == 0  # soft-deleted

@@ -15,6 +15,7 @@ from maps.models import Map, Note, Section
 from maps.schemas import (
     AppendIn,
     AppendOut,
+    AppendUpdateIn,
     GroupOut,
     MapOut,
     NoteCreated,
@@ -206,6 +207,32 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
                 teaser_text=s.teaser_text,
             )
     return 200, {"id": note.id, "version": note.version}
+
+
+@router.put("/appends/{append_id}", response={200: NoteUpdated})
+def update_append(
+    request, append_id: UUID, payload: AppendUpdateIn, preview_as: UUID | None = None
+):
+    append = get_object_or_404(Note, id=append_id)
+    if preview_as is None or append.author_id != preview_as:
+        raise HttpError(403, "You can only edit your own appends.")
+    if append.version != payload.version:
+        raise HttpError(409, "This append changed elsewhere — reload to edit.")
+    with transaction.atomic():
+        append.title = payload.title
+        append.save()  # BaseModel.save() bumps version (no point to update — appends have none)
+        append.sections.all().delete()  # hard replace (see update_note for the rationale)
+        for s in payload.sections:
+            Section.objects.create(
+                note=append,
+                order=s.order,
+                content=s.content,
+                rule_type=s.rule_type,
+                rule_params=s.rule_params,
+                teaser=s.teaser,
+                teaser_text=s.teaser_text,
+            )
+    return 200, {"id": append.id, "version": append.version}
 
 
 @router.post("/notes/{parent_id}/appends", response={201: NoteCreated})
