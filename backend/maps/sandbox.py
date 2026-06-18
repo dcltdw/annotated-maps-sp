@@ -21,11 +21,16 @@ MAX_EPHEMERAL_ROWS = 2000
 
 
 def client_ip(request: HttpRequest) -> str:
-    """Best-effort client IP. Render terminates TLS at its proxy, so the real client
-    is the first hop of X-Forwarded-For; fall back to REMOTE_ADDR."""
+    """Best-effort client IP for the per-IP creation cap.
+
+    Behind Render's single proxy the trustworthy value is the RIGHTMOST
+    X-Forwarded-For hop — the IP Render itself appends from the real connection.
+    The client can forge leftmost hops, so we must NOT use [0]; we take [-1].
+    (Assumes exactly one trusted proxy in front of the app, which is Render's setup.)
+    Falls back to REMOTE_ADDR when there is no XFF header (e.g. local/dev)."""
     xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
     if xff:
-        return xff.split(",")[0].strip()
+        return xff.split(",")[-1].strip()
     return request.META.get("REMOTE_ADDR", "") or ""
 
 
@@ -69,8 +74,10 @@ def enforce_create_limits(request: HttpRequest, *, is_append: bool) -> tuple[str
             429,
             "The sandbox is full right now — content is pruned after 7 days. Try again later.",
         )
+    # Soft caps: count-then-create isn't atomic, so a small overshoot under concurrency is
+    # acceptable for a demo.
     hour_ago = timezone.now() - timedelta(hours=1)
-    if (
+    if ip and (
         Note.objects.filter(is_seed=False, created_ip=ip, created_at__gte=hour_ago).count()
         >= MAX_CREATES_PER_IP_PER_HOUR
     ):
