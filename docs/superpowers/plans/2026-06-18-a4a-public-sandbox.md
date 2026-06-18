@@ -463,6 +463,8 @@ git commit -m "feat(a4a): server-computed editable flag on the note read API"
 
 ## Task 6: `/api/v1/health` endpoint
 
+> **RESOLVED during execution — NO CODE NEEDED.** A `GET /api/v1/health` endpoint already exists in `core/api.py` (from the foundation slice), returns `{status, version, git_sha}`, has passing tests, and is already what `render.yaml` `healthCheckPath` points at. **Deliberate decision:** do NOT add the `SELECT 1` DB round-trip the steps below describe — coupling Render's liveness probe to a free-tier Neon DB (which auto-suspends + cold-starts) risks the healthcheck flapping or failing a deploy on a transient DB blip. Liveness answers "is the process up"; DB-reachability is covered separately by Task 10's `smoke_test.py` (which lists notes). Task 6 is therefore satisfied by the existing endpoint; the original steps are retained below for the record only.
+
 **Files:**
 - Modify: `backend/maps/api.py` (add `health`)
 - Test: `backend/maps/tests/test_health.py`
