@@ -68,8 +68,9 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
     });
     mapRef.current = map;
     return () => map.remove();
-    // center/zoom only seed the initial view; deps intentionally empty (the map is created once).
+    // center/zoom only seed the initial view; the map is created once.
     // onMapClickRef is a stable ref; no need to list it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
