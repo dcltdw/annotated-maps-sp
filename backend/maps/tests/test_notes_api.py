@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import pytest
 from django.contrib.gis.geos import Point
@@ -692,3 +693,21 @@ def test_cannot_edit_a_top_level_note_via_the_append_endpoint(boston):
     assert resp.status_code == 400
     note.refresh_from_db()
     assert note.title == "Top"  # unchanged
+
+
+def test_create_does_not_emit_the_tuple_return_deprecation(boston):
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "sections": [{"content": "c", "rule_type": "public"}],
+    }
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        resp = Client().post(
+            f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+    assert resp.status_code == 201
+    assert not any("Returning tuple" in str(w.message) for w in caught)

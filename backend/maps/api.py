@@ -5,7 +5,7 @@ from uuid import UUID
 from django.contrib.gis.geos import Point
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from ninja import Router, Status
 from ninja.errors import HttpError
 
 from core.models import Group, Membership, User
@@ -144,7 +144,7 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
             teaser=s.teaser,
             teaser_text=s.teaser_text,
         )
-    return 201, {"id": note.id}
+    return Status(201, {"id": note.id})
 
 
 @router.get("/notes/{note_id}/edit", response=NoteEditOut)
@@ -178,7 +178,7 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
     if preview_as is None or note.author_id != preview_as:
         raise HttpError(403, "You can only delete your own notes.")
     note.soft_delete()
-    return 204, None
+    return Status(204, None)
 
 
 @router.put("/notes/{note_id}", response={200: NoteUpdated})
@@ -206,7 +206,7 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
                 teaser=s.teaser,
                 teaser_text=s.teaser_text,
             )
-    return 200, {"id": note.id, "version": note.version}
+    return Status(200, {"id": note.id, "version": note.version})
 
 
 @router.put("/appends/{append_id}", response={200: NoteUpdated})
@@ -236,7 +236,7 @@ def update_append(
                 teaser=s.teaser,
                 teaser_text=s.teaser_text,
             )
-    return 200, {"id": append.id, "version": append.version}
+    return Status(200, {"id": append.id, "version": append.version})
 
 
 @router.post("/notes/{parent_id}/appends", response={201: NoteCreated})
@@ -265,4 +265,4 @@ def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID 
             teaser=s.teaser,
             teaser_text=s.teaser_text,
         )
-    return 201, {"id": append.id}
+    return Status(201, {"id": append.id})
