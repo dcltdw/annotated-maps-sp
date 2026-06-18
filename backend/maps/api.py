@@ -3,15 +3,28 @@ from __future__ import annotations
 from uuid import UUID
 
 from django.contrib.gis.geos import Point
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
-from core.models import Membership, User
+from core.models import Group, Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
-from maps.schemas import MapOut, NoteCreated, NoteIn, NoteOut, SectionOut, ViewerOut
+from maps.schemas import (
+    GroupOut,
+    MapOut,
+    NoteCreated,
+    NoteEditOut,
+    NoteIn,
+    NoteOut,
+    NoteUpdated,
+    NoteUpdateIn,
+    SectionEditOut,
+    SectionOut,
+    ViewerOut,
+)
 from maps.visibility import section_label, section_visibility
 
 router = Router()
@@ -37,6 +50,12 @@ def list_viewers(request, map_id: UUID):
     ]
 
 
+@router.get("/maps/{map_id}/groups", response=list[GroupOut])
+def list_groups(request, map_id: UUID):
+    the_map = get_object_or_404(Map, id=map_id)
+    return [GroupOut(id=g.id, name=g.name) for g in Group.objects.filter(tenant=the_map.tenant)]
+
+
 @router.get("/maps/{map_id}/notes", response=list[NoteOut])
 def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
     the_map = get_object_or_404(Map, id=map_id)
@@ -56,6 +75,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                     content=section.content if vis is Visibility.VISIBLE else None,
                     rule_type=section.rule_type,
                     rule_label=section_label(section),
+                    teaser_text=(section.teaser_text or None) if vis is Visibility.TEASER else None,
                 )
             )
         if not visible_sections:
@@ -63,6 +83,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
         out.append(
             NoteOut(
                 id=note.id,
+                author_id=note.author_id,
                 title=note.title,
                 lng=note.point.x if note.point else None,
                 lat=note.point.y if note.point else None,
@@ -93,8 +114,34 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
             rule_type=s.rule_type,
             rule_params=s.rule_params,
             teaser=s.teaser,
+            teaser_text=s.teaser_text,
         )
     return 201, {"id": note.id}
+
+
+@router.get("/notes/{note_id}/edit", response=NoteEditOut)
+def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
+    note = get_object_or_404(Note, id=note_id)
+    if preview_as is None or note.author_id != preview_as:
+        raise HttpError(403, "You can only edit your own notes.")
+    return NoteEditOut(
+        id=note.id,
+        title=note.title,
+        lng=note.point.x if note.point else None,
+        lat=note.point.y if note.point else None,
+        version=note.version,
+        sections=[
+            SectionEditOut(
+                order=s.order,
+                content=s.content,
+                rule_type=s.rule_type,
+                rule_params=s.rule_params,
+                teaser=s.teaser,
+                teaser_text=s.teaser_text,
+            )
+            for s in note.sections.all()
+        ],
+    )
 
 
 @router.delete("/notes/{note_id}", response={204: None})
@@ -104,3 +151,31 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
         raise HttpError(403, "You can only delete your own notes.")
     note.soft_delete()
     return 204, None
+
+
+@router.put("/notes/{note_id}", response={200: NoteUpdated})
+def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID | None = None):
+    note = get_object_or_404(Note, id=note_id)
+    if preview_as is None or note.author_id != preview_as:
+        raise HttpError(403, "You can only edit your own notes.")
+    if note.version != payload.version:
+        raise HttpError(409, "This note changed elsewhere — reload to edit.")
+    with transaction.atomic():
+        note.title = payload.title
+        note.point = Point(payload.lng, payload.lat)
+        note.save()  # BaseModel.save() bumps version
+        # Replace sections wholesale. NB: QuerySet.delete() HARD-deletes (Section is
+        # soft-deletable, but .delete() issues a SQL DELETE) — intentional for now;
+        # the future revision-history slice will need to soft-delete/snapshot instead.
+        note.sections.all().delete()
+        for s in payload.sections:
+            Section.objects.create(
+                note=note,
+                order=s.order,
+                content=s.content,
+                rule_type=s.rule_type,
+                rule_params=s.rule_params,
+                teaser=s.teaser,
+                teaser_text=s.teaser_text,
+            )
+    return 200, {"id": note.id, "version": note.version}

@@ -1,12 +1,16 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fetchMaps, fetchNotes, fetchViewers } from "./api/maps";
-import type { MapOut, NoteOut, Viewer } from "./api/types";
+import type { ApiError } from "./api/maps";
+import { createNote, deleteNote, fetchGroups, fetchMaps, fetchNoteForEdit, fetchNotes, fetchViewers, updateNote } from "./api/maps";
+import type { Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./api/types";
+import { NoteEditor } from "./components/NoteEditor";
 import { NotePanel } from "./components/NotePanel";
 import { PreviewSwitcher } from "./components/PreviewSwitcher";
 
 // Lazy so maplibre-gl splits into its own chunk, loaded only when the map screen mounts.
 const MapView = lazy(() => import("./components/MapView").then((m) => ({ default: m.MapView })));
+
+type Mode = "view" | "create" | "edit";
 
 export function MapScreen() {
   const [map, setMap] = useState<MapOut | null>(null);
@@ -16,6 +20,14 @@ export function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // Write-mode state
+  const [mode, setMode] = useState<Mode>("view");
+  const [draft, setDraft] = useState<[number, number] | null>(null);
+  const [editing, setEditing] = useState<NoteEdit | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -23,41 +35,128 @@ export function MapScreen() {
       .then((maps) => {
         const m = maps[0] ?? null;
         setMap(m);
-        if (m) fetchViewers(m.id).then(setViewers).catch(() => setViewers([]));
-        else setLoadError(true);
+        if (m) {
+          fetchViewers(m.id).then(setViewers).catch(() => setViewers([]));
+          fetchGroups(m.id).then(setGroups).catch(() => setGroups([]));
+        } else setLoadError(true);
       })
       .catch(() => setLoadError(true));
   }, []);
 
-  useEffect(() => {
+  // Single guarded notes loader, shared by the initial/persona-switch effect AND the
+  // post-write reloads. A monotonic request id ensures only the latest fetch may set
+  // state, so a slow reload (e.g. right after a save) can't clobber a newer
+  // persona-switch fetch. Failures fail visible-empty rather than show a stale slice.
+  const notesReqRef = useRef(0);
+  const loadNotes = useCallback(() => {
     if (!map) return;
-    // Guard against a slow earlier fetch resolving after a faster later one when the
-    // viewer is switched quickly — only the latest request may set state.
-    let active = true;
+    const reqId = ++notesReqRef.current;
     fetchNotes(map.id, previewAs)
       .then((ns) => {
-        if (active) setNotes(ns);
+        if (reqId === notesReqRef.current) setNotes(ns);
       })
       .catch(() => {
-        if (active) setNotes([]); // fail visible-empty rather than showing a stale slice
+        if (reqId === notesReqRef.current) setNotes([]);
       });
-    return () => {
-      active = false;
-    };
   }, [map, previewAs]);
+
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
   const viewerLabel = previewAs
     ? viewers.find((v) => v.id === previewAs)?.display_name ?? t("switcher.viewer")
     : t("switcher.guest");
 
+  const canWrite = previewAs !== null;
+
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
     setPanelOpen(true);
   }, []);
 
+  const handleMapClick = useCallback((lng: number, lat: number) => {
+    if (!canWrite || mode !== "view") return;
+    setDraft([lng, lat]);
+    setMode("create");
+    setSelectedId(null);
+  }, [canWrite, mode]);
+
+  // Dragging the draft pin repositions the pending note (no mode guard — only fires
+  // while a draft pin exists, i.e. already in create mode).
+  const handleDraftMove = useCallback((lng: number, lat: number) => {
+    setDraft([lng, lat]);
+  }, []);
+
+  const resetToView = useCallback(() => {
+    setMode("view");
+    setDraft(null);
+    setEditing(null);
+    setError(null);
+  }, []);
+
+  const handleSave = useCallback(async (note: NoteInput | NoteUpdateInput) => {
+    if (!map || !previewAs) return;
+    try {
+      if (mode === "create") {
+        await createNote(map.id, note as NoteInput, previewAs);
+      } else if (mode === "edit" && editing) {
+        await updateNote(editing.id, note as NoteUpdateInput, previewAs);
+      }
+      resetToView();
+      loadNotes();
+    } catch (e) {
+      if ((e as ApiError).status === 409) {
+        setError(t("editor.conflict"));
+      } else {
+        setError(t("editor.saveFailed"));
+      }
+    }
+  }, [map, previewAs, mode, editing, resetToView, loadNotes, t]);
+
+  const handleEdit = useCallback(async () => {
+    if (!selected || !previewAs) return;
+    try {
+      const noteEdit = await fetchNoteForEdit(selected.id, previewAs);
+      setEditing(noteEdit);
+      setMode("edit");
+    } catch {
+      setError(t("editor.loadFailed"));
+    }
+  }, [selected, previewAs, t]);
+
+  const handleDelete = useCallback(async () => {
+    if (!selected || !previewAs) return;
+    try {
+      await deleteNote(selected.id, previewAs);
+      setSelectedId(null);
+      loadNotes();
+    } catch {
+      setError(t("editor.deleteFailed"));
+    }
+  }, [selected, previewAs, loadNotes, t]);
+
   if (loadError) return <p className="loading">{t("screen.error")}</p>;
   if (!map) return <p className="loading">{t("screen.loading")}</p>;
+
+  // Coordinates for the editor: edit uses the stored note's coords, create uses the draft pin.
+  const editorLng = mode === "edit" ? (editing?.lng ?? map.lng) : (draft?.[0] ?? map.lng);
+  const editorLat = mode === "edit" ? (editing?.lat ?? map.lat) : (draft?.[1] ?? map.lat);
+
+  const canEdit = canWrite && selected !== null && selected.author_id === previewAs;
+
+  const editorPanel = mode !== "view" ? (
+    <NoteEditor
+      lng={editorLng}
+      lat={editorLat}
+      groups={groups}
+      authorLabel={viewerLabel}
+      existing={editing ?? undefined}
+      onSave={handleSave}
+      onCancel={resetToView}
+    />
+  ) : null;
 
   return (
     <div className="screen">
@@ -65,19 +164,41 @@ export function MapScreen() {
         <strong>{t("app.title")} · {map.name}</strong>
         <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
       </header>
+      {error && (
+        <div className="editor-error-banner" role="alert">
+          {error}
+          <button type="button" onClick={() => setError(null)}>✕</button>
+        </div>
+      )}
       <div className="stage">
         <div className="map-wrap">
           <Suspense fallback={<div className="map" />}>
-            <MapView center={[map.lng, map.lat]} zoom={map.zoom} notes={notes} onSelect={handleSelect} />
+            <MapView
+              center={[map.lng, map.lat]}
+              zoom={map.zoom}
+              notes={notes}
+              onSelect={handleSelect}
+              onMapClick={canWrite && mode === "view" ? handleMapClick : undefined}
+              onDraftMove={handleDraftMove}
+              draft={mode === "create" ? draft : null}
+            />
           </Suspense>
-          {selected && !panelOpen && (
+          {selected && !panelOpen && mode === "view" && (
             <button className="reopen" aria-label={t("screen.reopenAria")} onClick={() => setPanelOpen(true)}>
               {t("screen.reopen")}
             </button>
           )}
         </div>
-        {selected && panelOpen && (
-          <NotePanel note={selected} viewerLabel={viewerLabel} onCollapse={() => setPanelOpen(false)} />
+        {mode !== "view" && editorPanel}
+        {mode === "view" && selected && panelOpen && (
+          <NotePanel
+            note={selected}
+            viewerLabel={viewerLabel}
+            onCollapse={() => setPanelOpen(false)}
+            canEdit={canEdit}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
       </div>
     </div>

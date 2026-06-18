@@ -28,3 +28,37 @@ body {
 .note-panel .section__locked { font-style: italic; opacity: .7; }
 .note-panel__sections { padding: 0; margin: 6px 0; }
 .loading { padding: 2rem; font-size: 1rem; opacity: .8; }
+
+/* ── Editor surfaces ─────────────────────────────────────────── */
+/* Same light-locked treatment as .note-panel */
+.note-editor { flex: 1; min-width: 280px; max-width: 380px; overflow: auto; background: #fff; color: #111; border-left: 1px solid #ddd; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.note-editor__head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 13px; }
+.note-editor__head button { background: none; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; padding: 2px 7px; }
+.note-editor__sections { padding: 0; margin: 4px 0; display: flex; flex-direction: column; gap: 8px; list-style: none; }
+.note-editor__actions { display: flex; gap: 8px; margin-top: 4px; }
+.note-editor__actions button { padding: 6px 14px; border-radius: 6px; border: 1px solid #888; background: transparent; cursor: pointer; font-size: 13px; }
+.note-editor__actions .mock-button { background: #16a34a; color: #fff; border-color: #16a34a; font-weight: 600; }
+
+.ed-section { list-style: none; border-left: 3px solid; padding: 8px 9px; border-radius: 4px; background: #f7f7f8; display: flex; flex-direction: column; gap: 6px; }
+.ed-section__rules { display: flex; flex-wrap: wrap; gap: 4px; }
+.ed-section__rules button { padding: 3px 9px; border-radius: 999px; border: 1px solid #aaa; background: transparent; cursor: pointer; font-size: 12px; }
+.ed-section__remove { margin-left: auto; border-color: #f87171 !important; color: #dc2626; }
+.ed-groups { display: flex; flex-wrap: wrap; gap: 4px; }
+.ed-groups button { padding: 3px 9px; border-radius: 999px; border: 1px solid #aaa; background: transparent; cursor: pointer; font-size: 12px; }
+.ed-groups button[aria-pressed="true"] { background: #2563eb; color: #fff; border-color: #2563eb; }
+.ed-threshold { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.ed-threshold input { width: 70px; padding: 3px 6px; border: 1px solid #ccc; border-radius: 4px; }
+.ed-teaser { font-size: 12px; color: #555; display: flex; flex-direction: column; gap: 3px; }
+.ed-teaser input { padding: 4px 7px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+.ed-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.ed-add { align-self: flex-start; padding: 4px 12px; border-radius: 999px; border: 1px dashed #888; background: transparent; cursor: pointer; font-size: 12px; }
+.ed-error { color: #dc2626; font-size: 12px; margin: 0; padding: 4px 8px; background: #fef2f2; border-radius: 4px; }
+.ed-input { padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; font-family: inherit; resize: vertical; }
+
+/* NotePanel edit/delete affordances */
+.note-panel__head-actions { display: flex; gap: 4px; align-items: center; }
+.note-panel__head-actions button { background: none; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; padding: 2px 7px; font-size: 12px; }
+
+/* Error banner */
+.editor-error-banner { background: #fef2f2; color: #dc2626; border-bottom: 1px solid #fca5a5; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.editor-error-banner button { background: none; border: none; cursor: pointer; color: #dc2626; font-size: 14px; padding: 0 4px; }

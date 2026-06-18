@@ -77,7 +77,14 @@ def test_contributor_creates_a_point_note(boston):
 def test_guest_cannot_create(boston):
     resp = Client().post(
         f"/api/v1/maps/{boston['map'].id}/notes",
-        data=json.dumps({"title": "x", "lng": -71.0, "lat": 42.0, "sections": []}),
+        data=json.dumps(
+            {
+                "title": "x",
+                "lng": -71.0,
+                "lat": 42.0,
+                "sections": [{"content": "c", "rule_type": "public"}],
+            }
+        ),
         content_type="application/json",
     )
     assert resp.status_code == 403
@@ -183,3 +190,245 @@ def test_section_label_malformed_params_falls_back_to_restricted():
     # rule_params is not a mapping → params.get raises AttributeError → fail-soft label.
     section = Section(rule_type=Section.RuleType.ATTRIBUTE_GATE, rule_params="bad")
     assert section_label(section) == "Restricted"
+
+
+def test_teaser_section_returns_custom_teaser_text_and_note_returns_author(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Hook note",
+        point=Point(-71.02, 42.34),
+    )
+    Section.objects.create(note=note, order=0, content="public", rule_type=Section.RuleType.PUBLIC)
+    Section.objects.create(
+        note=note,
+        order=1,
+        content="secret",
+        rule_type=Section.RuleType.PRIVATE,
+        teaser=True,
+        teaser_text="ask me nicely",
+    )
+    notes = Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()
+    data = next(n for n in notes if n["title"] == "Hook note")
+    assert data["author_id"] == str(boston["owner"].id)
+    teaser = next(s for s in data["sections"] if s["visibility"] == "teaser")
+    assert teaser["teaser_text"] == "ask me nicely"
+    public = next(s for s in data["sections"] if s["visibility"] == "visible")
+    assert public["teaser_text"] is None  # only locked sections carry the hook
+
+
+def test_locked_section_with_empty_teaser_text_returns_null(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Empty hook",
+        point=Point(-71.0, 42.0),
+    )
+    Section.objects.create(note=note, order=0, content="public", rule_type=Section.RuleType.PUBLIC)
+    Section.objects.create(
+        note=note, order=1, content="secret", rule_type=Section.RuleType.PRIVATE, teaser=True
+    )  # teaser=True, teaser_text defaults to ""
+    notes = Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()
+    data = next(n for n in notes if n["title"] == "Empty hook")
+    teaser = next(s for s in data["sections"] if s["visibility"] == "teaser")
+    assert teaser["teaser_text"] is None  # empty hook collapses to null, not ""
+
+
+def _post(boston, payload):
+    return Client().post(
+        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+def test_create_rejects_empty_title(boston):
+    assert (
+        _post(
+            boston,
+            {
+                "title": "  ",
+                "lng": -71.0,
+                "lat": 42.0,
+                "sections": [{"content": "c", "rule_type": "public"}],
+            },
+        ).status_code
+        == 422
+    )
+
+
+def test_create_rejects_zero_sections(boston):
+    resp = _post(boston, {"title": "x", "lng": -71.0, "lat": 42.0, "sections": []})
+    assert resp.status_code == 422
+
+
+def test_create_rejects_empty_section_content(boston):
+    assert (
+        _post(
+            boston,
+            {
+                "title": "x",
+                "lng": -71.0,
+                "lat": 42.0,
+                "sections": [{"content": " ", "rule_type": "public"}],
+            },
+        ).status_code
+        == 422
+    )
+
+
+def test_create_rejects_audience_without_target(boston):
+    resp = _post(
+        boston,
+        {
+            "title": "x",
+            "lng": -71.0,
+            "lat": 42.0,
+            "sections": [{"content": "c", "rule_type": "audience", "rule_params": {}}],
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_create_stores_teaser_text(boston):
+    resp = _post(
+        boston,
+        {
+            "title": "x",
+            "lng": -71.0,
+            "lat": 42.0,
+            "sections": [
+                {"content": "c", "rule_type": "private", "teaser": True, "teaser_text": "psst"}
+            ],
+        },
+    )
+    assert resp.status_code == 201
+    note = Note.objects.get(id=resp.json()["id"])
+    section = note.sections.first()
+    assert section is not None
+    assert section.teaser_text == "psst"
+
+
+def _note_with_sections(boston):
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Editable",
+        point=Point(-71.03, 42.36),
+    )
+    Section.objects.create(note=note, order=0, content="pub", rule_type=Section.RuleType.PUBLIC)
+    Section.objects.create(
+        note=note,
+        order=1,
+        content="gate",
+        rule_type=Section.RuleType.ATTRIBUTE_GATE,
+        rule_params={"attribute": "reputation", "threshold": 50},
+        teaser=True,
+        teaser_text="earn it",
+    )
+    return note
+
+
+def test_author_gets_raw_note_for_edit(boston):
+    note = _note_with_sections(boston)
+    body = Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={boston['owner'].id}").json()
+    assert body["title"] == "Editable"
+    assert body["version"] == note.version
+    gate = body["sections"][1]
+    assert gate["rule_params"]["threshold"] == 50
+    assert gate["teaser"] is True and gate["teaser_text"] == "earn it"
+
+
+def test_non_author_cannot_get_edit(boston):
+    note = _note_with_sections(boston)
+    other = User.objects.create(display_name="Nope")
+    assert Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={other.id}").status_code == 403
+    assert Client().get(f"/api/v1/notes/{note.id}/edit").status_code == 403  # guest
+
+
+def _put(note_id, payload, who):
+    return Client().put(
+        f"/api/v1/notes/{note_id}?preview_as={who}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+def test_author_edits_own_note(boston):
+    note = _note_with_sections(boston)
+    payload = {
+        "title": "Edited",
+        "lng": -71.04,
+        "lat": 42.37,
+        "version": note.version,
+        "sections": [{"order": 0, "content": "only one now", "rule_type": "public"}],
+    }
+    resp = _put(note.id, payload, boston["owner"].id)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == str(note.id)
+    assert resp.json()["version"] == note.version + 1
+    note.refresh_from_db()
+    assert note.title == "Edited"
+    assert note.sections.count() == 1  # replaced wholesale
+
+
+def test_edit_rejects_invalid_body(boston):
+    # NoteUpdateIn inherits NoteIn's validators — a malformed edit body 422s before the handler.
+    note = _note_with_sections(boston)
+    payload = {
+        "title": "  ",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": note.version,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _put(note.id, payload, boston["owner"].id).status_code == 422
+
+
+def test_edit_version_conflict_returns_409(boston):
+    note = _note_with_sections(boston)
+    stale = note.version
+    note.title = "bumped"
+    note.save()  # version advances under us
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": stale,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _put(note.id, payload, boston["owner"].id).status_code == 409
+
+
+def test_non_author_cannot_edit(boston):
+    note = _note_with_sections(boston)
+    other = User.objects.create(display_name="Nope")
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": note.version,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _put(note.id, payload, other.id).status_code == 403
+
+
+def test_guest_cannot_edit(boston):
+    note = _note_with_sections(boston)
+    resp = Client().put(
+        f"/api/v1/notes/{note.id}",
+        data=json.dumps(
+            {
+                "title": "x",
+                "lng": -71.0,
+                "lat": 42.0,
+                "version": note.version,
+                "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+            }
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403

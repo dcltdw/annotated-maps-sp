@@ -10,6 +10,9 @@ interface Props {
   zoom: number;
   notes: NoteOut[];
   onSelect: (noteId: string) => void;
+  onMapClick?: (lng: number, lat: number) => void;
+  onDraftMove?: (lng: number, lat: number) => void;
+  draft?: [number, number] | null;
 }
 
 // User-controlled fields (title, content, group/rule labels) are HTML-escaped
@@ -19,7 +22,9 @@ export function peekHtml(note: NoteOut): string {
     .map((s) => {
       const label = escapeHtml(s.rule_label);
       return s.visibility === "teaser"
-        ? `<span style="color:${colorFor(s.rule_type)}">🔒 ${label}</span>`
+        ? `<span style="color:${colorFor(s.rule_type)}">🔒 ${label}</span>${
+            s.teaser_text ? " " + escapeHtml(s.teaser_text) : ""
+          }`
         : `<span style="color:${colorFor(s.rule_type)}">● ${label}</span> ${escapeHtml(s.content ?? "")}`;
     })
     .join("<br>");
@@ -36,10 +41,18 @@ interface Placed {
  * stable (wrap in useCallback in the parent) — it's an effect dep, so a fresh
  * reference each render re-places every marker.
  */
-export function MapView({ center, zoom, notes, onSelect }: Props) {
+export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove, draft }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | undefined>(undefined);
   const markersRef = useRef<Placed[]>([]);
+  const draftMarkerRef = useRef<maplibregl.Marker | undefined>(undefined);
+  // Stable refs so the (once-only) effects' closures never go stale.
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
+  // Dragging the draft pin must work even after a click flips the screen into create
+  // mode (at which point onMapClick is no longer passed) — so it has its own callback.
+  const onDraftMoveRef = useRef(onDraftMove);
+  onDraftMoveRef.current = onDraftMove;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -50,9 +63,13 @@ export function MapView({ center, zoom, notes, onSelect }: Props) {
       zoom,
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.on("click", (e: maplibregl.MapMouseEvent) => {
+      onMapClickRef.current?.(e.lngLat.lng, e.lngLat.lat);
+    });
     mapRef.current = map;
     return () => map.remove();
     // center/zoom only seed the initial view; deps intentionally empty (the map is created once).
+    // onMapClickRef is a stable ref; no need to list it.
   }, []);
 
   useEffect(() => {
@@ -91,6 +108,30 @@ export function MapView({ center, zoom, notes, onSelect }: Props) {
       map.off("load", place);
     };
   }, [notes, onSelect]);
+
+  // Draft-pin effect: add/remove/reposition ONE blue draggable marker for the pending create.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // Remove any previous draft marker.
+    if (draftMarkerRef.current) {
+      draftMarkerRef.current.remove();
+      draftMarkerRef.current = undefined;
+    }
+    if (!draft) return;
+    const marker = new maplibregl.Marker({ color: "#2563eb", draggable: true })
+      .setLngLat(draft)
+      .addTo(map);
+    marker.on("dragend", () => {
+      const { lng, lat } = marker.getLngLat();
+      onDraftMoveRef.current?.(lng, lat);
+    });
+    draftMarkerRef.current = marker;
+    return () => {
+      marker.remove();
+      draftMarkerRef.current = undefined;
+    };
+  }, [draft]);
 
   return <div ref={ref} className="map" data-testid="map" />;
 }

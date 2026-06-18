@@ -26,3 +26,8 @@ def test_viewers_list_includes_all_personas(demo):
 def test_viewers_unknown_map_returns_404(demo):
     resp = Client().get(f"/api/v1/maps/{uuid4()}/viewers")
     assert resp.status_code == 404
+
+
+def test_groups_list_returns_tenant_groups(demo):
+    names = {g["name"] for g in Client().get(f"/api/v1/maps/{demo['map'].id}/groups").json()}
+    assert "Running club" in names
