@@ -31,5 +31,11 @@
   "editor.deleteFailed": "Delete failed — please try again.",
   "editor.removeSection": "Remove section",
   "editor.sectionContent": "Section content",
-  "editor.as": "as"
+  "editor.as": "as",
+  "appends.count": "↳ {{count}} appends",
+  "appends.add": "＋ Append to this note",
+  "appends.edit": "Edit append",
+  "appends.delete": "Delete append",
+  "appends.deleteLabel": "Delete",
+  "appends.deleteConfirm": "Delete this append? This cannot be undone."
 }

@@ -11,7 +11,7 @@ vi.mock("./api/maps", () => ({
   fetchNotes: vi.fn().mockResolvedValue([
     { id: "n1", author_id: "u1", title: "Castle Island", lng: -71, lat: 42, sections: [
       { id: "s1", order: 0, visibility: "visible", content: "scenic", rule_type: "public", rule_label: "Public", teaser_text: null },
-    ] },
+    ], appends: [] },
   ]),
   fetchGroups: vi.fn().mockResolvedValue([{ id: "g1", name: "Running club" }]),
   fetchNoteForEdit: vi.fn().mockResolvedValue({

@@ -85,3 +85,36 @@ test("canEdit=false (default) renders neither edit nor delete button", () => {
   expect(screen.queryByRole("button", { name: /edit note/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /delete note/i })).not.toBeInTheDocument();
 });
+
+test("renders appends inline: own is editable, others read-only, ＋Append present", async () => {
+  const onAppend = vi.fn(), onEditAppend = vi.fn(), onDeleteAppend = vi.fn();
+  const noteWithAppends: NoteOut = {
+    ...note,
+    appends: [
+      { id: "ap1", author_id: "me", author_name: "A Friend", title: "Sunset tip",
+        sections: [{ id: "s", order: 0, visibility: "visible", content: "go at dusk", rule_type: "public", rule_label: "Public", teaser_text: null }] },
+      { id: "ap2", author_id: "other", author_name: "Run-club", title: "",
+        sections: [{ id: "s2", order: 0, visibility: "visible", content: "sat 8am", rule_type: "public", rule_label: "Public", teaser_text: null }] },
+    ],
+  };
+  render(<NotePanel note={noteWithAppends} viewerLabel="Me" onCollapse={() => {}} previewAs="me"
+    onAppend={onAppend} onEditAppend={onEditAppend} onDeleteAppend={onDeleteAppend} />);
+  expect(screen.getByText("A Friend")).toBeInTheDocument();
+  expect(screen.getByText("Sunset tip")).toBeInTheDocument();
+  expect(screen.getByText("go at dusk")).toBeInTheDocument();
+  // only the viewer's OWN append (author "me") shows edit/delete — NOT "other"'s
+  expect(screen.getAllByRole("button", { name: /edit append/i })).toHaveLength(1);
+  expect(screen.getAllByRole("button", { name: /delete append/i })).toHaveLength(1);
+  await userEvent.click(screen.getByRole("button", { name: /edit append/i }));
+  expect(onEditAppend).toHaveBeenCalledWith("ap1");
+  expect(screen.getByRole("button", { name: /append to this note/i })).toBeInTheDocument();
+});
+
+test("a guest (previewAs null) sees no ＋Append and no append edit/delete", () => {
+  const noteWithAppends: NoteOut = { ...note, appends: [
+    { id: "ap2", author_id: "other", author_name: "Run-club", title: "",
+      sections: [{ id: "s2", order: 0, visibility: "visible", content: "sat 8am", rule_type: "public", rule_label: "Public", teaser_text: null }] }] };
+  render(<NotePanel note={noteWithAppends} viewerLabel="Guest" onCollapse={() => {}} previewAs={null} />);
+  expect(screen.queryByRole("button", { name: /append to this note/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /edit append/i })).not.toBeInTheDocument();
+});
