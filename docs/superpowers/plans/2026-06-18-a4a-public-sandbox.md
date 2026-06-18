@@ -721,30 +721,41 @@ git commit -m "feat(a4a): render.yaml sandbox env + reaper cron; cross-site cook
 
 ---
 
-## Task 10: Deploy & smoke-test (manual runbook — user-executed)
+## Task 10: Deploy runbook + scripted smoke-test (user-executed go-live)
 
-This task is **not** agent-executable: it needs the user's Render + Neon accounts. The agent writes the runbook; the user runs it and reports back. Produce `docs/DEPLOY.md` and stop for the user.
+The provisioning itself needs the user's Render + Neon accounts (account creation, repo→Blueprint connection, and token generation can't be scripted, and API-driven scripts can't be tested here against real accounts). So the agent ships: (a) `docs/DEPLOY.md` — the runbook, with an **optional** CLI-scripted provisioning path; and (b) `scripts/smoke_test.py` — a real, runnable post-deploy verifier. The user runs both and reports back.
 
 **Files:**
 - Create: `docs/DEPLOY.md`
+- Create: `scripts/smoke_test.py`
 
-- [ ] **Step 1: Write `docs/DEPLOY.md`** containing the exact, ordered runbook:
-  1. **Neon:** create a project; in the SQL editor run `CREATE EXTENSION IF NOT EXISTS postgis;`; copy the pooled connection string (the `DATABASE_URL`).
-  2. **Render:** New → Blueprint → point at the repo; it reads `render.yaml` (API web + static web + reaper cron).
-  3. **Env vars to set** (the `sync:false` ones): on the API service — `DATABASE_URL` (Neon), `DJANGO_ALLOWED_HOSTS` (the API service hostname), `CORS_ALLOWED_ORIGINS` (the web service URL), `MOD_TOKEN` (a long random string — used in A4b); on the reaper cron — `DATABASE_URL`, `DJANGO_SECRET_KEY` (copy the API's generated value); on the static web — `VITE_API_BASE` (the API service URL, e.g. `https://annotated-maps-api.onrender.com/api/v1`).
+- [ ] **Step 1: Write `scripts/smoke_test.py`** — a dependency-light (stdlib `urllib`) Python verifier the user runs against the live API after deploy. It must:
+  - take the API base URL as `argv[1]` (e.g. `https://annotated-maps-api.onrender.com/api/v1`) and an optional persona-discovery flow;
+  - `GET /health` → assert 200 and `status == "ok"`, print `version`/`git_sha`;
+  - `GET /maps` → assert ≥1 map; pick the first map id;
+  - `GET /maps/{id}/viewers` → pick a non-guest persona id;
+  - `GET /maps/{id}/notes?preview_as={persona}` → assert the seed note is present and `editable == false` (seed is read-only) — using a `requests.Session`-style cookie jar (`http.cookiejar`) so the session cookie persists;
+  - `POST /maps/{id}/notes?preview_as={persona}` a tiny public note → assert 201, then re-list and assert that note now shows `editable == true` for the same cookie session;
+  - exit non-zero with a clear message on any failed assertion, zero on success; print a green summary.
+  Keep it readable and commented; no third-party deps (so the user can run `python3 scripts/smoke_test.py <url>` anywhere). Do NOT hit the real network during implementation — verify it parses/imports (`python3 -c "import ast; ast.parse(open('scripts/smoke_test.py').read())"`) and that `python3 scripts/smoke_test.py` with no args prints usage and exits non-zero.
+
+- [ ] **Step 2: Write `docs/DEPLOY.md`** containing the exact, ordered runbook:
+  1. **Neon:** create a project; enable PostGIS (`CREATE EXTENSION IF NOT EXISTS postgis;` in the SQL editor); copy the pooled connection string (the `DATABASE_URL`). *Optional scripted path:* `neonctl projects create …`, then `neonctl connection-string …` — documented as optional, needs `neonctl auth`.
+  2. **Render:** New → Blueprint → point at the repo; it reads `render.yaml` (API web + static web + reaper cron). *Optional scripted path:* after the services exist, set the `sync:false` env vars via the Render API (`PATCH /v1/services/{id}/env-vars`) or the `render` CLI — documented as optional, needs a `RENDER_API_KEY`.
+  3. **Env vars to set** (the `sync:false` ones): API service — `DATABASE_URL` (Neon), `DJANGO_ALLOWED_HOSTS` (the API hostname), `CORS_ALLOWED_ORIGINS` (the web URL), `MOD_TOKEN` (a long random string — used in A4b); reaper cron — `DATABASE_URL`, `DJANGO_SECRET_KEY` (copy the API's generated value); static web — `VITE_API_BASE` (the API URL, e.g. `https://annotated-maps-api.onrender.com/api/v1`).
   4. **First deploy:** the API `preDeployCommand` runs `migrate`. After it's live, seed once via the Render shell on the API service: `uv run python manage.py seed_demo`.
-  5. **Smoke test** (record results): `GET /api/v1/health` → `{"status":"ok",…}`; open the web URL → the Boston note renders; flip "Viewing as" → sections appear/disappear; create a note as a persona → it appears, and is editable by you but not after opening an incognito window; the sandbox banner shows.
+  5. **Smoke test:** `python3 scripts/smoke_test.py https://<api-host>/api/v1` → expect a green summary. Then a quick manual pass in the browser: open the web URL → Boston note renders; flip "Viewing as" → sections appear/disappear; create a note as a persona → it appears, editable by you but not in an incognito window; the sandbox banner shows.
   6. **Cron check:** confirm the `annotated-maps-reaper` cron is registered (daily).
-  7. Note the Render free-tier caveat (web services spin down when idle — first request after idle is slow) and the Render Cron plan note (if cron isn't available on the chosen plan, schedule an external ping to a `reap_ephemeral` trigger or run it manually; see spec).
+  7. Note the Render free-tier caveat (web services spin down when idle — first request after idle is slow) and the Render Cron plan note (if cron isn't on the chosen plan, run `reap_ephemeral` via an external scheduler or manually; see spec).
 
-- [ ] **Step 2: Commit the runbook:**
+- [ ] **Step 3: Verify + commit:** `python3 scripts/smoke_test.py` (no args → prints usage, exits non-zero); `ruff check scripts/smoke_test.py` clean.
 
 ```bash
-git add docs/DEPLOY.md
-git commit -m "docs(a4a): deploy runbook for the public sandbox (Neon + Render)"
+git add docs/DEPLOY.md scripts/smoke_test.py
+git commit -m "docs(a4a): deploy runbook + scripted smoke-test for the public sandbox"
 ```
 
-- [ ] **Step 3: STOP — hand off to the user** to execute `docs/DEPLOY.md` and report smoke-test results before this PR is considered done. The agent does not have deploy credentials.
+- [ ] **Step 4: STOP — hand off to the user** to execute `docs/DEPLOY.md` (and run `scripts/smoke_test.py` against the live URL) before this PR is considered done. The agent does not have deploy credentials.
 
 ---
 
