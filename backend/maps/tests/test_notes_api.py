@@ -654,3 +654,41 @@ def test_delete_and_edit_endpoints_work_on_an_append(boston):
     assert edit["title"] == "T" and edit["lng"] is None  # append has no point
     assert Client().delete(f"/api/v1/notes/{ap.id}?preview_as={friend.id}").status_code == 204
     assert Note.objects.filter(id=ap.id).count() == 0  # soft-deleted
+
+
+def test_guest_cannot_edit_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    payload = {
+        "version": ap.version,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    resp = Client().put(
+        f"/api/v1/appends/{ap.id}", data=json.dumps(payload), content_type="application/json"
+    )
+    assert resp.status_code == 403
+
+
+def test_cannot_edit_a_top_level_note_via_the_append_endpoint(boston):
+    # A top-level note must NOT be editable through /appends/{id} — that would bypass
+    # the note write schema (e.g. its required title). The author gets 400, not a mutation.
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Top",
+        point=Point(-71.0, 42.0),
+    )
+    payload = {
+        "title": "",
+        "version": note.version,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    resp = Client().put(
+        f"/api/v1/appends/{note.id}?preview_as={boston['owner'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    note.refresh_from_db()
+    assert note.title == "Top"  # unchanged

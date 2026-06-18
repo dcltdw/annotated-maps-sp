@@ -216,6 +216,10 @@ def update_append(
     append = get_object_or_404(Note, id=append_id)
     if preview_as is None or append.author_id != preview_as:
         raise HttpError(403, "You can only edit your own appends.")
+    if append.parent_id is None:
+        # Refuse to edit a top-level note through the append endpoint — that would
+        # bypass the note write schema (e.g. its required title). Use PUT /notes/{id}.
+        raise HttpError(400, "Not an append.")
     if append.version != payload.version:
         raise HttpError(409, "This append changed elsewhere — reload to edit.")
     with transaction.atomic():
