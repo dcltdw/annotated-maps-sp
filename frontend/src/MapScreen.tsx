@@ -1,8 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ApiError } from "./api/maps";
-import { createNote, deleteNote, fetchGroups, fetchMaps, fetchNoteForEdit, fetchNotes, fetchViewers, updateNote } from "./api/maps";
-import type { Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./api/types";
+import { createAppend, createNote, deleteNote, fetchGroups, fetchMaps, fetchNoteForEdit, fetchNotes, fetchViewers, updateAppend, updateNote } from "./api/maps";
+import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./api/types";
 import { NoteEditor } from "./components/NoteEditor";
 import { NotePanel } from "./components/NotePanel";
 import { PreviewSwitcher } from "./components/PreviewSwitcher";
@@ -10,7 +10,7 @@ import { PreviewSwitcher } from "./components/PreviewSwitcher";
 // Lazy so maplibre-gl splits into its own chunk, loaded only when the map screen mounts.
 const MapView = lazy(() => import("./components/MapView").then((m) => ({ default: m.MapView })));
 
-type Mode = "view" | "create" | "edit";
+type Mode = "view" | "create" | "edit" | "append" | "edit-append";
 
 export function MapScreen() {
   const [map, setMap] = useState<MapOut | null>(null);
@@ -27,6 +27,7 @@ export function MapScreen() {
   const [editing, setEditing] = useState<NoteEdit | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [appendParent, setAppendParent] = useState<NoteOut | null>(null);
 
   const { t } = useTranslation();
 
@@ -94,6 +95,7 @@ export function MapScreen() {
     setDraft(null);
     setEditing(null);
     setError(null);
+    setAppendParent(null);
   }, []);
 
   const handleSave = useCallback(async (note: NoteInput | NoteUpdateInput) => {
@@ -103,6 +105,10 @@ export function MapScreen() {
         await createNote(map.id, note as NoteInput, previewAs);
       } else if (mode === "edit" && editing) {
         await updateNote(editing.id, note as NoteUpdateInput, previewAs);
+      } else if (mode === "append" && appendParent) {
+        await createAppend(appendParent.id, { title: (note as NoteInput).title, sections: (note as NoteInput).sections } as AppendInput, previewAs);
+      } else if (mode === "edit-append" && editing) {
+        await updateAppend(editing.id, { title: (note as NoteUpdateInput).title, sections: (note as NoteUpdateInput).sections, version: editing.version } as AppendUpdateInput, previewAs);
       }
       resetToView();
       loadNotes();
@@ -113,7 +119,7 @@ export function MapScreen() {
         setError(t("editor.saveFailed"));
       }
     }
-  }, [map, previewAs, mode, editing, resetToView, loadNotes, t]);
+  }, [map, previewAs, mode, editing, appendParent, resetToView, loadNotes, t]);
 
   const handleEdit = useCallback(async () => {
     if (!selected || !previewAs) return;
@@ -137,6 +143,34 @@ export function MapScreen() {
     }
   }, [selected, previewAs, loadNotes, t]);
 
+  const handleAppend = useCallback(() => {
+    if (!selected || !previewAs) return; // non-guest only (UI already gates ＋Append)
+    setAppendParent(selected);
+    setMode("append");
+  }, [selected, previewAs]);
+
+  const handleEditAppend = useCallback(async (appendId: string) => {
+    if (!selected || !previewAs) return;
+    try {
+      const ed = await fetchNoteForEdit(appendId, previewAs);
+      setAppendParent(selected);
+      setEditing(ed);
+      setMode("edit-append");
+    } catch {
+      setError(t("editor.loadFailed"));
+    }
+  }, [selected, previewAs, t]);
+
+  const handleDeleteAppend = useCallback(async (appendId: string) => {
+    if (!previewAs) return;
+    try {
+      await deleteNote(appendId, previewAs);
+      loadNotes();
+    } catch {
+      setError(t("editor.deleteFailed"));
+    }
+  }, [previewAs, loadNotes, t]);
+
   if (loadError) return <p className="loading">{t("screen.error")}</p>;
   if (!map) return <p className="loading">{t("screen.loading")}</p>;
 
@@ -146,6 +180,8 @@ export function MapScreen() {
 
   const canEdit = canWrite && selected !== null && selected.author_id === previewAs;
 
+  const editorVariant = mode === "append" || mode === "edit-append" ? "append" : "note";
+
   const editorPanel = mode !== "view" ? (
     <NoteEditor
       lng={editorLng}
@@ -153,6 +189,7 @@ export function MapScreen() {
       groups={groups}
       authorLabel={viewerLabel}
       existing={editing ?? undefined}
+      variant={editorVariant}
       onSave={handleSave}
       onCancel={resetToView}
     />
@@ -198,6 +235,10 @@ export function MapScreen() {
             canEdit={canEdit}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            previewAs={previewAs}
+            onAppend={handleAppend}
+            onEditAppend={handleEditAppend}
+            onDeleteAppend={handleDeleteAppend}
           />
         )}
       </div>
