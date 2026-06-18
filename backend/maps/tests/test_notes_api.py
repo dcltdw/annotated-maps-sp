@@ -404,6 +404,25 @@ def test_edit_version_conflict_returns_409(boston):
     assert _put(note.id, payload, boston["owner"].id).status_code == 409
 
 
+def test_two_edits_with_the_same_starting_version_second_conflicts(boston):
+    note = _note_with_sections(boston)
+    v0 = note.version
+    body = {
+        "title": "first",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": v0,
+        "sections": [{"order": 0, "content": "a", "rule_type": "public"}],
+    }
+    r1 = _put(note.id, body, boston["owner"].id)
+    assert r1.status_code == 200 and r1.json()["version"] == v0 + 1
+    body["title"] = "second"
+    r2 = _put(note.id, body, boston["owner"].id)
+    assert r2.status_code == 409
+    note.refresh_from_db()
+    assert note.title == "first"  # the conflicting second edit did not apply
+
+
 def test_non_author_cannot_edit(boston):
     note = _note_with_sections(boston)
     other = User.objects.create(display_name="Nope")
