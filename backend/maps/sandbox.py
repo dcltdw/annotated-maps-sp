@@ -38,7 +38,9 @@ def ensure_session(request: HttpRequest) -> str:
     """Return the session key, creating a session row if none exists yet."""
     if not request.session.session_key:
         request.session.create()
-    return request.session.session_key
+    session_key = request.session.session_key
+    assert session_key is not None  # create() above guarantees a key
+    return session_key
 
 
 def is_editable(request: HttpRequest, note: Note, preview_as: UUID | None) -> bool:
