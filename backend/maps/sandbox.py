@@ -66,7 +66,7 @@ def authorize_write(
             raise HttpError(403, f"You can only edit your own {noun}s.")
 
 
-def enforce_create_limits(request: HttpRequest, *, is_append: bool) -> tuple[str, str]:
+def enforce_create_limits(request: HttpRequest, *, is_append: bool) -> tuple[str, str | None]:
     """Enforce sandbox creation caps and return (session_key, client_ip) to stamp on
     the new row. Raises HttpError(429) when a cap is hit. Caller guards on SANDBOX_MODE."""
     session_key = ensure_session(request)
@@ -90,4 +90,4 @@ def enforce_create_limits(request: HttpRequest, *, is_append: bool) -> tuple[str
             raise HttpError(429, "You've reached this session's append limit for the sandbox.")
     elif session_qs.filter(parent__isnull=True).count() >= MAX_NOTES_PER_SESSION:
         raise HttpError(429, "You've reached this session's note limit for the sandbox.")
-    return session_key, ip
+    return session_key, (ip or None)

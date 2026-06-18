@@ -95,3 +95,68 @@ def test_non_sandbox_create_is_uncapped_and_unstamped(world, settings):
     note_id = _create_note(Client(), world, world["alice"])
     n = Note.objects.get(id=note_id)
     assert n.session_key == "" and n.created_ip is None
+
+
+def _create_append(client, world, parent_id, author, title="myappend"):
+    payload = {"title": title, "sections": [{"order": 0, "content": "c", "rule_type": "public"}]}
+    r = client.post(
+        f"/api/v1/notes/{parent_id}/appends?preview_as={author.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert r.status_code == 201, r.content
+    return r.json()["id"]
+
+
+def test_sandbox_non_owner_cannot_edit_note(world, settings):
+    settings.SANDBOX_MODE = True
+    owner = Client()
+    note_id = _create_note(owner, world, world["alice"])
+    body = {
+        "title": "hacked",
+        "lng": -71.05,
+        "lat": 42.35,
+        "version": 1,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    # a different session may not EDIT it (not just delete)
+    r = Client().put(
+        f"/api/v1/notes/{note_id}?preview_as={world['alice'].id}",
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert r.status_code == 403
+
+
+def test_sandbox_append_ownership(world, settings):
+    settings.SANDBOX_MODE = True
+    owner = Client()
+    note_id = _create_note(owner, world, world["alice"])
+    append_id = _create_append(owner, world, note_id, world["alice"])
+    # another session cannot delete someone else's append
+    url = f"/api/v1/notes/{append_id}?preview_as={world['alice'].id}"
+    assert Client().delete(url).status_code == 403
+    # the owning session can
+    assert owner.delete(url).status_code == 204
+
+
+def test_sandbox_per_ip_hourly_cap(world, settings, monkeypatch):
+    settings.SANDBOX_MODE = True
+    import maps.sandbox as sb
+
+    monkeypatch.setattr(sb, "MAX_CREATES_PER_IP_PER_HOUR", 2)
+    # Same IP, but different sessions (fresh Clients) — the per-IP cap still bites.
+    _create_note(Client(), world, world["alice"])
+    _create_note(Client(), world, world["alice"])
+    payload = {
+        "title": "third",
+        "lng": -71.05,
+        "lat": 42.35,
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    r = Client().post(
+        f"/api/v1/maps/{world['map'].id}/notes?preview_as={world['alice'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert r.status_code == 429
