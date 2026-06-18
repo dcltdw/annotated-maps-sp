@@ -13,6 +13,7 @@ from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
 from maps.schemas import (
+    AppendIn,
     AppendOut,
     GroupOut,
     MapOut,
@@ -205,3 +206,32 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
                 teaser_text=s.teaser_text,
             )
     return 200, {"id": note.id, "version": note.version}
+
+
+@router.post("/notes/{parent_id}/appends", response={201: NoteCreated})
+def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID | None = None):
+    parent = get_object_or_404(Note, id=parent_id)
+    if preview_as is None:
+        raise HttpError(403, "Sign in (preview-as) to append.")
+    if parent.parent_id is not None:
+        raise HttpError(400, "You can only append to a top-level note.")
+    author = get_object_or_404(User, id=preview_as)
+    append = Note.objects.create(
+        tenant=parent.tenant,
+        map=parent.map,
+        author=author,
+        parent=parent,
+        title=payload.title,
+        point=None,
+    )
+    for s in payload.sections:
+        Section.objects.create(
+            note=append,
+            order=s.order,
+            content=s.content,
+            rule_type=s.rule_type,
+            rule_params=s.rule_params,
+            teaser=s.teaser,
+            teaser_text=s.teaser_text,
+        )
+    return 201, {"id": append.id}

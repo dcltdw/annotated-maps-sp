@@ -478,3 +478,93 @@ def test_appends_nest_under_parent_and_filter_independently(boston):
     )
     a3 = next(n for n in as_owner if n["title"] == "Castle Island")["appends"][0]
     assert "my private note" not in [s["content"] for s in a3["sections"]]
+
+
+def _append(parent_id, payload, who):
+    return Client().post(
+        f"/api/v1/notes/{parent_id}/appends?preview_as={who}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+def test_contributor_appends_to_anothers_note(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Castle",
+        point=Point(-71.0, 42.0),
+    )
+    friend = User.objects.create(display_name="A Friend")
+    resp = _append(
+        parent.id,
+        {"title": "Tip", "sections": [{"content": "sunset", "rule_type": "public"}]},
+        friend.id,
+    )
+    assert resp.status_code == 201
+    ap = Note.objects.get(id=resp.json()["id"])
+    assert ap.parent_id == parent.id and ap.author_id == friend.id and ap.point is None
+    assert ap.map_id == parent.map_id
+
+
+def test_append_allows_empty_title(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    resp = _append(
+        parent.id,
+        {"sections": [{"content": "c", "rule_type": "public"}]},
+        boston["owner"].id,
+    )
+    assert resp.status_code == 201
+    assert Note.objects.get(id=resp.json()["id"]).title == ""
+
+
+def test_guest_cannot_append(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    resp = Client().post(
+        f"/api/v1/notes/{parent.id}/appends",
+        data=json.dumps({"sections": [{"content": "c", "rule_type": "public"}]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403
+
+
+def test_cannot_append_to_an_append(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    child = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        parent=parent,
+    )
+    resp = _append(
+        child.id,
+        {"sections": [{"content": "c", "rule_type": "public"}]},
+        boston["owner"].id,
+    )
+    assert resp.status_code == 400
+
+
+def test_append_rejects_zero_sections(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    assert _append(parent.id, {"sections": []}, boston["owner"].id).status_code == 422
