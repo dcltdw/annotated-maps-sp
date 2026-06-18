@@ -26,6 +26,9 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
+# Public-demo sandbox behaviour (seed protection, session ownership, creation caps,
+# TTL reaper). OFF by default so local dev + tests behave like a normal app.
+SANDBOX_MODE = env.bool("SANDBOX_MODE", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost"])
 
 
