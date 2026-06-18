@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import pytest
 from django.contrib.gis.geos import Point
@@ -403,6 +404,25 @@ def test_edit_version_conflict_returns_409(boston):
     assert _put(note.id, payload, boston["owner"].id).status_code == 409
 
 
+def test_two_edits_with_the_same_starting_version_second_conflicts(boston):
+    note = _note_with_sections(boston)
+    v0 = note.version
+    body = {
+        "title": "first",
+        "lng": -71.0,
+        "lat": 42.0,
+        "version": v0,
+        "sections": [{"order": 0, "content": "a", "rule_type": "public"}],
+    }
+    r1 = _put(note.id, body, boston["owner"].id)
+    assert r1.status_code == 200 and r1.json()["version"] == v0 + 1
+    body["title"] = "second"
+    r2 = _put(note.id, body, boston["owner"].id)
+    assert r2.status_code == 409
+    note.refresh_from_db()
+    assert note.title == "first"  # the conflicting second edit did not apply
+
+
 def test_non_author_cannot_edit(boston):
     note = _note_with_sections(boston)
     other = User.objects.create(display_name="Nope")
@@ -647,6 +667,32 @@ def test_append_edit_version_conflict_409(boston):
     )
 
 
+def test_two_append_edits_with_the_same_starting_version_second_conflicts(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    v0 = ap.version
+    payload = {
+        "title": "first",
+        "version": v0,
+        "sections": [{"order": 0, "content": "a", "rule_type": "public"}],
+    }
+    r1 = Client().put(
+        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert r1.status_code == 200 and r1.json()["version"] == v0 + 1
+    payload["title"] = "second"
+    r2 = Client().put(
+        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert r2.status_code == 409
+    ap.refresh_from_db()
+    assert ap.title == "first"  # the conflicting second edit did not apply
+
+
 def test_delete_and_edit_endpoints_work_on_an_append(boston):
     friend = User.objects.create(display_name="A Friend")
     ap = _make_append(boston, friend)
@@ -692,3 +738,21 @@ def test_cannot_edit_a_top_level_note_via_the_append_endpoint(boston):
     assert resp.status_code == 400
     note.refresh_from_db()
     assert note.title == "Top"  # unchanged
+
+
+def test_create_does_not_emit_the_tuple_return_deprecation(boston):
+    payload = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "sections": [{"content": "c", "rule_type": "public"}],
+    }
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        resp = Client().post(
+            f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+    assert resp.status_code == 201
+    assert not any("Returning tuple" in str(w.message) for w in caught)

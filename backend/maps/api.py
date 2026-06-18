@@ -4,8 +4,10 @@ from uuid import UUID
 
 from django.contrib.gis.geos import Point
 from django.db import transaction
+from django.db.models import F
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from django.utils import timezone
+from ninja import Router, Status
 from ninja.errors import HttpError
 
 from core.models import Group, Membership, User
@@ -144,7 +146,7 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
             teaser=s.teaser,
             teaser_text=s.teaser_text,
         )
-    return 201, {"id": note.id}
+    return Status(201, {"id": note.id})
 
 
 @router.get("/notes/{note_id}/edit", response=NoteEditOut)
@@ -178,7 +180,7 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
     if preview_as is None or note.author_id != preview_as:
         raise HttpError(403, "You can only delete your own notes.")
     note.soft_delete()
-    return 204, None
+    return Status(204, None)
 
 
 @router.put("/notes/{note_id}", response={200: NoteUpdated})
@@ -186,12 +188,18 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
     note = get_object_or_404(Note, id=note_id)
     if preview_as is None or note.author_id != preview_as:
         raise HttpError(403, "You can only edit your own notes.")
-    if note.version != payload.version:
-        raise HttpError(409, "This note changed elsewhere — reload to edit.")
     with transaction.atomic():
-        note.title = payload.title
-        note.point = Point(payload.lng, payload.lat)
-        note.save()  # BaseModel.save() bumps version
+        # Atomically claim the version: exactly one of two racing PUTs can match
+        # WHERE version=expected; the loser updates 0 rows -> 409. (.update() bypasses
+        # BaseModel.save(), so bump version + updated_at explicitly.)
+        claimed = Note.objects.filter(id=note.id, version=payload.version).update(
+            version=F("version") + 1,
+            updated_at=timezone.now(),
+            title=payload.title,
+            point=Point(payload.lng, payload.lat),
+        )
+        if not claimed:
+            raise HttpError(409, "This note changed elsewhere — reload to edit.")
         # Replace sections wholesale. NB: QuerySet.delete() HARD-deletes (Section is
         # soft-deletable, but .delete() issues a SQL DELETE) — intentional for now;
         # the future revision-history slice will need to soft-delete/snapshot instead.
@@ -206,7 +214,8 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
                 teaser=s.teaser,
                 teaser_text=s.teaser_text,
             )
-    return 200, {"id": note.id, "version": note.version}
+    note.refresh_from_db()  # in-memory note is stale after the raw UPDATE
+    return Status(200, {"id": note.id, "version": note.version})
 
 
 @router.put("/appends/{append_id}", response={200: NoteUpdated})
@@ -220,11 +229,15 @@ def update_append(
         # Refuse to edit a top-level note through the append endpoint — that would
         # bypass the note write schema (e.g. its required title). Use PUT /notes/{id}.
         raise HttpError(400, "Not an append.")
-    if append.version != payload.version:
-        raise HttpError(409, "This append changed elsewhere — reload to edit.")
     with transaction.atomic():
-        append.title = payload.title
-        append.save()  # BaseModel.save() bumps version (no point to update — appends have none)
+        # Atomically claim the version (see update_note). Appends have no point.
+        claimed = Note.objects.filter(id=append.id, version=payload.version).update(
+            version=F("version") + 1,
+            updated_at=timezone.now(),
+            title=payload.title,
+        )
+        if not claimed:
+            raise HttpError(409, "This append changed elsewhere — reload to edit.")
         append.sections.all().delete()  # hard replace (see update_note for the rationale)
         for s in payload.sections:
             Section.objects.create(
@@ -236,7 +249,8 @@ def update_append(
                 teaser=s.teaser,
                 teaser_text=s.teaser_text,
             )
-    return 200, {"id": append.id, "version": append.version}
+    append.refresh_from_db()  # in-memory append is stale after the raw UPDATE
+    return Status(200, {"id": append.id, "version": append.version})
 
 
 @router.post("/notes/{parent_id}/appends", response={201: NoteCreated})
@@ -265,4 +279,4 @@ def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID 
             teaser=s.teaser,
             teaser_text=s.teaser_text,
         )
-    return 201, {"id": append.id}
+    return Status(201, {"id": append.id})
