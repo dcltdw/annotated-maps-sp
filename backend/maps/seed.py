@@ -39,7 +39,7 @@ def build_boston_demo() -> dict:
         map=the_map,
         author=owner,
         title="Castle Island — Pleasure Bay Loop",
-        defaults={"point": Point(-71.0136, 42.3380)},
+        defaults={"point": Point(-71.0136, 42.3380), "is_seed": True},
     )
     if created:
         Section.objects.bulk_create(

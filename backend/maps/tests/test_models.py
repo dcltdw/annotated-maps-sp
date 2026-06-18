@@ -19,3 +19,14 @@ def test_note_with_point_and_ordered_sections():
     assert [s.content for s in note.sections.all()] == ["a", "b"]  # ordered by `order`
     assert note.point is not None
     assert note.point.x == pytest.approx(-71.013)
+
+
+@pytest.mark.django_db
+def test_note_sandbox_fields_default_to_ephemeral():
+    t = Tenant.objects.create(name="T", slug="t")
+    u = User.objects.create(display_name="U")
+    m = Map.objects.create(tenant=t, name="M", center=Point(0, 0))
+    n = Note.objects.create(tenant=t, map=m, author=u, title="x", point=Point(0, 0))
+    assert n.is_seed is False  # safe default: nothing is accidentally permanent
+    assert n.session_key == ""
+    assert n.created_ip is None
