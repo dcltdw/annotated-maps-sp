@@ -10,6 +10,7 @@ const note: NoteOut = {
     { id: "s1", order: 0, visibility: "visible", content: "scenic loop", rule_type: "public", rule_label: "Public", teaser_text: null },
     { id: "s2", order: 1, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Running club", teaser_text: "ask me nicely" },
   ],
+  appends: [],
 };
 
 test("renders visible content and a locked teaser, and collapses", async () => {
