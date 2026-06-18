@@ -24,6 +24,7 @@ class AppendOut(Schema):
     author_name: str
     title: str
     sections: list[SectionOut]
+    editable: bool
 
 
 class NoteOut(Schema):
@@ -34,6 +35,7 @@ class NoteOut(Schema):
     lat: float | None
     sections: list[SectionOut]
     appends: list[AppendOut] = []
+    editable: bool
 
 
 class SectionIn(Schema):

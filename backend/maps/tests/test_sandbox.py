@@ -160,3 +160,30 @@ def test_sandbox_per_ip_hourly_cap(world, settings, monkeypatch):
         content_type="application/json",
     )
     assert r.status_code == 429
+
+
+def _list(client, world, preview_as):
+    r = client.get(f"/api/v1/maps/{world['map'].id}/notes?preview_as={preview_as.id}")
+    assert r.status_code == 200
+    return r.json()
+
+
+def test_editable_true_only_for_own_session_in_sandbox(world, settings):
+    settings.SANDBOX_MODE = True
+    owner = Client()
+    _create_note(owner, world, world["alice"], title="mine")
+    mine = next(n for n in _list(owner, world, world["alice"]) if n["title"] == "mine")
+    assert mine["editable"] is True
+    seed = next(n for n in _list(owner, world, world["alice"]) if n["title"] == "Seed")
+    assert seed["editable"] is False
+    fresh = next(n for n in _list(Client(), world, world["alice"]) if n["title"] == "mine")
+    assert fresh["editable"] is False
+
+
+def test_editable_matches_author_when_not_sandbox(world, settings):
+    settings.SANDBOX_MODE = False
+    note_id = _create_note(Client(), world, world["alice"])
+    seen = next(n for n in _list(Client(), world, world["alice"]) if n["id"] == note_id)
+    assert seen["editable"] is True
+    seen_other = next(n for n in _list(Client(), world, world["bob"]) if n["id"] == note_id)
+    assert seen_other["editable"] is False

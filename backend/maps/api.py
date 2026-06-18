@@ -15,7 +15,7 @@ from core.models import Group, Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
-from maps.sandbox import authorize_write, enforce_create_limits
+from maps.sandbox import authorize_write, enforce_create_limits, is_editable
 from maps.schemas import (
     AppendIn,
     AppendOut,
@@ -109,6 +109,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                     author_name=ap.author.display_name,
                     title=ap.title,
                     sections=ap_sections,
+                    editable=is_editable(request, ap, preview_as),
                 )
             )
         out.append(
@@ -120,6 +121,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                 lat=note.point.y if note.point else None,
                 sections=visible,
                 appends=appends,
+                editable=is_editable(request, note, preview_as),
             )
         )
     return out
