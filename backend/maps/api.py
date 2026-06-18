@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db import transaction
 from django.db.models import F
@@ -14,6 +15,7 @@ from core.models import Group, Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
+from maps.sandbox import authorize_write, enforce_create_limits
 from maps.schemas import (
     AppendIn,
     AppendOut,
@@ -129,12 +131,17 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
     if preview_as is None:
         raise HttpError(403, "Sign in (preview-as) to add notes.")
     author = get_object_or_404(User, id=preview_as)
+    session_key, created_ip = "", None
+    if settings.SANDBOX_MODE:
+        session_key, created_ip = enforce_create_limits(request, is_append=False)
     note = Note.objects.create(
         tenant=the_map.tenant,
         map=the_map,
         author=author,
         title=payload.title,
         point=Point(payload.lng, payload.lat),
+        session_key=session_key,
+        created_ip=created_ip,
     )
     for s in payload.sections:
         Section.objects.create(
@@ -152,8 +159,7 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
 @router.get("/notes/{note_id}/edit", response=NoteEditOut)
 def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
-    if preview_as is None or note.author_id != preview_as:
-        raise HttpError(403, "You can only edit your own notes.")
+    authorize_write(request, note, preview_as, noun="note")
     return NoteEditOut(
         id=note.id,
         title=note.title,
@@ -177,8 +183,7 @@ def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
 @router.delete("/notes/{note_id}", response={204: None})
 def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
-    if preview_as is None or note.author_id != preview_as:
-        raise HttpError(403, "You can only delete your own notes.")
+    authorize_write(request, note, preview_as, noun="note")
     note.soft_delete()
     return Status(204, None)
 
@@ -186,8 +191,7 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
 @router.put("/notes/{note_id}", response={200: NoteUpdated})
 def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
-    if preview_as is None or note.author_id != preview_as:
-        raise HttpError(403, "You can only edit your own notes.")
+    authorize_write(request, note, preview_as, noun="note")
     with transaction.atomic():
         # Atomically claim the version: exactly one of two racing PUTs can match
         # WHERE version=expected; the loser updates 0 rows -> 409. (.update() bypasses
@@ -223,8 +227,7 @@ def update_append(
     request, append_id: UUID, payload: AppendUpdateIn, preview_as: UUID | None = None
 ):
     append = get_object_or_404(Note, id=append_id)
-    if preview_as is None or append.author_id != preview_as:
-        raise HttpError(403, "You can only edit your own appends.")
+    authorize_write(request, append, preview_as, noun="append")
     if append.parent_id is None:
         # Refuse to edit a top-level note through the append endpoint — that would
         # bypass the note write schema (e.g. its required title). Use PUT /notes/{id}.
@@ -261,6 +264,9 @@ def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID 
     if parent.parent_id is not None:
         raise HttpError(400, "You can only append to a top-level note.")
     author = get_object_or_404(User, id=preview_as)
+    session_key, created_ip = "", None
+    if settings.SANDBOX_MODE:
+        session_key, created_ip = enforce_create_limits(request, is_append=True)
     append = Note.objects.create(
         tenant=parent.tenant,
         map=parent.map,
@@ -268,6 +274,8 @@ def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID 
         parent=parent,
         title=payload.title,
         point=None,
+        session_key=session_key,
+        created_ip=created_ip,
     )
     for s in payload.sections:
         Section.objects.create(
