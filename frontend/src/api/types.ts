@@ -9,6 +9,13 @@ export interface SectionOut {
   rule_label: string;
   teaser_text: string | null;
 }
+export interface AppendOut {
+  id: string;
+  author_id: string;
+  author_name: string;
+  title: string;
+  sections: SectionOut[];
+}
 export interface NoteOut {
   id: string;
   author_id: string;
@@ -16,6 +23,7 @@ export interface NoteOut {
   lng: number | null;
   lat: number | null;
   sections: SectionOut[];
+  appends: AppendOut[];
 }
 export interface MapOut {
   id: string;
@@ -51,4 +59,12 @@ export interface NoteEdit {
   lat: number | null;
   version: number;
   sections: SectionEdit[];
+}
+
+export interface AppendInput {
+  title: string;
+  sections: SectionInput[];
+}
+export interface AppendUpdateInput extends AppendInput {
+  version: number;
 }

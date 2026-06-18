@@ -18,6 +18,14 @@ class SectionOut(Schema):
     teaser_text: str | None  # the custom hook, only for locked (teaser) sections
 
 
+class AppendOut(Schema):
+    id: UUID
+    author_id: UUID
+    author_name: str
+    title: str
+    sections: list[SectionOut]
+
+
 class NoteOut(Schema):
     id: UUID
     author_id: UUID
@@ -25,6 +33,7 @@ class NoteOut(Schema):
     lng: float | None
     lat: float | None
     sections: list[SectionOut]
+    appends: list[AppendOut] = []
 
 
 class SectionIn(Schema):
@@ -88,6 +97,18 @@ class NoteIn(Schema):
         return v
 
 
+class AppendIn(Schema):
+    title: str = ""
+    sections: list[SectionIn] = []
+
+    @field_validator("sections")
+    @classmethod
+    def _at_least_one_section(cls, v: list[SectionIn]) -> list[SectionIn]:
+        if not v:
+            raise ValueError("an append needs at least one section")
+        return v
+
+
 class SectionEditOut(Schema):
     order: int
     content: str
@@ -107,6 +128,10 @@ class NoteEditOut(Schema):
 
 
 class NoteUpdateIn(NoteIn):
+    version: int
+
+
+class AppendUpdateIn(AppendIn):
     version: int
 
 

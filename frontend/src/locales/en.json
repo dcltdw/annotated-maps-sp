@@ -16,8 +16,12 @@
   "notePanel.deleteConfirm": "Delete this note? This cannot be undone.",
   "editor.newNote": "📝 New note",
   "editor.editNote": "✎ Edit note",
+  "editor.newAppend": "📝 New append",
+  "editor.editAppend": "✎ Edit append",
+  "editor.titleOptional": "Title (optional)",
   "editor.title": "Title",
   "editor.save": "Save note",
+  "editor.saveAppend": "Save append",
   "editor.cancel": "Cancel",
   "editor.addSection": "＋ Add section",
   "editor.titleRequired": "Title is required.",
@@ -31,5 +35,12 @@
   "editor.deleteFailed": "Delete failed — please try again.",
   "editor.removeSection": "Remove section",
   "editor.sectionContent": "Section content",
-  "editor.as": "as"
+  "editor.as": "as",
+  "appends.count_one": "↳ {{count}} append",
+  "appends.count_other": "↳ {{count}} appends",
+  "appends.add": "＋ Append to this note",
+  "appends.edit": "Edit append",
+  "appends.delete": "Delete append",
+  "appends.deleteLabel": "Delete",
+  "appends.deleteConfirm": "Delete this append? This cannot be undone."
 }

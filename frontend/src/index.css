@@ -55,6 +55,16 @@ body {
 .ed-error { color: #dc2626; font-size: 12px; margin: 0; padding: 4px 8px; background: #fef2f2; border-radius: 4px; }
 .ed-input { padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; font-family: inherit; resize: vertical; }
 
+/* ── Appends ─────────────────────────────────────────────────── */
+.appends { margin-top: 12px; border-top: 1px dashed #ccc; padding-top: 8px; }
+.appends-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .55; }
+.append { margin: 9px 0 9px var(--append-indent, 14px); padding: 8px 10px; border-left: 3px solid #c4b5fd; background: rgba(124,58,237,.05); border-radius: 0 8px 8px 0; }
+.append-by { display: flex; justify-content: space-between; align-items: center; }
+.append-by .who { font-weight: 600; font-size: 12px; }
+.append-by button { border: 1px solid #ccc; border-radius: 5px; background: none; cursor: pointer; font-size: 11px; padding: 1px 6px; margin-left: 3px; }
+.append-title { font-size: 13px; font-weight: 600; margin: 1px 0 3px; }
+.append-btn { margin-top: 10px; padding: 5px 11px; border: 1px dashed #7c3aed; color: #7c3aed; background: rgba(124,58,237,.06); border-radius: 7px; font-size: 12px; cursor: pointer; }
+
 /* NotePanel edit/delete affordances */
 .note-panel__head-actions { display: flex; gap: 4px; align-items: center; }
 .note-panel__head-actions button { background: none; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; padding: 2px 7px; font-size: 12px; }

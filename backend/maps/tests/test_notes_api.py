@@ -15,7 +15,7 @@ def boston(db):
     owner = User.objects.create(display_name="Owner")
     m = Map.objects.create(tenant=t, name="Boston", center=Point(-71.06, 42.36))
     note = Note.objects.create(
-        tenant=t, map=m, author=owner, title="Castle Island", point=Point(-71.01, 42.33)
+        tenant=t, map=m, author=owner, title="Beacon Hill", point=Point(-71.01, 42.33)
     )
     Section.objects.create(
         note=note, order=0, content="public bit", rule_type=Section.RuleType.PUBLIC
@@ -54,7 +54,7 @@ def test_guest_cannot_see_fully_hidden_note(boston):
     Section.objects.create(note=secret, order=0, content="hush", rule_type=Section.RuleType.PRIVATE)
     titles = {n["title"] for n in Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()}
     assert "SECRET" not in titles  # fully-private note omitted for the guest
-    assert "Castle Island" in titles  # the note with a public section still shows
+    assert "Beacon Hill" in titles  # the note with a public section still shows
 
 
 def test_contributor_creates_a_point_note(boston):
@@ -432,3 +432,263 @@ def test_guest_cannot_edit(boston):
         content_type="application/json",
     )
     assert resp.status_code == 403
+
+
+def test_appends_nest_under_parent_and_filter_independently(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Castle Island",
+        point=Point(-71.01, 42.33),
+    )
+    Section.objects.create(note=parent, order=0, content="loop", rule_type=Section.RuleType.PUBLIC)
+    friend = User.objects.create(display_name="A Friend")
+    ap = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=friend,
+        parent=parent,
+        title="Tip",
+    )
+    Section.objects.create(
+        note=ap, order=0, content="sunset photos", rule_type=Section.RuleType.PUBLIC
+    )
+    Section.objects.create(
+        note=ap, order=1, content="my private note", rule_type=Section.RuleType.PRIVATE
+    )
+
+    data = Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()
+    titles = [n["title"] for n in data]
+    assert "Tip" not in titles  # appends are NOT top-level
+    castle = next(n for n in data if n["title"] == "Castle Island")
+    assert len(castle["appends"]) == 1
+    a = castle["appends"][0]
+    assert a["author_name"] == "A Friend" and a["title"] == "Tip"
+    assert [s["content"] for s in a["sections"]] == ["sunset photos"]  # private hidden from guest
+
+    as_friend = Client().get(f"/api/v1/maps/{boston['map'].id}/notes?preview_as={friend.id}").json()
+    a2 = next(n for n in as_friend if n["title"] == "Castle Island")["appends"][0]
+    assert "my private note" in [s["content"] for s in a2["sections"]]
+
+    as_owner = (
+        Client()
+        .get(f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}")
+        .json()
+    )
+    a3 = next(n for n in as_owner if n["title"] == "Castle Island")["appends"][0]
+    assert "my private note" not in [s["content"] for s in a3["sections"]]
+
+
+def _append(parent_id, payload, who):
+    return Client().post(
+        f"/api/v1/notes/{parent_id}/appends?preview_as={who}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+def test_contributor_appends_to_anothers_note(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Castle",
+        point=Point(-71.0, 42.0),
+    )
+    friend = User.objects.create(display_name="A Friend")
+    resp = _append(
+        parent.id,
+        {"title": "Tip", "sections": [{"content": "sunset", "rule_type": "public"}]},
+        friend.id,
+    )
+    assert resp.status_code == 201
+    ap = Note.objects.get(id=resp.json()["id"])
+    assert ap.parent_id == parent.id and ap.author_id == friend.id and ap.point is None
+    assert ap.map_id == parent.map_id
+
+
+def test_append_allows_empty_title(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    resp = _append(
+        parent.id,
+        {"sections": [{"content": "c", "rule_type": "public"}]},
+        boston["owner"].id,
+    )
+    assert resp.status_code == 201
+    assert Note.objects.get(id=resp.json()["id"]).title == ""
+
+
+def test_guest_cannot_append(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    resp = Client().post(
+        f"/api/v1/notes/{parent.id}/appends",
+        data=json.dumps({"sections": [{"content": "c", "rule_type": "public"}]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403
+
+
+def test_cannot_append_to_an_append(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    child = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        parent=parent,
+    )
+    resp = _append(
+        child.id,
+        {"sections": [{"content": "c", "rule_type": "public"}]},
+        boston["owner"].id,
+    )
+    assert resp.status_code == 400
+
+
+def test_append_rejects_zero_sections(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    assert _append(parent.id, {"sections": []}, boston["owner"].id).status_code == 422
+
+
+def _make_append(boston, author):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        point=Point(-71.0, 42.0),
+    )
+    ap = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=author,
+        parent=parent,
+        title="T",
+    )
+    Section.objects.create(note=ap, order=0, content="orig", rule_type=Section.RuleType.PUBLIC)
+    return ap
+
+
+def test_author_edits_own_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    payload = {
+        "title": "T2",
+        "version": ap.version,
+        "sections": [{"order": 0, "content": "new", "rule_type": "public"}],
+    }
+    resp = Client().put(
+        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200 and resp.json()["version"] == ap.version + 1
+    ap.refresh_from_db()
+    assert ap.title == "T2" and ap.sections.first().content == "new"
+
+
+def test_non_author_cannot_edit_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    payload = {
+        "version": ap.version,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    assert (
+        Client()
+        .put(
+            f"/api/v1/appends/{ap.id}?preview_as={boston['owner'].id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        .status_code
+        == 403
+    )
+
+
+def test_append_edit_version_conflict_409(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    stale = ap.version
+    ap.title = "bumped"
+    ap.save()
+    payload = {
+        "version": stale,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    assert (
+        Client()
+        .put(
+            f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        .status_code
+        == 409
+    )
+
+
+def test_delete_and_edit_endpoints_work_on_an_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    edit = Client().get(f"/api/v1/notes/{ap.id}/edit?preview_as={friend.id}").json()
+    assert edit["title"] == "T" and edit["lng"] is None  # append has no point
+    assert Client().delete(f"/api/v1/notes/{ap.id}?preview_as={friend.id}").status_code == 204
+    assert Note.objects.filter(id=ap.id).count() == 0  # soft-deleted
+
+
+def test_guest_cannot_edit_append(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    payload = {
+        "version": ap.version,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    resp = Client().put(
+        f"/api/v1/appends/{ap.id}", data=json.dumps(payload), content_type="application/json"
+    )
+    assert resp.status_code == 403
+
+
+def test_cannot_edit_a_top_level_note_via_the_append_endpoint(boston):
+    # A top-level note must NOT be editable through /appends/{id} — that would bypass
+    # the note write schema (e.g. its required title). The author gets 400, not a mutation.
+    note = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Top",
+        point=Point(-71.0, 42.0),
+    )
+    payload = {
+        "title": "",
+        "version": note.version,
+        "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
+    }
+    resp = Client().put(
+        f"/api/v1/appends/{note.id}?preview_as={boston['owner'].id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    note.refresh_from_db()
+    assert note.title == "Top"  # unchanged

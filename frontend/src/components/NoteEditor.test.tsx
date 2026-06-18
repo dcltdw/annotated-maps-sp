@@ -35,6 +35,17 @@ test("add section adds a second card; remove takes it away", async () => {
   expect(screen.getAllByLabelText(/section content/i)).toHaveLength(1);
 });
 
+test("append variant: title optional, append labels, saves with empty title", async () => {
+  const onSave = vi.fn();
+  render(<NoteEditor lng={-71} lat={42} groups={groups} authorLabel="A Friend" variant="append" onSave={onSave} onCancel={() => {}} />);
+  expect(screen.getByText(/new append/i)).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText(/section content/i), "sunset tip");
+  await userEvent.click(screen.getByRole("button", { name: /save/i }));
+  // no "title is required" error; onSave called even with a blank title
+  expect(screen.queryByText(/title is required/i)).not.toBeInTheDocument();
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ title: "", sections: expect.any(Array) }));
+});
+
 test("edit mode pre-fills from the existing note and emits version on save", async () => {
   const onSave = vi.fn();
   const existing: NoteEdit = {

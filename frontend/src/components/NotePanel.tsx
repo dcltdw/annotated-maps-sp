@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { NoteOut } from "../api/types";
-import { colorFor } from "../ruleColors";
+import { SectionList } from "./SectionList";
 
 interface Props {
   note: NoteOut;
@@ -9,9 +9,13 @@ interface Props {
   canEdit?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  previewAs?: string | null;
+  onAppend?: () => void;
+  onEditAppend?: (appendId: string) => void;
+  onDeleteAppend?: (appendId: string) => void;
 }
 
-export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDelete }: Props) {
+export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDelete, previewAs, onAppend, onEditAppend, onDeleteAppend }: Props) {
   const { t } = useTranslation();
   return (
     <aside className="note-panel">
@@ -37,21 +41,41 @@ export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDe
       {note.sections.length === 0 ? (
         <p className="note-panel__empty">{t("notePanel.empty", { viewer: viewerLabel })}</p>
       ) : (
-        <ul className="note-panel__sections">
-          {note.sections.map((s) => (
-            <li key={s.id} className="section" style={{ borderLeftColor: colorFor(s.rule_type) }}>
-              <span className="section__chip" style={{ color: colorFor(s.rule_type) }}>
-                {s.visibility === "teaser" ? `🔒 ${s.rule_label}` : s.rule_label}
-              </span>
-              {s.visibility === "visible" ? (
-                s.content ? <p>{s.content}</p> : null
-              ) : (
-                <p className="section__locked">{s.teaser_text ?? t("notePanel.locked")}</p>
-              )}
-            </li>
-          ))}
-        </ul>
+        <SectionList sections={note.sections} />
       )}
+      <div className="appends">
+        {note.appends.length > 0 && (
+          <div className="appends-label">{t("appends.count", { count: note.appends.length })}</div>
+        )}
+        {note.appends.map((ap) => {
+          const own = previewAs != null && ap.author_id === previewAs;
+          return (
+            <div className="append" key={ap.id}>
+              <div className="append-by">
+                <span className="who">{ap.author_name}</span>
+                {own && (
+                  <span>
+                    <button aria-label={t("appends.edit")} onClick={() => onEditAppend?.(ap.id)}>✎</button>
+                    <button
+                      aria-label={t("appends.delete")}
+                      onClick={() => {
+                        if (window.confirm(t("appends.deleteConfirm"))) onDeleteAppend?.(ap.id);
+                      }}
+                    >
+                      {t("appends.deleteLabel")}
+                    </button>
+                  </span>
+                )}
+              </div>
+              {ap.title && <div className="append-title">{ap.title}</div>}
+              <SectionList sections={ap.sections} />
+            </div>
+          );
+        })}
+        {previewAs != null && (
+          <button className="append-btn" onClick={onAppend}>{t("appends.add")}</button>
+        )}
+      </div>
     </aside>
   );
 }

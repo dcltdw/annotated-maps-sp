@@ -13,18 +13,19 @@ interface Props {
   groups: Group[];
   authorLabel: string;
   existing?: NoteEdit; // present => edit mode
+  variant?: "note" | "append";
   onSave: (note: NoteInput | NoteUpdateInput) => void;
   onCancel: () => void;
 }
 
-export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, onCancel }: Props) {
+export function NoteEditor({ lng, lat, groups, authorLabel, existing, variant = "note", onSave, onCancel }: Props) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [sections, setSections] = useState<SectionInput[]>(existing?.sections ?? [blankSection(0)]);
   const [error, setError] = useState<string | null>(null);
 
   function save() {
-    if (!title.trim()) return setError(t("editor.titleRequired"));
+    if (variant === "note" && !title.trim()) return setError(t("editor.titleRequired"));
     if (sections.length === 0) return setError(t("editor.oneSection"));
     if (sections.some((s) => !s.content.trim())) return setError(t("editor.contentRequired"));
     if (sections.some((s) => s.rule_type === "audience" && ((s.rule_params.group_ids as string[]) ?? []).length === 0))
@@ -37,7 +38,9 @@ export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, on
   return (
     <aside className="note-editor">
       <header className="note-editor__head">
-        <span>{existing ? t("editor.editNote") : t("editor.newNote")} · {t("editor.as")} {authorLabel}</span>
+        <span>{variant === "append"
+          ? existing ? t("editor.editAppend") : t("editor.newAppend")
+          : existing ? t("editor.editNote") : t("editor.newNote")} · {t("editor.as")} {authorLabel}</span>
         <button type="button" aria-label={t("editor.cancel")} onClick={onCancel}>✕</button>
       </header>
       <div className="ed-field">
@@ -46,6 +49,7 @@ export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, on
           id="note-title"
           className="ed-input"
           value={title}
+          placeholder={variant === "append" ? t("editor.titleOptional") : ""}
           onChange={(e) => {
             setTitle(e.target.value);
             setError(null);
@@ -71,7 +75,9 @@ export function NoteEditor({ lng, lat, groups, authorLabel, existing, onSave, on
       </button>
       {error && <p className="ed-error" role="alert">{error}</p>}
       <div className="note-editor__actions">
-        <button type="button" className="mock-button" onClick={save}>{t("editor.save")}</button>
+        <button type="button" className="mock-button" onClick={save}>
+          {variant === "append" ? t("editor.saveAppend") : t("editor.save")}
+        </button>
         <button type="button" onClick={onCancel}>{t("editor.cancel")}</button>
       </div>
     </aside>

@@ -1,5 +1,5 @@
 import { API_BASE } from "./apiBase";
-import type { Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./types";
+import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./types";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -39,3 +39,7 @@ export const updateNote = (noteId: string, note: NoteUpdateInput, previewAs: str
   sendJson<{ id: string; version: number }>(`${API_BASE}/notes/${noteId}?preview_as=${previewAs}`, "PUT", note);
 export const deleteNote = (noteId: string, previewAs: string) =>
   sendJson<null>(`${API_BASE}/notes/${noteId}?preview_as=${previewAs}`, "DELETE", undefined);
+export const createAppend = (parentId: string, append: AppendInput, previewAs: string) =>
+  sendJson<{ id: string }>(`${API_BASE}/notes/${parentId}/appends?preview_as=${previewAs}`, "POST", append);
+export const updateAppend = (appendId: string, append: AppendUpdateInput, previewAs: string) =>
+  sendJson<{ id: string; version: number }>(`${API_BASE}/appends/${appendId}?preview_as=${previewAs}`, "PUT", append);

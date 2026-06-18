@@ -13,6 +13,9 @@ from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
 from maps.schemas import (
+    AppendIn,
+    AppendOut,
+    AppendUpdateIn,
     GroupOut,
     MapOut,
     NoteCreated,
@@ -56,30 +59,54 @@ def list_groups(request, map_id: UUID):
     return [GroupOut(id=g.id, name=g.name) for g in Group.objects.filter(tenant=the_map.tenant)]
 
 
+def _visible_sections(note: Note, viewer) -> list[SectionOut]:
+    out: list[SectionOut] = []
+    for section in note.sections.all():
+        vis = section_visibility(section, viewer, owner_id=note.author_id)
+        if vis is Visibility.HIDDEN:
+            continue
+        out.append(
+            SectionOut(
+                id=section.id,
+                order=section.order,
+                visibility=vis.value,
+                content=section.content if vis is Visibility.VISIBLE else None,
+                rule_type=section.rule_type,
+                rule_label=section_label(section),
+                teaser_text=(section.teaser_text or None) if vis is Visibility.TEASER else None,
+            )
+        )
+    return out
+
+
 @router.get("/maps/{map_id}/notes", response=list[NoteOut])
 def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
     the_map = get_object_or_404(Map, id=map_id)
     viewer = resolve_viewer(preview_as, the_map.tenant)
+    top_level = (
+        the_map.notes.filter(parent__isnull=True)
+        .select_related("author")
+        .prefetch_related("sections", "appends__author", "appends__sections")
+    )
     out: list[NoteOut] = []
-    for note in the_map.notes.select_related("author").prefetch_related("sections"):
-        visible_sections: list[SectionOut] = []
-        for section in note.sections.all():
-            vis = section_visibility(section, viewer, owner_id=note.author_id)
-            if vis is Visibility.HIDDEN:
+    for note in top_level:
+        visible = _visible_sections(note, viewer)
+        if not visible:
+            continue
+        appends: list[AppendOut] = []
+        for ap in note.appends.all():
+            ap_sections = _visible_sections(ap, viewer)
+            if not ap_sections:
                 continue
-            visible_sections.append(
-                SectionOut(
-                    id=section.id,
-                    order=section.order,
-                    visibility=vis.value,
-                    content=section.content if vis is Visibility.VISIBLE else None,
-                    rule_type=section.rule_type,
-                    rule_label=section_label(section),
-                    teaser_text=(section.teaser_text or None) if vis is Visibility.TEASER else None,
+            appends.append(
+                AppendOut(
+                    id=ap.id,
+                    author_id=ap.author_id,
+                    author_name=ap.author.display_name,
+                    title=ap.title,
+                    sections=ap_sections,
                 )
             )
-        if not visible_sections:
-            continue
         out.append(
             NoteOut(
                 id=note.id,
@@ -87,7 +114,8 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                 title=note.title,
                 lng=note.point.x if note.point else None,
                 lat=note.point.y if note.point else None,
-                sections=visible_sections,
+                sections=visible,
+                appends=appends,
             )
         )
     return out
@@ -179,3 +207,62 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
                 teaser_text=s.teaser_text,
             )
     return 200, {"id": note.id, "version": note.version}
+
+
+@router.put("/appends/{append_id}", response={200: NoteUpdated})
+def update_append(
+    request, append_id: UUID, payload: AppendUpdateIn, preview_as: UUID | None = None
+):
+    append = get_object_or_404(Note, id=append_id)
+    if preview_as is None or append.author_id != preview_as:
+        raise HttpError(403, "You can only edit your own appends.")
+    if append.parent_id is None:
+        # Refuse to edit a top-level note through the append endpoint — that would
+        # bypass the note write schema (e.g. its required title). Use PUT /notes/{id}.
+        raise HttpError(400, "Not an append.")
+    if append.version != payload.version:
+        raise HttpError(409, "This append changed elsewhere — reload to edit.")
+    with transaction.atomic():
+        append.title = payload.title
+        append.save()  # BaseModel.save() bumps version (no point to update — appends have none)
+        append.sections.all().delete()  # hard replace (see update_note for the rationale)
+        for s in payload.sections:
+            Section.objects.create(
+                note=append,
+                order=s.order,
+                content=s.content,
+                rule_type=s.rule_type,
+                rule_params=s.rule_params,
+                teaser=s.teaser,
+                teaser_text=s.teaser_text,
+            )
+    return 200, {"id": append.id, "version": append.version}
+
+
+@router.post("/notes/{parent_id}/appends", response={201: NoteCreated})
+def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID | None = None):
+    parent = get_object_or_404(Note, id=parent_id)
+    if preview_as is None:
+        raise HttpError(403, "Sign in (preview-as) to append.")
+    if parent.parent_id is not None:
+        raise HttpError(400, "You can only append to a top-level note.")
+    author = get_object_or_404(User, id=preview_as)
+    append = Note.objects.create(
+        tenant=parent.tenant,
+        map=parent.map,
+        author=author,
+        parent=parent,
+        title=payload.title,
+        point=None,
+    )
+    for s in payload.sections:
+        Section.objects.create(
+            note=append,
+            order=s.order,
+            content=s.content,
+            rule_type=s.rule_type,
+            rule_params=s.rule_params,
+            teaser=s.teaser,
+            teaser_text=s.teaser_text,
+        )
+    return 201, {"id": append.id}
