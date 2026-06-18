@@ -18,6 +18,14 @@ class SectionOut(Schema):
     teaser_text: str | None  # the custom hook, only for locked (teaser) sections
 
 
+class AppendOut(Schema):
+    id: UUID
+    author_id: UUID
+    author_name: str
+    title: str
+    sections: list[SectionOut]
+
+
 class NoteOut(Schema):
     id: UUID
     author_id: UUID
@@ -25,6 +33,7 @@ class NoteOut(Schema):
     lng: float | None
     lat: float | None
     sections: list[SectionOut]
+    appends: list[AppendOut] = []
 
 
 class SectionIn(Schema):

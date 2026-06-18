@@ -16,6 +16,9 @@ class Map(TenantScopedModel):
 class Note(TenantScopedModel):
     map = models.ForeignKey(Map, on_delete=models.CASCADE, related_name="notes")
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notes")
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="appends"
+    )
     title = models.CharField(max_length=200, blank=True)
     point = gis.PointField(null=True, blank=True)
 

@@ -15,7 +15,7 @@ def boston(db):
     owner = User.objects.create(display_name="Owner")
     m = Map.objects.create(tenant=t, name="Boston", center=Point(-71.06, 42.36))
     note = Note.objects.create(
-        tenant=t, map=m, author=owner, title="Castle Island", point=Point(-71.01, 42.33)
+        tenant=t, map=m, author=owner, title="Beacon Hill", point=Point(-71.01, 42.33)
     )
     Section.objects.create(
         note=note, order=0, content="public bit", rule_type=Section.RuleType.PUBLIC
@@ -54,7 +54,7 @@ def test_guest_cannot_see_fully_hidden_note(boston):
     Section.objects.create(note=secret, order=0, content="hush", rule_type=Section.RuleType.PRIVATE)
     titles = {n["title"] for n in Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()}
     assert "SECRET" not in titles  # fully-private note omitted for the guest
-    assert "Castle Island" in titles  # the note with a public section still shows
+    assert "Beacon Hill" in titles  # the note with a public section still shows
 
 
 def test_contributor_creates_a_point_note(boston):
@@ -432,3 +432,49 @@ def test_guest_cannot_edit(boston):
         content_type="application/json",
     )
     assert resp.status_code == 403
+
+
+def test_appends_nest_under_parent_and_filter_independently(boston):
+    parent = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="Castle Island",
+        point=Point(-71.01, 42.33),
+    )
+    Section.objects.create(note=parent, order=0, content="loop", rule_type=Section.RuleType.PUBLIC)
+    friend = User.objects.create(display_name="A Friend")
+    ap = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=friend,
+        parent=parent,
+        title="Tip",
+    )
+    Section.objects.create(
+        note=ap, order=0, content="sunset photos", rule_type=Section.RuleType.PUBLIC
+    )
+    Section.objects.create(
+        note=ap, order=1, content="my private note", rule_type=Section.RuleType.PRIVATE
+    )
+
+    data = Client().get(f"/api/v1/maps/{boston['map'].id}/notes").json()
+    titles = [n["title"] for n in data]
+    assert "Tip" not in titles  # appends are NOT top-level
+    castle = next(n for n in data if n["title"] == "Castle Island")
+    assert len(castle["appends"]) == 1
+    a = castle["appends"][0]
+    assert a["author_name"] == "A Friend" and a["title"] == "Tip"
+    assert [s["content"] for s in a["sections"]] == ["sunset photos"]  # private hidden from guest
+
+    as_friend = Client().get(f"/api/v1/maps/{boston['map'].id}/notes?preview_as={friend.id}").json()
+    a2 = next(n for n in as_friend if n["title"] == "Castle Island")["appends"][0]
+    assert "my private note" in [s["content"] for s in a2["sections"]]
+
+    as_owner = (
+        Client()
+        .get(f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}")
+        .json()
+    )
+    a3 = next(n for n in as_owner if n["title"] == "Castle Island")["appends"][0]
+    assert "my private note" not in [s["content"] for s in a3["sections"]]

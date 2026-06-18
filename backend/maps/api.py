@@ -13,6 +13,7 @@ from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
 from maps.models import Map, Note, Section
 from maps.schemas import (
+    AppendOut,
     GroupOut,
     MapOut,
     NoteCreated,
@@ -56,30 +57,54 @@ def list_groups(request, map_id: UUID):
     return [GroupOut(id=g.id, name=g.name) for g in Group.objects.filter(tenant=the_map.tenant)]
 
 
+def _visible_sections(note: Note, viewer) -> list[SectionOut]:
+    out: list[SectionOut] = []
+    for section in note.sections.all():
+        vis = section_visibility(section, viewer, owner_id=note.author_id)
+        if vis is Visibility.HIDDEN:
+            continue
+        out.append(
+            SectionOut(
+                id=section.id,
+                order=section.order,
+                visibility=vis.value,
+                content=section.content if vis is Visibility.VISIBLE else None,
+                rule_type=section.rule_type,
+                rule_label=section_label(section),
+                teaser_text=(section.teaser_text or None) if vis is Visibility.TEASER else None,
+            )
+        )
+    return out
+
+
 @router.get("/maps/{map_id}/notes", response=list[NoteOut])
 def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
     the_map = get_object_or_404(Map, id=map_id)
     viewer = resolve_viewer(preview_as, the_map.tenant)
+    top_level = (
+        the_map.notes.filter(parent__isnull=True)
+        .select_related("author")
+        .prefetch_related("sections", "appends__author", "appends__sections")
+    )
     out: list[NoteOut] = []
-    for note in the_map.notes.select_related("author").prefetch_related("sections"):
-        visible_sections: list[SectionOut] = []
-        for section in note.sections.all():
-            vis = section_visibility(section, viewer, owner_id=note.author_id)
-            if vis is Visibility.HIDDEN:
+    for note in top_level:
+        visible = _visible_sections(note, viewer)
+        if not visible:
+            continue
+        appends: list[AppendOut] = []
+        for ap in note.appends.all():
+            ap_sections = _visible_sections(ap, viewer)
+            if not ap_sections:
                 continue
-            visible_sections.append(
-                SectionOut(
-                    id=section.id,
-                    order=section.order,
-                    visibility=vis.value,
-                    content=section.content if vis is Visibility.VISIBLE else None,
-                    rule_type=section.rule_type,
-                    rule_label=section_label(section),
-                    teaser_text=(section.teaser_text or None) if vis is Visibility.TEASER else None,
+            appends.append(
+                AppendOut(
+                    id=ap.id,
+                    author_id=ap.author_id,
+                    author_name=ap.author.display_name,
+                    title=ap.title,
+                    sections=ap_sections,
                 )
             )
-        if not visible_sections:
-            continue
         out.append(
             NoteOut(
                 id=note.id,
@@ -87,7 +112,8 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                 title=note.title,
                 lng=note.point.x if note.point else None,
                 lat=note.point.y if note.point else None,
-                sections=visible_sections,
+                sections=visible,
+                appends=appends,
             )
         )
     return out
