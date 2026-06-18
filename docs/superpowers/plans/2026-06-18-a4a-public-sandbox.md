@@ -228,9 +228,11 @@ git commit -m "feat(a4a): SANDBOX_MODE flag + maps/sandbox helpers (ip/session/a
 
 ---
 
-## Task 3: Sandbox write authorization (seed protection + session ownership)
+## Task 3: Sandbox write behavior — authorization + creation caps + session/IP stamping
 
-Wire `authorize_write` into the three write paths so that, in sandbox mode, the seed is read-only and a visitor may only edit/delete what their own session created. Non-sandbox behavior is unchanged.
+> **NOTE (merged during execution):** Tasks 3 and 4 were combined into one commit. Session ownership (Task 3) can't be verified without create-time session stamping (Task 4), so they ship together. The Task 4 section below is implemented as part of this task.
+
+Wire `authorize_write` into the three write paths so that, in sandbox mode, the seed is read-only and a visitor may only edit/delete what their own session created; AND stamp `session_key`/`created_ip` + enforce creation caps on create. Non-sandbox behavior is unchanged.
 
 **Files:**
 - Modify: `backend/maps/api.py` (`note_for_edit`, `delete_note`, `update_note`, `update_append`)
