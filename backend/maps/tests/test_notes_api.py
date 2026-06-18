@@ -667,6 +667,32 @@ def test_append_edit_version_conflict_409(boston):
     )
 
 
+def test_two_append_edits_with_the_same_starting_version_second_conflicts(boston):
+    friend = User.objects.create(display_name="A Friend")
+    ap = _make_append(boston, friend)
+    v0 = ap.version
+    payload = {
+        "title": "first",
+        "version": v0,
+        "sections": [{"order": 0, "content": "a", "rule_type": "public"}],
+    }
+    r1 = Client().put(
+        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert r1.status_code == 200 and r1.json()["version"] == v0 + 1
+    payload["title"] = "second"
+    r2 = Client().put(
+        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert r2.status_code == 409
+    ap.refresh_from_db()
+    assert ap.title == "first"  # the conflicting second edit did not apply
+
+
 def test_delete_and_edit_endpoints_work_on_an_append(boston):
     friend = User.objects.create(display_name="A Friend")
     ap = _make_append(boston, friend)
