@@ -26,6 +26,9 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
+# Public-demo sandbox behaviour (seed protection, session ownership, creation caps,
+# TTL reaper). OFF by default so local dev + tests behave like a normal app.
+SANDBOX_MODE = env.bool("SANDBOX_MODE", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost"])
 
 
@@ -48,6 +51,7 @@ INSTALLED_APPS += ["django.contrib.sessions"]
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+CORS_ALLOW_CREDENTIALS = True
 
 # GDAL library path — required on macOS when the system library version is
 # newer than the list Django probes automatically (e.g. 3.13 on Homebrew).
@@ -117,3 +121,7 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SESSION_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Web app and API are served from different Render domains, so the session cookie
+    # must be sent on cross-site XHR. SameSite=None requires Secure (set above).
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"

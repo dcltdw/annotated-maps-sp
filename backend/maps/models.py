@@ -22,6 +22,11 @@ class Note(TenantScopedModel):
     title = models.CharField(max_length=200, blank=True)
     point = gis.PointField(null=True, blank=True)
 
+    # --- Sandbox/demo metadata (only meaningful when settings.SANDBOX_MODE) ---
+    is_seed = models.BooleanField(default=False)  # True only for seed content (permanent)
+    session_key = models.CharField(max_length=40, blank=True, default="")  # ephemeral session
+    created_ip = models.GenericIPAddressField(null=True, blank=True)  # ephemeral creator IP
+
     def __str__(self) -> str:
         return self.title or f"Note {self.id}"
 

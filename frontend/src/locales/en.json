@@ -33,6 +33,8 @@
   "editor.saveFailed": "Save failed — please try again.",
   "editor.loadFailed": "Couldn’t open that note for editing.",
   "editor.deleteFailed": "Delete failed — please try again.",
+  "editor.sandboxLimit": "Sandbox limit reached — content here is pruned after 7 days.",
+  "sandbox.banner": "Sandbox — anyone can edit, and content is removed 7 days after it's added.",
   "editor.removeSection": "Remove section",
   "editor.sectionContent": "Section content",
   "editor.as": "as",

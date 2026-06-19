@@ -8,15 +8,19 @@ vi.mock("./api/maps", () => ({
     { id: "u1", display_name: "Owner", reputation: 100 },
     { id: "u2", display_name: "Friend", reputation: 10 },
   ]),
-  fetchNotes: vi.fn().mockResolvedValue([
-    { id: "n1", author_id: "u1", title: "Castle Island", lng: -71, lat: 42, sections: [
-      { id: "s1", order: 0, visibility: "visible", content: "scenic", rule_type: "public", rule_label: "Public", teaser_text: null },
-    ], appends: [
-      { id: "ap1", author_id: "u1", author_name: "Owner", title: "Append tip", sections: [
-        { id: "as1", order: 0, visibility: "visible", content: "great view", rule_type: "public", rule_label: "Public", teaser_text: null },
+  // editable mirrors the server: true only when the viewer (preview_as) authored the note/append (u1).
+  fetchNotes: vi.fn().mockImplementation((_mapId: string, previewAs: string | null) => {
+    const own = previewAs === "u1";
+    return Promise.resolve([
+      { id: "n1", author_id: "u1", title: "Castle Island", lng: -71, lat: 42, editable: own, sections: [
+        { id: "s1", order: 0, visibility: "visible", content: "scenic", rule_type: "public", rule_label: "Public", teaser_text: null },
+      ], appends: [
+        { id: "ap1", author_id: "u1", author_name: "Owner", title: "Append tip", editable: own, sections: [
+          { id: "as1", order: 0, visibility: "visible", content: "great view", rule_type: "public", rule_label: "Public", teaser_text: null },
+        ]},
       ]},
-    ]},
-  ]),
+    ]);
+  }),
   fetchGroups: vi.fn().mockResolvedValue([{ id: "g1", name: "Running club" }]),
   fetchNoteForEdit: vi.fn().mockResolvedValue({
     id: "n1", title: "Castle Island", lng: -71, lat: 42, version: 1,

@@ -48,7 +48,9 @@ export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDe
           <div className="appends-label">{t("appends.count", { count: note.appends.length })}</div>
         )}
         {note.appends.map((ap) => {
-          const own = previewAs != null && ap.author_id === previewAs;
+          // editable is the server's ownership grant; also require a selected persona,
+          // since acting as Guest can't write (avoids a dead-click edit affordance).
+          const own = ap.editable && previewAs != null;
           return (
             <div className="append" key={ap.id}>
               <div className="append-by">

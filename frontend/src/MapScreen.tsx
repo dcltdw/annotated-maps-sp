@@ -115,6 +115,8 @@ export function MapScreen() {
     } catch (e) {
       if ((e as ApiError).status === 409) {
         setError(t("editor.conflict"));
+      } else if ((e as ApiError).status === 429) {
+        setError((e as ApiError).message || t("editor.sandboxLimit"));
       } else {
         setError(t("editor.saveFailed"));
       }
@@ -178,7 +180,9 @@ export function MapScreen() {
   const editorLng = mode === "edit" ? (editing?.lng ?? map.lng) : (draft?.[0] ?? map.lng);
   const editorLat = mode === "edit" ? (editing?.lat ?? map.lat) : (draft?.[1] ?? map.lat);
 
-  const canEdit = canWrite && selected !== null && selected.author_id === previewAs;
+  // Editing requires both server-granted ownership AND a selected persona — acting as
+  // Guest can't write, so we don't show an edit affordance that would dead-click.
+  const canEdit = (selected?.editable ?? false) && canWrite;
 
   const editorVariant = mode === "append" || mode === "edit-append" ? "append" : "note";
 
@@ -197,6 +201,9 @@ export function MapScreen() {
 
   return (
     <div className="screen">
+      {import.meta.env.VITE_SANDBOX === "true" && (
+        <div className="sandbox-banner">{t("sandbox.banner")}</div>
+      )}
       <header className="topbar">
         <strong>{t("app.title")} · {map.name}</strong>
         <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
