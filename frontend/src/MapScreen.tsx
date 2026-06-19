@@ -180,7 +180,9 @@ export function MapScreen() {
   const editorLng = mode === "edit" ? (editing?.lng ?? map.lng) : (draft?.[0] ?? map.lng);
   const editorLat = mode === "edit" ? (editing?.lat ?? map.lat) : (draft?.[1] ?? map.lat);
 
-  const canEdit = selected?.editable ?? false;
+  // Editing requires both server-granted ownership AND a selected persona — acting as
+  // Guest can't write, so we don't show an edit affordance that would dead-click.
+  const canEdit = (selected?.editable ?? false) && canWrite;
 
   const editorVariant = mode === "append" || mode === "edit-append" ? "append" : "note";
 

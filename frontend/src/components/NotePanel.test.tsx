@@ -125,8 +125,10 @@ test("append edit controls (✎) render only for appends with editable: true", (
 });
 
 test("a guest (previewAs null) sees no ＋Append and no append edit/delete", () => {
+  // The append is editable:true (own session), but as Guest there's no persona to act
+  // as — the edit affordance must stay hidden (no dead-click).
   const noteWithAppends: NoteOut = { ...note, appends: [
-    { id: "ap2", author_id: "other", author_name: "Run-club", title: "", editable: false,
+    { id: "ap2", author_id: "other", author_name: "Run-club", title: "", editable: true,
       sections: [{ id: "s2", order: 0, visibility: "visible", content: "sat 8am", rule_type: "public", rule_label: "Public", teaser_text: null }] }] };
   render(<NotePanel note={noteWithAppends} viewerLabel="Guest" onCollapse={() => {}} previewAs={null} />);
   expect(screen.queryByRole("button", { name: /append to this note/i })).not.toBeInTheDocument();
