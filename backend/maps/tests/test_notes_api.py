@@ -756,3 +756,48 @@ def test_create_does_not_emit_the_tuple_return_deprecation(boston):
         )
     assert resp.status_code == 201
     assert not any("Returning tuple" in str(w.message) for w in caught)
+
+
+def test_list_returns_polygon_shape_for_area_notes(boston):
+    from django.contrib.gis.geos import Polygon
+
+    from maps.models import Note, Section
+
+    n = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="park",
+        area=Polygon(((-71.1, 42.3), (-71.1, 42.4), (-71.0, 42.4), (-71.1, 42.3))),
+    )
+    Section.objects.create(note=n, order=0, content="green", rule_type="public")
+    r = Client().get(f"/api/v1/maps/{boston['map'].id}/notes")
+    got = next(x for x in r.json() if x["title"] == "park")
+    assert got["lng"] is None and got["lat"] is None
+    assert got["shape"]["kind"] == "polygon"
+    assert got["shape"]["coordinates"][0] == [-71.1, 42.3]  # [lng, lat] pairs
+
+
+def test_list_returns_line_shape_for_path_notes(boston):
+    from django.contrib.gis.geos import LineString
+
+    from maps.models import Note, Section
+
+    n = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="route",
+        path=LineString((-71.1, 42.3), (-71.0, 42.35), (-70.9, 42.3)),
+    )
+    Section.objects.create(note=n, order=0, content="run", rule_type="public")
+    r = Client().get(f"/api/v1/maps/{boston['map'].id}/notes")
+    got = next(x for x in r.json() if x["title"] == "route")
+    assert got["shape"]["kind"] == "line"
+    assert len(got["shape"]["coordinates"]) == 3
+
+
+def test_point_notes_have_null_shape(boston):
+    r = Client().get(f"/api/v1/maps/{boston['map'].id}/notes")
+    got = next(x for x in r.json() if x["title"] == "Beacon Hill")  # the fixture point note
+    assert got["shape"] is None and got["lng"] is not None
