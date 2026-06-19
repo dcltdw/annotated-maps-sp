@@ -26,16 +26,28 @@ const { Marker, Popup, MapCtor, markerEls, capturedHandlers } = vi.hoisted(() =>
   });
   // Capture all registered handlers so tests can fire them manually.
   const capturedHandlers: Record<string, ((...args: unknown[]) => void)[]> = {};
-  // on("load", cb) fires immediately; isStyleLoaded is absent so the component takes the load path.
+  // on/once("load", cb) fire immediately so the marker + region effects run apply()
+  // synchronously. isStyleLoaded is absent so both effects take the load path. The
+  // region source/layer methods are stubbed so the region effect's apply() doesn't throw.
   const map = {
     addControl: vi.fn(),
-    on: vi.fn(function (ev: string, cb: (...args: unknown[]) => void) {
+    on: vi.fn(function (ev: string, ...rest: unknown[]) {
+      // Marker/map handlers register as on(ev, cb); region layer handlers register as
+      // on(ev, layerId, cb) — the callback is always the LAST argument.
+      const cb = rest[rest.length - 1] as (...args: unknown[]) => void;
       if (!capturedHandlers[ev]) capturedHandlers[ev] = [];
       capturedHandlers[ev].push(cb);
       if (ev === "load") cb();
     }),
+    once: vi.fn(function (ev: string, cb: (...args: unknown[]) => void) {
+      if (ev === "load") cb();
+    }),
     off: vi.fn(),
     remove: vi.fn(),
+    getSource: vi.fn().mockReturnValue(undefined),
+    addSource: vi.fn(),
+    addLayer: vi.fn(),
+    getCanvas: vi.fn().mockReturnValue({ style: {} }),
   };
   const MapCtor = vi.fn(function () {
     return map;
