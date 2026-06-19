@@ -73,3 +73,11 @@ body {
 /* Error banner */
 .editor-error-banner { background: #fef2f2; color: #dc2626; border-bottom: 1px solid #fca5a5; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
 .editor-error-banner button { background: none; border: none; cursor: pointer; color: #dc2626; font-size: 14px; padding: 0 4px; }
+
+/* ── Moderation page ─────────────────────────────────────────── */
+.mod-screen { background: #fff; color: #111; max-width: 1100px; margin: 0 auto; padding: 16px; }
+.mod-error { color: #dc2626; background: #fef2f2; border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+.mod-table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 13px; }
+.mod-table th, .mod-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+.mod-table th { background: #f7f7f8; }
+.mod-table button { margin-right: 4px; padding: 3px 8px; border: 1px solid #888; border-radius: 5px; background: transparent; cursor: pointer; font-size: 12px; }

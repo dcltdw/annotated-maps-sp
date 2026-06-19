@@ -44,5 +44,22 @@
   "appends.edit": "Edit append",
   "appends.delete": "Delete append",
   "appends.deleteLabel": "Delete",
-  "appends.deleteConfirm": "Delete this append? This cannot be undone."
+  "appends.deleteConfirm": "Delete this append? This cannot be undone.",
+  "mod.title": "Sandbox moderation",
+  "mod.tokenLabel": "Moderation token",
+  "mod.unlock": "Unlock",
+  "mod.badToken": "Invalid token.",
+  "mod.loadFailed": "Couldn’t load recent content.",
+  "mod.deleteFailed": "Delete failed — try again.",
+  "mod.kind": "Kind",
+  "mod.author": "Author",
+  "mod.session": "Session",
+  "mod.ip": "IP",
+  "mod.actions": "Actions",
+  "mod.deleteSelected": "Delete selected ({{count}})",
+  "mod.confirmSelected": "Delete {{count}} selected item(s)?",
+  "mod.delSession": "Del session",
+  "mod.delIp": "Del IP",
+  "mod.confirmSession": "Delete ALL content from this session?",
+  "mod.confirmIp": "Delete ALL content from this IP?"
 }

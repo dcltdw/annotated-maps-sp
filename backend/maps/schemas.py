@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from ninja import Schema
@@ -163,3 +164,34 @@ class ViewerOut(Schema):
 class GroupOut(Schema):
     id: UUID
     name: str
+
+
+class ModItemOut(Schema):
+    id: UUID
+    kind: str  # "note" | "append"
+    title: str
+    snippet: str
+    author_name: str
+    session_key: str  # FULL key (token-gated, safe to expose to the moderator); UI truncates
+    created_ip: str | None
+    created_at: datetime
+    updated_at: datetime
+    version: int
+    map_name: str
+
+
+class ModDeleteIn(Schema):
+    ids: list[UUID] | None = None
+    session_key: str | None = None
+    created_ip: str | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self):
+        provided = [self.ids is not None, bool(self.session_key), bool(self.created_ip)]
+        if sum(provided) != 1:
+            raise ValueError("Provide exactly one of: ids, session_key, created_ip.")
+        return self
+
+
+class ModDeleteOut(Schema):
+    deleted: int
