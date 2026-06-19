@@ -29,6 +29,9 @@ DEBUG = env("DJANGO_DEBUG")
 # Public-demo sandbox behaviour (seed protection, session ownership, creation caps,
 # TTL reaper). OFF by default so local dev + tests behave like a normal app.
 SANDBOX_MODE = env.bool("SANDBOX_MODE", default=False)
+# Moderation API shared secret. Empty by default → the mod endpoints reject every
+# request (401), so they are inert until MOD_TOKEN is set on the deploy.
+MOD_TOKEN = env("MOD_TOKEN", default="")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost"])
 
 
