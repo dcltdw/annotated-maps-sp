@@ -5,13 +5,15 @@ fields are NEVER returned by the public note API, only here."""
 from __future__ import annotations
 
 import hmac
+from typing import Any
 
 from django.conf import settings
 from ninja import Router
 from ninja.errors import HttpError
 
+from core.models import AuditEvent
 from maps.models import Note
-from maps.schemas import ModItemOut
+from maps.schemas import ModDeleteIn, ModDeleteOut, ModItemOut
 
 router = Router()
 
@@ -54,3 +56,27 @@ def mod_recent(request, limit: int = 50):
             )
         )
     return out
+
+
+@router.post("/mod/delete", response=ModDeleteOut)
+def mod_delete(request, payload: ModDeleteIn):
+    require_mod_token(request)
+    # all_objects + is_seed=False: hard-delete ephemeral rows only; the seed is never
+    # touched. Cascades to child appends + sections (on_delete=CASCADE).
+    qs = Note.all_objects.filter(is_seed=False)
+    criterion: dict[str, Any]
+    if payload.ids is not None:
+        qs = qs.filter(id__in=payload.ids)
+        criterion = {"ids": [str(i) for i in payload.ids]}
+    elif payload.session_key:
+        qs = qs.filter(session_key=payload.session_key)
+        criterion = {"session_key": payload.session_key}
+    else:
+        qs = qs.filter(created_ip=payload.created_ip)
+        criterion = {"created_ip": payload.created_ip}
+    count = qs.count()
+    qs.delete()
+    AuditEvent.objects.create(
+        action="mod.delete", target_type="note", metadata={**criterion, "deleted": count}
+    )
+    return ModDeleteOut(deleted=count)
