@@ -18,6 +18,10 @@ services:
         sync: false
       - key: GIT_SHA
         fromCommit: true
+      - key: SANDBOX_MODE
+        value: "true"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false   # the web service's public URL, e.g. https://annotated-maps-web.onrender.com
   - type: web
     name: annotated-maps-web
     runtime: static
@@ -26,3 +30,18 @@ services:
     envVars:
       - key: VITE_API_BASE
         sync: false
+      - key: VITE_SANDBOX
+        value: "true"
+  - type: cron
+    name: annotated-maps-reaper
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    schedule: "17 4 * * *"   # daily 04:17 UTC
+    dockerCommand: uv run python manage.py reap_ephemeral
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: SANDBOX_MODE
+        value: "true"
