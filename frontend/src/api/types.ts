@@ -17,6 +17,10 @@ export interface AppendOut {
   sections: SectionOut[];
   editable: boolean;
 }
+export interface Shape {
+  kind: "polygon" | "line";
+  coordinates: [number, number][]; // [lng, lat] pairs
+}
 export interface NoteOut {
   id: string;
   author_id: string;
@@ -26,6 +30,7 @@ export interface NoteOut {
   sections: SectionOut[];
   appends: AppendOut[];
   editable: boolean;
+  shape: Shape | null;
 }
 export interface MapOut {
   id: string;

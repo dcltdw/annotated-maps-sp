@@ -100,6 +100,7 @@ function toNoteOut(n: StoredNote, allNotes: StoredNote[], previewAs: string | nu
     lat: n.lat,
     // Mirrors the backend's non-sandbox `editable` (author == preview_as).
     editable: previewAs === n.author_id,
+    shape: null,
     sections: n.sections.map((s, i) => ({
       id: `${n.id}-s${i}`,
       order: s.order,

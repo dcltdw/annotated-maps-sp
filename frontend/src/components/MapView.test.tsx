@@ -57,8 +57,8 @@ afterEach(() => {
 });
 
 const notes: NoteOut[] = [
-  { id: "n1", author_id: "u1", title: "A", lng: -71, lat: 42, editable: false, sections: [], appends: [] },
-  { id: "n2", author_id: "u1", title: "B", lng: -71.1, lat: 42.1, editable: false, sections: [], appends: [] },
+  { id: "n1", author_id: "u1", title: "A", lng: -71, lat: 42, editable: false, sections: [], appends: [], shape: null },
+  { id: "n2", author_id: "u1", title: "B", lng: -71.1, lat: 42.1, editable: false, sections: [], appends: [], shape: null },
 ];
 
 test("adds a marker per note", () => {
@@ -67,7 +67,7 @@ test("adds a marker per note", () => {
 });
 
 test("skips notes without coordinates", () => {
-  const withNull: NoteOut[] = [...notes, { id: "n3", author_id: "u1", title: "C", lng: null, lat: null, editable: false, sections: [], appends: [] }];
+  const withNull: NoteOut[] = [...notes, { id: "n3", author_id: "u1", title: "C", lng: null, lat: null, editable: false, sections: [], appends: [], shape: null }];
   render(<MapView center={[-71, 42]} zoom={12} notes={withNull} onSelect={() => {}} />);
   expect(Marker).toHaveBeenCalledTimes(2);
 });
@@ -140,6 +140,7 @@ test("peekHtml escapes user-controlled note fields", () => {
       { id: "s", order: 0, visibility: "visible", content: "<script>", rule_type: "public", rule_label: "<i>lbl</i>", teaser_text: null },
     ],
     appends: [],
+    shape: null,
   });
   expect(html).not.toContain("<b>pwn</b>"); // title
   expect(html).not.toContain("<script>"); // content
@@ -160,6 +161,7 @@ test("peekHtml escapes a teaser section's teaser_text hook", () => {
       { id: "s", order: 0, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Club", teaser_text: "<img onerror=1>" },
     ],
     appends: [],
+    shape: null,
   });
   expect(html).not.toContain("<img onerror=1>");
   expect(html).toContain("&lt;img onerror=1&gt;");
