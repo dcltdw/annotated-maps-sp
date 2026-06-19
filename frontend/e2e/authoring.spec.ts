@@ -61,6 +61,8 @@ function toAppendOut(ap: StoredNote, previewAs: string | null) {
     author_id: ap.author_id,
     author_name: authorName(ap.author_id),
     title: ap.title ?? "",
+    // Mirrors the backend's non-sandbox `editable` (author == preview_as).
+    editable: previewAs === ap.author_id,
     sections: ap.sections
       .filter((s) => {
         if (s.rule_type === "private") {
@@ -96,6 +98,8 @@ function toNoteOut(n: StoredNote, allNotes: StoredNote[], previewAs: string | nu
     title: n.title,
     lng: n.lng,
     lat: n.lat,
+    // Mirrors the backend's non-sandbox `editable` (author == preview_as).
+    editable: previewAs === n.author_id,
     sections: n.sections.map((s, i) => ({
       id: `${n.id}-s${i}`,
       order: s.order,
