@@ -5,7 +5,7 @@ import { NotePanel } from "./NotePanel";
 import type { NoteOut } from "../api/types";
 
 const note: NoteOut = {
-  id: "n1", title: "Castle Island", lng: -71, lat: 42, author_id: "u1",
+  id: "n1", title: "Castle Island", lng: -71, lat: 42, author_id: "u1", editable: false,
   sections: [
     { id: "s1", order: 0, visibility: "visible", content: "scenic loop", rule_type: "public", rule_label: "Public", teaser_text: null },
     { id: "s2", order: 1, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Running club", teaser_text: "ask me nicely" },
@@ -91,9 +91,9 @@ test("renders appends inline: own is editable, others read-only, ＋Append prese
   const noteWithAppends: NoteOut = {
     ...note,
     appends: [
-      { id: "ap1", author_id: "me", author_name: "A Friend", title: "Sunset tip",
+      { id: "ap1", author_id: "me", author_name: "A Friend", title: "Sunset tip", editable: true,
         sections: [{ id: "s", order: 0, visibility: "visible", content: "go at dusk", rule_type: "public", rule_label: "Public", teaser_text: null }] },
-      { id: "ap2", author_id: "other", author_name: "Run-club", title: "",
+      { id: "ap2", author_id: "other", author_name: "Run-club", title: "", editable: false,
         sections: [{ id: "s2", order: 0, visibility: "visible", content: "sat 8am", rule_type: "public", rule_label: "Public", teaser_text: null }] },
     ],
   };
@@ -110,9 +110,23 @@ test("renders appends inline: own is editable, others read-only, ＋Append prese
   expect(screen.getByRole("button", { name: /append to this note/i })).toBeInTheDocument();
 });
 
+test("append edit controls (✎) render only for appends with editable: true", () => {
+  const noteWithAppends: NoteOut = {
+    ...note,
+    appends: [
+      { id: "ap1", author_id: "x", author_name: "Editable one", title: "", editable: true,
+        sections: [{ id: "s", order: 0, visibility: "visible", content: "yes", rule_type: "public", rule_label: "Public", teaser_text: null }] },
+      { id: "ap2", author_id: "y", author_name: "Locked one", title: "", editable: false,
+        sections: [{ id: "s2", order: 0, visibility: "visible", content: "no", rule_type: "public", rule_label: "Public", teaser_text: null }] },
+    ],
+  };
+  render(<NotePanel note={noteWithAppends} viewerLabel="Me" onCollapse={() => {}} previewAs="me" />);
+  expect(screen.getAllByRole("button", { name: /edit append/i })).toHaveLength(1);
+});
+
 test("a guest (previewAs null) sees no ＋Append and no append edit/delete", () => {
   const noteWithAppends: NoteOut = { ...note, appends: [
-    { id: "ap2", author_id: "other", author_name: "Run-club", title: "",
+    { id: "ap2", author_id: "other", author_name: "Run-club", title: "", editable: false,
       sections: [{ id: "s2", order: 0, visibility: "visible", content: "sat 8am", rule_type: "public", rule_label: "Public", teaser_text: null }] }] };
   render(<NotePanel note={noteWithAppends} viewerLabel="Guest" onCollapse={() => {}} previewAs={null} />);
   expect(screen.queryByRole("button", { name: /append to this note/i })).not.toBeInTheDocument();

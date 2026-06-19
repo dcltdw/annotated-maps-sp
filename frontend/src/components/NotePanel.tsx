@@ -48,7 +48,7 @@ export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDe
           <div className="appends-label">{t("appends.count", { count: note.appends.length })}</div>
         )}
         {note.appends.map((ap) => {
-          const own = previewAs != null && ap.author_id === previewAs;
+          const own = ap.editable;
           return (
             <div className="append" key={ap.id}>
               <div className="append-by">

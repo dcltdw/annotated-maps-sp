@@ -2,7 +2,7 @@ import { API_BASE } from "./apiBase";
 import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./types";
 
 async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
   return res.json() as Promise<T>;
 }
@@ -23,10 +23,20 @@ export function makeApiError(status: number, message: string): ApiError {
 async function sendJson<T>(url: string, method: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw makeApiError(res.status, `${method} ${url} → ${res.status}`);
+  if (!res.ok) {
+    let detail = `${method} ${url} → ${res.status}`;
+    try {
+      const errBody = await res.json();
+      if (errBody && typeof errBody.detail === "string") detail = errBody.detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw makeApiError(res.status, detail);
+  }
   return (res.status === 204 ? null : await res.json()) as T;
 }
 

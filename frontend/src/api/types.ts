@@ -15,6 +15,7 @@ export interface AppendOut {
   author_name: string;
   title: string;
   sections: SectionOut[];
+  editable: boolean;
 }
 export interface NoteOut {
   id: string;
@@ -24,6 +25,7 @@ export interface NoteOut {
   lat: number | null;
   sections: SectionOut[];
   appends: AppendOut[];
+  editable: boolean;
 }
 export interface MapOut {
   id: string;

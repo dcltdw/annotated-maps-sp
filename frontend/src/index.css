@@ -9,6 +9,7 @@ body {
 }
 
 .screen { height: 100vh; display: flex; flex-direction: column; }
+.sandbox-banner { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fcd34d; padding: 6px 12px; font-size: 13px; text-align: center; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #8883; flex-wrap: wrap; }
 .switcher { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .switcher__label { opacity: .65; }
