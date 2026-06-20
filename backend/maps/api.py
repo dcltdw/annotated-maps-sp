@@ -209,6 +209,7 @@ def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
             )
             for s in note.sections.all()
         ],
+        shape=_note_shape(note),
     )
 
 

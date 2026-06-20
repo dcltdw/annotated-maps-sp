@@ -164,6 +164,7 @@ class NoteEditOut(Schema):
     lat: float | None
     version: int
     sections: list[SectionEditOut]
+    shape: ShapeOut | None = None
 
 
 class NoteUpdateIn(NoteIn):

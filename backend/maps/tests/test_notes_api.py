@@ -910,3 +910,21 @@ def test_edit_converts_polygon_back_to_point(boston):
     assert r.status_code == 200
     n.refresh_from_db()
     assert n.point is not None and n.area is None and n.path is None
+
+
+def test_note_for_edit_returns_shape_for_a_region(boston):
+    from django.contrib.gis.geos import Polygon
+
+    from maps.models import Note, Section
+
+    n = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="area",
+        area=Polygon(((-71.1, 42.3), (-71.1, 42.4), (-71.0, 42.4), (-71.1, 42.3))),
+    )
+    Section.objects.create(note=n, order=0, content="x", rule_type="public")
+    r = Client().get(f"/api/v1/notes/{n.id}/edit?preview_as={boston['owner'].id}")
+    assert r.status_code == 200
+    assert r.json()["shape"]["kind"] == "polygon" and r.json()["lng"] is None
