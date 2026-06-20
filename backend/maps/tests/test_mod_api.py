@@ -1,5 +1,6 @@
 import json
 
+from django.contrib.gis.geos import Point
 from django.test import Client
 
 from core.models import AuditEvent
@@ -18,6 +19,8 @@ def _ephemeral(
         session_key=session,
         created_ip=ip,
         parent=parent,
+        # Top-level notes need exactly one anchor; appends (parent set) carry none.
+        point=None if parent else Point(0, 0),
     )
 
 
