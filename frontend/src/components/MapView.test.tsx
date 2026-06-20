@@ -1,5 +1,6 @@
-import { fireEvent, render } from "@testing-library/react";
-import { afterEach, expect, test, vi } from "vitest";
+import { fireEvent, render, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { FakeShapeDrawer } from "../lib/draw";
 
 const { Marker, Popup, MapCtor, markerEls, capturedHandlers } = vi.hoisted(() => {
   // Each Marker gets its own DOM element so tests can dispatch events at a specific marker.
@@ -61,9 +62,18 @@ vi.mock("maplibre-gl", () => ({
 import { MapView, peekHtml } from "./MapView";
 import type { NoteOut } from "../api/types";
 
+// Inject a FakeShapeDrawer so the createShapeDrawer() factory returns it (non-prod window
+// override) — keeps MapView's drawer wiring WebGL-free and never loads real terra-draw.
+let fakeDrawer: FakeShapeDrawer;
+beforeEach(() => {
+  fakeDrawer = new FakeShapeDrawer();
+  window.__shapeDrawerOverride = fakeDrawer;
+});
+
 afterEach(() => {
   vi.clearAllMocks();
   markerEls.length = 0;
+  delete window.__shapeDrawerOverride;
   // Clear captured handlers between tests
   Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k]);
 });
@@ -159,6 +169,23 @@ test("peekHtml escapes user-controlled note fields", () => {
   expect(html).not.toContain("<i>lbl</i>"); // rule_label
   expect(html).toContain("&lt;script&gt;");
   expect(html).toContain("&lt;i&gt;lbl&lt;/i&gt;");
+});
+
+test("a non-null drawMode starts that draw via the ShapeDrawer port", async () => {
+  render(<MapView center={[-71, 42]} zoom={12} notes={[]} onSelect={() => {}} drawMode="polygon" />);
+  // The drawer is built async; wait for startDraw to record the requested mode.
+  await waitFor(() => expect(fakeDrawer.lastMode).toBe("polygon"));
+});
+
+test("finishing a shape reports it via onShapeDrawn", async () => {
+  const onShapeDrawn = vi.fn();
+  render(
+    <MapView center={[-71, 42]} zoom={12} notes={[]} onSelect={() => {}} drawMode="polygon" onShapeDrawn={onShapeDrawn} />,
+  );
+  await waitFor(() => expect(fakeDrawer.lastMode).toBe("polygon"));
+  const shape = { kind: "polygon" as const, coordinates: [[-71, 42], [-71, 43], [-72, 43]] as [number, number][] };
+  fakeDrawer.emit(shape);
+  expect(onShapeDrawn).toHaveBeenCalledWith(shape);
 });
 
 test("peekHtml escapes a teaser section's teaser_text hook", () => {

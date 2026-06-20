@@ -2,7 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from "react-i18next";
 import type { ApiError } from "./api/maps";
 import { createAppend, createNote, deleteNote, fetchGroups, fetchMaps, fetchNoteForEdit, fetchNotes, fetchViewers, updateAppend, updateNote } from "./api/maps";
-import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./api/types";
+import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Shape, Viewer } from "./api/types";
+import type { DrawMode, DrawShape } from "./lib/draw";
 import { NoteEditor } from "./components/NoteEditor";
 import { NotePanel } from "./components/NotePanel";
 import { PreviewSwitcher } from "./components/PreviewSwitcher";
@@ -28,6 +29,11 @@ export function MapScreen() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [appendParent, setAppendParent] = useState<NoteOut | null>(null);
+
+  // Draw-area state: drawMode drives MapView's ShapeDrawer; pendingShape holds the polygon
+  // captured on completion, then feeds the editor (create) or replaces an editing region.
+  const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
+  const [pendingShape, setPendingShape] = useState<DrawShape | null>(null);
 
   const { t } = useTranslation();
 
@@ -96,7 +102,26 @@ export function MapScreen() {
     setEditing(null);
     setError(null);
     setAppendParent(null);
+    setDrawMode(null);
+    setPendingShape(null);
   }, []);
+
+  // Enter draw mode: arm the polygon drawer; stay in "view" so the map/markers keep
+  // rendering. Suppress click-to-drop while drawing (see onMapClick gating below).
+  const handleStartDraw = useCallback(() => {
+    if (!canWrite) return;
+    setSelectedId(null);
+    setPendingShape(null);
+    setDrawMode("polygon");
+  }, [canWrite]);
+
+  // Polygon finished: capture it, stop drawing. In create flow this opens the editor;
+  // in region-edit (redraw) flow `editing` is already set and we just swap its shape.
+  const handleShapeDrawn = useCallback((shape: DrawShape) => {
+    setDrawMode(null);
+    setPendingShape(shape);
+    if (mode !== "edit") setMode("create");
+  }, [mode]);
 
   const handleSave = useCallback(async (note: NoteInput | NoteUpdateInput) => {
     if (!map || !previewAs) return;
@@ -186,17 +211,38 @@ export function MapScreen() {
 
   const editorVariant = mode === "append" || mode === "edit-append" ? "append" : "note";
 
+  // Shape anchor for the editor (region notes). Create uses the freshly-drawn pendingShape;
+  // edit uses a redraw (pendingShape) if any, else the loaded note's shape. When this is set
+  // the editor emits a shape-anchored payload (and ignores lng/lat). Appends carry neither.
+  const editorShape: Shape | undefined =
+    editorVariant === "append"
+      ? undefined
+      : mode === "create"
+        ? (pendingShape ?? undefined)
+        : (pendingShape ?? editing?.shape ?? undefined);
+
+  // Region edit (incl. a just-finished redraw) shows a "Redraw area" button.
+  const isRegionEdit = mode === "edit" && editorShape != null;
+
   const editorPanel = mode !== "view" ? (
-    <NoteEditor
-      lng={editorLng}
-      lat={editorLat}
-      groups={groups}
-      authorLabel={viewerLabel}
-      existing={editing ?? undefined}
-      variant={editorVariant}
-      onSave={handleSave}
-      onCancel={resetToView}
-    />
+    <>
+      {isRegionEdit && (
+        <button type="button" className="redraw-area" onClick={handleStartDraw}>
+          {t("screen.redrawArea")}
+        </button>
+      )}
+      <NoteEditor
+        lng={editorLng}
+        lat={editorLat}
+        shape={editorShape}
+        groups={groups}
+        authorLabel={viewerLabel}
+        existing={editing ?? undefined}
+        variant={editorVariant}
+        onSave={handleSave}
+        onCancel={resetToView}
+      />
+    </>
   ) : null;
 
   return (
@@ -222,12 +268,22 @@ export function MapScreen() {
               zoom={map.zoom}
               notes={notes}
               onSelect={handleSelect}
-              onMapClick={canWrite && mode === "view" ? handleMapClick : undefined}
+              onMapClick={canWrite && mode === "view" && !drawMode ? handleMapClick : undefined}
               onDraftMove={handleDraftMove}
               draft={mode === "create" ? draft : null}
+              drawMode={drawMode}
+              onShapeDrawn={handleShapeDrawn}
             />
           </Suspense>
-          {selected && !panelOpen && mode === "view" && (
+          {canWrite && mode === "view" && !drawMode && (
+            <button className="draw-area" onClick={handleStartDraw}>
+              {t("screen.drawArea")}
+            </button>
+          )}
+          {drawMode && (
+            <div className="drawing-hint" role="status">{t("screen.drawingHint")}</div>
+          )}
+          {selected && !panelOpen && mode === "view" && !drawMode && (
             <button className="reopen" aria-label={t("screen.reopenAria")} onClick={() => setPanelOpen(true)}>
               {t("screen.reopen")}
             </button>

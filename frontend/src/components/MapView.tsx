@@ -1,7 +1,9 @@
 import maplibregl from "maplibre-gl";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { NoteOut } from "../api/types";
+import { createShapeDrawer } from "../lib/draw";
+import type { DrawMode, DrawShape, ShapeDrawer } from "../lib/draw";
 import { escapeHtml } from "../lib/escapeHtml";
 import { notesToGeoJSON } from "../lib/regionGeoJSON";
 import { colorFor } from "../ruleColors";
@@ -14,6 +16,10 @@ interface Props {
   onMapClick?: (lng: number, lat: number) => void;
   onDraftMove?: (lng: number, lat: number) => void;
   draft?: [number, number] | null;
+  // When non-null, MapView starts that draw via the ShapeDrawer port; null cancels any
+  // in-progress draw. The completed shape is reported via onShapeDrawn.
+  drawMode?: DrawMode | null;
+  onShapeDrawn?: (shape: DrawShape) => void;
 }
 
 // User-controlled fields (title, content, group/rule labels) are HTML-escaped
@@ -42,11 +48,16 @@ interface Placed {
  * stable (wrap in useCallback in the parent) — it's an effect dep, so a fresh
  * reference each render re-places every marker.
  */
-export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove, draft }: Props) {
+export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove, draft, drawMode, onShapeDrawn }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | undefined>(undefined);
   const markersRef = useRef<Placed[]>([]);
   const draftMarkerRef = useRef<maplibregl.Marker | undefined>(undefined);
+  // The ShapeDrawer port (terra-draw adapter or a Fake) — built async after the map exists.
+  const drawerRef = useRef<ShapeDrawer | null>(null);
+  // Flips true once the drawer is mounted, so the draw-mode effect re-runs and can start a
+  // draw requested before the async build finished.
+  const [drawerReady, setDrawerReady] = useState(false);
   // Stable refs so the (once-only) effects' closures never go stale.
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
@@ -57,6 +68,9 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
   // Stable ref so the once-only region layer click handlers select via the latest onSelect.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  // Stable ref so the draw effect hands the drawer the latest completion handler.
+  const onShapeDrawnRef = useRef(onShapeDrawn);
+  onShapeDrawnRef.current = onShapeDrawn;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -80,6 +94,45 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
     // onMapClickRef is a stable ref; no need to list it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Build + mount the ShapeDrawer once the map exists. createShapeDrawer() is async, so
+  // we run it in an IIFE and guard against the cleanup racing a still-in-flight build.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+    (async () => {
+      const drawer = await createShapeDrawer();
+      if (cancelled) {
+        drawer.destroy();
+        return;
+      }
+      drawer.mount(map);
+      drawerRef.current = drawer;
+      setDrawerReady(true);
+    })();
+    return () => {
+      cancelled = true;
+      drawerRef.current?.destroy();
+      drawerRef.current = null;
+      setDrawerReady(false);
+    };
+    // mapRef is a stable ref; the drawer is built once alongside the map.
+  }, []);
+
+  // Draw-mode effect: a non-null drawMode starts that draw via the port; null cancels.
+  // Re-runs on drawerReady too, so a draw requested before the async build finished still
+  // starts. Uses the stable onShapeDrawnRef so the completion handler is never stale.
+  useEffect(() => {
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+    if (drawMode) {
+      drawer.startDraw(drawMode, (shape) => onShapeDrawnRef.current?.(shape));
+    } else {
+      drawer.cancel();
+    }
+    // onShapeDrawnRef is a stable ref; the effect reacts to drawMode/drawerReady.
+  }, [drawMode, drawerReady]);
 
   useEffect(() => {
     const map = mapRef.current;
