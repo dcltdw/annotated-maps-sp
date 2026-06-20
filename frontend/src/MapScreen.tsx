@@ -115,8 +115,8 @@ export function MapScreen() {
     setDrawMode(drawShapeMode);
   }, [canWrite]);
 
-  // Polygon finished: capture it, stop drawing. In create flow this opens the editor;
-  // in region-edit (redraw) flow `editing` is already set and we just swap its shape.
+  // Shape finished (polygon or line): capture it, stop drawing. In create flow this opens
+  // the editor; in region-edit (redraw) flow `editing` is already set and we swap its shape.
   const handleShapeDrawn = useCallback((shape: DrawShape) => {
     setDrawMode(null);
     setPendingShape(shape);
