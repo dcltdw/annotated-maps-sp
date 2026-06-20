@@ -862,3 +862,51 @@ def test_create_rejects_self_intersecting_polygon(boston):
         "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
     }
     assert _post_note(boston, body).status_code == 422
+
+
+def _put_note(boston, note_id, body):
+    return Client().put(
+        f"/api/v1/notes/{note_id}?preview_as={boston['owner'].id}",
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+
+
+def test_edit_converts_point_note_to_polygon(boston):
+    note = _note_with_sections(boston)  # an editable point note authored by owner
+    body = {
+        "title": note.title,
+        "version": note.version,
+        "shape": {"kind": "polygon", "coordinates": [[-71.1, 42.3], [-71.1, 42.4], [-71.0, 42.4]]},
+        "sections": [{"order": 0, "content": "now an area", "rule_type": "public"}],
+    }
+    r = _put_note(boston, note.id, body)
+    assert r.status_code == 200
+    note.refresh_from_db()
+    assert note.area is not None and note.point is None and note.path is None
+
+
+def test_edit_converts_polygon_back_to_point(boston):
+    from django.contrib.gis.geos import Polygon
+
+    from maps.models import Note, Section
+
+    n = Note.objects.create(
+        tenant=boston["map"].tenant,
+        map=boston["map"],
+        author=boston["owner"],
+        title="area",
+        area=Polygon(((-71.1, 42.3), (-71.1, 42.4), (-71.0, 42.4), (-71.1, 42.3))),
+    )
+    Section.objects.create(note=n, order=0, content="x", rule_type="public")
+    body = {
+        "title": "now a pin",
+        "version": n.version,
+        "lng": -71.05,
+        "lat": 42.35,
+        "sections": [{"order": 0, "content": "pin", "rule_type": "public"}],
+    }
+    r = _put_note(boston, n.id, body)
+    assert r.status_code == 200
+    n.refresh_from_db()
+    assert n.point is not None and n.area is None and n.path is None

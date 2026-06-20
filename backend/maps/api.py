@@ -224,6 +224,7 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
 def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
     authorize_write(request, note, preview_as, noun="note")
+    anchor = _anchor_fields(payload)  # may raise 422; computed before the atomic claim
     with transaction.atomic():
         # Atomically claim the version: exactly one of two racing PUTs can match
         # WHERE version=expected; the loser updates 0 rows -> 409. (.update() bypasses
@@ -232,7 +233,7 @@ def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID 
             version=F("version") + 1,
             updated_at=timezone.now(),
             title=payload.title,
-            point=Point(payload.lng, payload.lat),
+            **anchor,
         )
         if not claimed:
             raise HttpError(409, "This note changed elsewhere — reload to edit.")
