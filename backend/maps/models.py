@@ -30,6 +30,21 @@ class Note(TenantScopedModel):
     session_key = models.CharField(max_length=40, blank=True, default="")  # ephemeral session
     created_ip = models.GenericIPAddressField(null=True, blank=True)  # ephemeral creator IP
 
+    class Meta(TenantScopedModel.Meta):
+        constraints = [
+            models.CheckConstraint(
+                # Appends (parent set) carry no anchor and are exempt. A top-level note
+                # must have exactly one of point / area / path.
+                condition=(
+                    models.Q(parent__isnull=False)
+                    | models.Q(point__isnull=False, area__isnull=True, path__isnull=True)
+                    | models.Q(point__isnull=True, area__isnull=False, path__isnull=True)
+                    | models.Q(point__isnull=True, area__isnull=True, path__isnull=False)
+                ),
+                name="note_top_level_exactly_one_anchor",
+            )
+        ]
+
     def __str__(self) -> str:
         return self.title or f"Note {self.id}"
 
