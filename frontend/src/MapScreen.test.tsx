@@ -12,7 +12,7 @@ vi.mock("./api/maps", () => ({
   fetchNotes: vi.fn().mockImplementation((_mapId: string, previewAs: string | null) => {
     const own = previewAs === "u1";
     return Promise.resolve([
-      { id: "n1", author_id: "u1", title: "Castle Island", lng: -71, lat: 42, editable: own, sections: [
+      { id: "n1", author_id: "u1", title: "Castle Island", lng: -71, lat: 42, editable: own, shape: null, sections: [
         { id: "s1", order: 0, visibility: "visible", content: "scenic", rule_type: "public", rule_label: "Public", teaser_text: null },
       ], appends: [
         { id: "ap1", author_id: "u1", author_name: "Owner", title: "Append tip", editable: own, sections: [

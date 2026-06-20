@@ -26,16 +26,28 @@ const { Marker, Popup, MapCtor, markerEls, capturedHandlers } = vi.hoisted(() =>
   });
   // Capture all registered handlers so tests can fire them manually.
   const capturedHandlers: Record<string, ((...args: unknown[]) => void)[]> = {};
-  // on("load", cb) fires immediately; isStyleLoaded is absent so the component takes the load path.
+  // on/once("load", cb) fire immediately so the marker + region effects run apply()
+  // synchronously. isStyleLoaded is absent so both effects take the load path. The
+  // region source/layer methods are stubbed so the region effect's apply() doesn't throw.
   const map = {
     addControl: vi.fn(),
-    on: vi.fn(function (ev: string, cb: (...args: unknown[]) => void) {
+    on: vi.fn(function (ev: string, ...rest: unknown[]) {
+      // Marker/map handlers register as on(ev, cb); region layer handlers register as
+      // on(ev, layerId, cb) — the callback is always the LAST argument.
+      const cb = rest[rest.length - 1] as (...args: unknown[]) => void;
       if (!capturedHandlers[ev]) capturedHandlers[ev] = [];
       capturedHandlers[ev].push(cb);
       if (ev === "load") cb();
     }),
+    once: vi.fn(function (ev: string, cb: (...args: unknown[]) => void) {
+      if (ev === "load") cb();
+    }),
     off: vi.fn(),
     remove: vi.fn(),
+    getSource: vi.fn().mockReturnValue(undefined),
+    addSource: vi.fn(),
+    addLayer: vi.fn(),
+    getCanvas: vi.fn().mockReturnValue({ style: {} }),
   };
   const MapCtor = vi.fn(function () {
     return map;
@@ -57,8 +69,8 @@ afterEach(() => {
 });
 
 const notes: NoteOut[] = [
-  { id: "n1", author_id: "u1", title: "A", lng: -71, lat: 42, editable: false, sections: [], appends: [] },
-  { id: "n2", author_id: "u1", title: "B", lng: -71.1, lat: 42.1, editable: false, sections: [], appends: [] },
+  { id: "n1", author_id: "u1", title: "A", lng: -71, lat: 42, editable: false, sections: [], appends: [], shape: null },
+  { id: "n2", author_id: "u1", title: "B", lng: -71.1, lat: 42.1, editable: false, sections: [], appends: [], shape: null },
 ];
 
 test("adds a marker per note", () => {
@@ -67,7 +79,7 @@ test("adds a marker per note", () => {
 });
 
 test("skips notes without coordinates", () => {
-  const withNull: NoteOut[] = [...notes, { id: "n3", author_id: "u1", title: "C", lng: null, lat: null, editable: false, sections: [], appends: [] }];
+  const withNull: NoteOut[] = [...notes, { id: "n3", author_id: "u1", title: "C", lng: null, lat: null, editable: false, sections: [], appends: [], shape: null }];
   render(<MapView center={[-71, 42]} zoom={12} notes={withNull} onSelect={() => {}} />);
   expect(Marker).toHaveBeenCalledTimes(2);
 });
@@ -140,6 +152,7 @@ test("peekHtml escapes user-controlled note fields", () => {
       { id: "s", order: 0, visibility: "visible", content: "<script>", rule_type: "public", rule_label: "<i>lbl</i>", teaser_text: null },
     ],
     appends: [],
+    shape: null,
   });
   expect(html).not.toContain("<b>pwn</b>"); // title
   expect(html).not.toContain("<script>"); // content
@@ -160,6 +173,7 @@ test("peekHtml escapes a teaser section's teaser_text hook", () => {
       { id: "s", order: 0, visibility: "teaser", content: null, rule_type: "audience", rule_label: "Club", teaser_text: "<img onerror=1>" },
     ],
     appends: [],
+    shape: null,
   });
   expect(html).not.toContain("<img onerror=1>");
   expect(html).toContain("&lt;img onerror=1&gt;");

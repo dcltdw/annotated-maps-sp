@@ -20,7 +20,7 @@ const OWNER = [
   { id: "s3", order: 2, visibility: "visible", content: "trusted tip", rule_type: "attribute_gate", rule_label: "Reputation ≥ 50" },
   { id: "s4", order: 3, visibility: "visible", content: "knee reminder", rule_type: "private", rule_label: "Private" },
 ];
-const note = (sections: unknown[]) => [{ id: "n1", title: "Castle Island", lng: -71.0136, lat: 42.338, sections, appends: [] }];
+const note = (sections: unknown[]) => [{ id: "n1", title: "Castle Island", lng: -71.0136, lat: 42.338, sections, appends: [], shape: null }];
 
 test("the Viewing-as switcher re-filters a note's sections live", async ({ page }) => {
   await page.route("**/styles/positron**", (r) => r.fulfill({ json: MINIMAL_STYLE }));

@@ -21,6 +21,9 @@ class Note(TenantScopedModel):
     )
     title = models.CharField(max_length=200, blank=True)
     point = gis.PointField(null=True, blank=True)
+    # A note is anchored to exactly one of point / area / path (enforced in the write API).
+    area = gis.PolygonField(null=True, blank=True)  # freehand polygons AND circles (N-gon)
+    path = gis.LineStringField(null=True, blank=True)  # routes / boundary lines
 
     # --- Sandbox/demo metadata (only meaningful when settings.SANDBOX_MODE) ---
     is_seed = models.BooleanField(default=False)  # True only for seed content (permanent)

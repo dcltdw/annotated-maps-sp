@@ -30,3 +30,26 @@ def test_note_sandbox_fields_default_to_ephemeral():
     assert n.is_seed is False  # safe default: nothing is accidentally permanent
     assert n.session_key == ""
     assert n.created_ip is None
+
+
+@pytest.mark.django_db
+def test_note_can_hold_a_polygon_or_a_line(db):
+    from django.contrib.gis.geos import LineString, Polygon
+
+    t = Tenant.objects.create(name="T", slug="t")
+    u = User.objects.create(display_name="U")
+    m = Map.objects.create(tenant=t, name="M", center=Point(0, 0))
+    area = Note.objects.create(
+        tenant=t,
+        map=m,
+        author=u,
+        title="area",
+        area=Polygon(((0, 0), (0, 1), (1, 1), (1, 0), (0, 0))),
+    )
+    path = Note.objects.create(
+        tenant=t, map=m, author=u, title="path", path=LineString((0, 0), (1, 1), (2, 0))
+    )
+    area.refresh_from_db()
+    path.refresh_from_db()
+    assert area.area is not None and area.point is None and area.path is None
+    assert path.path is not None and path.point is None and path.area is None

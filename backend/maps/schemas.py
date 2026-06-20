@@ -19,6 +19,12 @@ class SectionOut(Schema):
     teaser_text: str | None  # the custom hook, only for locked (teaser) sections
 
 
+class ShapeOut(Schema):
+    kind: str  # "polygon" | "line"
+    # [lng, lat] pairs: a polygon's outer ring, or a line's path
+    coordinates: list[tuple[float, float]]
+
+
 class AppendOut(Schema):
     id: UUID
     author_id: UUID
@@ -37,6 +43,7 @@ class NoteOut(Schema):
     sections: list[SectionOut]
     appends: list[AppendOut] = []
     editable: bool
+    shape: ShapeOut | None = None
 
 
 class SectionIn(Schema):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import LineString, Point, Polygon
 
 from core.models import Group, Membership, Tenant, User
 from maps.models import Map, Note, Section
@@ -83,6 +83,55 @@ def build_boston_demo() -> dict:
             ]
         )
 
+    area_note, area_created = Note.objects.get_or_create(
+        tenant=tenant,
+        map=the_map,
+        author=local,
+        title="Boston Public Garden",
+        defaults={
+            "is_seed": True,
+            "area": Polygon(
+                (
+                    (-71.0723, 42.3539),
+                    (-71.0699, 42.3551),
+                    (-71.0685, 42.3537),
+                    (-71.0709, 42.3525),
+                    (-71.0723, 42.3539),
+                )
+            ),
+        },
+    )
+    if area_created:
+        Section.objects.create(
+            note=area_note,
+            order=0,
+            rule_type=Section.RuleType.PUBLIC,
+            content="Swan boats + the willows. Calm loop, good for an easy shakeout.",
+        )
+
+    route_note, route_created = Note.objects.get_or_create(
+        tenant=tenant,
+        map=the_map,
+        author=runner,
+        title="Charles Esplanade out-and-back",
+        defaults={
+            "is_seed": True,
+            "path": LineString(
+                (-71.0735, 42.3562),
+                (-71.0820, 42.3575),
+                (-71.0905, 42.3585),
+                (-71.0980, 42.3590),
+            ),
+        },
+    )
+    if route_created:
+        Section.objects.create(
+            note=route_note,
+            order=0,
+            rule_type=Section.RuleType.PUBLIC,
+            content="Flat riverside path. ~2km each way; water fountain at the footbridge.",
+        )
+
     return {
         "tenant": tenant,
         "map": the_map,
@@ -92,4 +141,6 @@ def build_boston_demo() -> dict:
         "local": local,
         "club": club,
         "note": note,
+        "area_note": area_note,
+        "route_note": route_note,
     }

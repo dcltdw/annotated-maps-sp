@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { NoteOut } from "../api/types";
 import { escapeHtml } from "../lib/escapeHtml";
+import { notesToGeoJSON } from "../lib/regionGeoJSON";
 import { colorFor } from "../ruleColors";
 
 interface Props {
@@ -53,6 +54,9 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
   // mode (at which point onMapClick is no longer passed) — so it has its own callback.
   const onDraftMoveRef = useRef(onDraftMove);
   onDraftMoveRef.current = onDraftMove;
+  // Stable ref so the once-only region layer click handlers select via the latest onSelect.
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -67,6 +71,10 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
       onMapClickRef.current?.(e.lngLat.lng, e.lngLat.lat);
     });
     mapRef.current = map;
+    // Expose the map for e2e assertions (never in production builds).
+    if (import.meta.env.MODE !== "production") {
+      (window as unknown as { __map?: maplibregl.Map }).__map = map;
+    }
     return () => map.remove();
     // center/zoom only seed the initial view; the map is created once.
     // onMapClickRef is a stable ref; no need to list it.
@@ -109,6 +117,58 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
       map.off("load", place);
     };
   }, [notes, onSelect]);
+
+  // Region effect: render area notes as a fill+outline and path notes as a line, kept in
+  // sync with `notes` via setData; clicking a region selects it (same path as markers).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const data = notesToGeoJSON(notes);
+    const apply = () => {
+      const existing = map.getSource("regions") as maplibregl.GeoJSONSource | undefined;
+      if (existing) {
+        existing.setData(data);
+        return;
+      }
+      map.addSource("regions", { type: "geojson", data });
+      map.addLayer({
+        id: "regions-fill",
+        type: "fill",
+        source: "regions",
+        filter: ["==", ["geometry-type"], "Polygon"],
+        paint: { "fill-color": "#dc2626", "fill-opacity": 0.18 },
+      });
+      map.addLayer({
+        id: "regions-outline",
+        type: "line",
+        source: "regions",
+        filter: ["==", ["geometry-type"], "Polygon"],
+        paint: { "line-color": "#dc2626", "line-width": 2 },
+      });
+      map.addLayer({
+        id: "regions-line",
+        type: "line",
+        source: "regions",
+        filter: ["==", ["geometry-type"], "LineString"],
+        paint: { "line-color": "#dc2626", "line-width": 3 },
+      });
+      for (const layer of ["regions-fill", "regions-line"]) {
+        map.on("click", layer, (e) => {
+          const id = e.features?.[0]?.properties?.noteId;
+          if (id) onSelectRef.current?.(String(id));
+        });
+        map.on("mouseenter", layer, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layer, () => {
+          map.getCanvas().style.cursor = "";
+        });
+      }
+    };
+    if (map.isStyleLoaded?.()) apply();
+    else map.once("load", apply);
+    // mapRef/onSelectRef are stable refs; the source is re-synced whenever notes change.
+  }, [notes]);
 
   // Draft-pin effect: add/remove/reposition ONE blue draggable marker for the pending create.
   useEffect(() => {

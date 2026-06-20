@@ -30,6 +30,7 @@ from maps.schemas import (
     NoteUpdateIn,
     SectionEditOut,
     SectionOut,
+    ShapeOut,
     ViewerOut,
 )
 from maps.visibility import section_label, section_visibility
@@ -61,6 +62,16 @@ def list_viewers(request, map_id: UUID):
 def list_groups(request, map_id: UUID):
     the_map = get_object_or_404(Map, id=map_id)
     return [GroupOut(id=g.id, name=g.name) for g in Group.objects.filter(tenant=the_map.tenant)]
+
+
+def _note_shape(note: Note) -> ShapeOut | None:
+    """Serialize a note's area/path anchor as a [lng,lat] shape (None for point notes)."""
+    if note.area is not None:
+        ring = [(x, y) for x, y in note.area.exterior_ring.coords]
+        return ShapeOut(kind="polygon", coordinates=ring)
+    if note.path is not None:
+        return ShapeOut(kind="line", coordinates=[(x, y) for x, y in note.path.coords])
+    return None
 
 
 def _visible_sections(note: Note, viewer) -> list[SectionOut]:
@@ -122,6 +133,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                 sections=visible,
                 appends=appends,
                 editable=is_editable(request, note, preview_as),
+                shape=_note_shape(note),
             )
         )
     return out
