@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from django.conf import settings
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import LineString, Point, Polygon
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
@@ -62,6 +62,23 @@ def list_viewers(request, map_id: UUID):
 def list_groups(request, map_id: UUID):
     the_map = get_object_or_404(Map, id=map_id)
     return [GroupOut(id=g.id, name=g.name) for g in Group.objects.filter(tenant=the_map.tenant)]
+
+
+def _anchor_fields(payload: NoteIn) -> dict:
+    """Turn a NoteIn's anchor into a {point, area, path} dict (one set, two None).
+    Raises HttpError(422) for invalid geometry. NoteIn's validator already guarantees
+    exactly one anchor, so exactly one branch applies."""
+    if payload.shape is not None:
+        if payload.shape.kind == "polygon":
+            ring = [(x, y) for x, y in payload.shape.coordinates]
+            if ring[0] != ring[-1]:
+                ring.append(ring[0])  # GEOS needs a closed ring
+            poly = Polygon(ring)
+            if not poly.valid:
+                raise HttpError(422, "Invalid polygon (edges cross?).")
+            return {"point": None, "area": poly, "path": None}
+        return {"point": None, "area": None, "path": LineString(payload.shape.coordinates)}
+    return {"point": Point(payload.lng, payload.lat), "area": None, "path": None}
 
 
 def _note_shape(note: Note) -> ShapeOut | None:
@@ -148,14 +165,15 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
     session_key, created_ip = "", None
     if settings.SANDBOX_MODE:
         session_key, created_ip = enforce_create_limits(request, is_append=False)
+    anchor = _anchor_fields(payload)  # may raise 422 on invalid geometry
     note = Note.objects.create(
         tenant=the_map.tenant,
         map=the_map,
         author=author,
         title=payload.title,
-        point=Point(payload.lng, payload.lat),
         session_key=session_key,
         created_ip=created_ip,
+        **anchor,
     )
     for s in payload.sections:
         Section.objects.create(

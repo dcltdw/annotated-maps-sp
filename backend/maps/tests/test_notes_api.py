@@ -825,3 +825,40 @@ def test_create_rejects_both_point_and_shape(boston):
 def test_create_rejects_no_anchor(boston):
     body = {"title": "x", "sections": [{"order": 0, "content": "c", "rule_type": "public"}]}
     assert _post_note(boston, body).status_code == 422
+
+
+def test_create_a_polygon_note(boston):
+    body = {
+        "title": "park",
+        "shape": {"kind": "polygon", "coordinates": [[-71.1, 42.3], [-71.1, 42.4], [-71.0, 42.4]]},
+        "sections": [{"order": 0, "content": "green", "rule_type": "public"}],
+    }
+    r = _post_note(boston, body)
+    assert r.status_code == 201
+    from maps.models import Note
+
+    n = Note.objects.get(id=r.json()["id"])
+    assert n.area is not None and n.point is None and n.path is None
+
+
+def test_create_a_line_note(boston):
+    body = {
+        "title": "route",
+        "shape": {"kind": "line", "coordinates": [[-71.1, 42.3], [-71.0, 42.35]]},
+        "sections": [{"order": 0, "content": "run", "rule_type": "public"}],
+    }
+    r = _post_note(boston, body)
+    assert r.status_code == 201
+    from maps.models import Note
+
+    n = Note.objects.get(id=r.json()["id"])
+    assert n.path is not None and n.point is None and n.area is None
+
+
+def test_create_rejects_self_intersecting_polygon(boston):
+    body = {
+        "title": "bad",
+        "shape": {"kind": "polygon", "coordinates": [[0, 0], [1, 1], [1, 0], [0, 1]]},
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _post_note(boston, body).status_code == 422
