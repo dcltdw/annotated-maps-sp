@@ -8,6 +8,17 @@ export default tseslint.config(
   { ignores: ["dist/"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Allow intentionally-unused args/vars when prefixed with `_` (the standard convention —
+    // e.g. interface-stub params in the swappable draw adapters / test doubles).
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
+  },
   // eslint-plugin-react-hooks@7's `recommended`/`recommended-latest` presets bundle the
   // new React-Compiler ruleset (refs, set-state-in-effect, …) on top of the two classic
   // rules. Enable just the classic rules — rules-of-hooks (error) + exhaustive-deps (warn) —

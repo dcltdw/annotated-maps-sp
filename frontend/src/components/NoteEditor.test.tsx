@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, test, vi } from "vitest";
+import { expect, it, test, vi } from "vitest";
 import { NoteEditor } from "./NoteEditor";
-import type { NoteEdit } from "../api/types";
+import type { NoteEdit, Shape } from "../api/types";
 
 const groups = [{ id: "g1", name: "Running club" }];
 
@@ -44,6 +44,21 @@ test("append variant: title optional, append labels, saves with empty title", as
   // no "title is required" error; onSave called even with a blank title
   expect(screen.queryByText(/title is required/i)).not.toBeInTheDocument();
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ title: "", sections: expect.any(Array) }));
+});
+
+it("emits a shape anchor when given one (no lng/lat)", async () => {
+  const onSave = vi.fn();
+  const shape: Shape = { kind: "polygon", coordinates: [[-71, 42], [-71, 43], [-70, 43], [-71, 42]] };
+  render(
+    <NoteEditor lng={0} lat={0} shape={shape} groups={groups} authorLabel="You (owner)" onSave={onSave} onCancel={() => {}} />,
+  );
+  await userEvent.type(screen.getByLabelText(/title/i), "Region note");
+  await userEvent.type(screen.getByLabelText(/section content/i), "a polygon area");
+  await userEvent.click(screen.getByRole("button", { name: /save/i }));
+  expect(onSave).toHaveBeenCalled();
+  const payload = onSave.mock.calls[0][0];
+  expect(payload.shape).toBeTruthy();
+  expect(payload).not.toHaveProperty("lng");
 });
 
 test("edit mode pre-fills from the existing note and emits version on save", async () => {

@@ -33,15 +33,25 @@ vi.mock("./api/maps", () => ({
   updateAppend: vi.fn().mockResolvedValue({ id: "ap1", version: 2 }),
 }));
 
-// MapView mock that exposes onMapClick so tests can simulate a map canvas click.
+// MapView mock that exposes onMapClick + the draw-area wiring (drawMode/onShapeDrawn) so
+// tests can simulate a map canvas click and a finished polygon without real terra-draw.
 let capturedOnMapClick: ((lng: number, lat: number) => void) | undefined;
 vi.mock("./components/MapView", () => ({
-  MapView: ({ onSelect, onMapClick }: { onSelect: (id: string) => void; onMapClick?: (lng: number, lat: number) => void }) => {
+  MapView: ({ onSelect, onMapClick, drawMode, onShapeDrawn }: {
+    onSelect: (id: string) => void;
+    onMapClick?: (lng: number, lat: number) => void;
+    drawMode?: string | null;
+    onShapeDrawn?: (shape: unknown) => void;
+  }) => {
     capturedOnMapClick = onMapClick;
     return (
       <>
+        <span data-testid="draw-mode">{drawMode ?? "none"}</span>
         <button onClick={() => onSelect("n1")}>pin n1</button>
         <button onClick={() => onMapClick?.(-71.2, 42.2)}>click map</button>
+        <button onClick={() => onShapeDrawn?.({ kind: "polygon", coordinates: [[-71, 42], [-71, 43], [-72, 43]] })}>
+          finish polygon
+        </button>
       </>
     );
   },
@@ -49,23 +59,27 @@ vi.mock("./components/MapView", () => ({
 
 // NoteEditor stub: exposes a "Save stub" button that calls onSave with a minimal valid input.
 vi.mock("./components/NoteEditor", () => ({
-  NoteEditor: ({ onSave, onCancel, existing, variant }: {
+  NoteEditor: ({ onSave, onCancel, existing, variant, shape }: {
     onSave: (n: unknown) => void;
     onCancel: () => void;
     existing?: unknown;
     variant?: string;
+    shape?: unknown;
   }) => (
     <div data-testid="note-editor">
       <span>{existing ? "edit-mode" : "create-mode"}</span>
       <span data-testid="editor-variant">{variant ?? "note"}</span>
+      <span data-testid="editor-has-shape">{shape ? "shape" : "point"}</span>
       <button
-        onClick={() =>
+        onClick={() => {
+          // Mirror the real editor: a shape anchor replaces lng/lat.
+          const anchor = shape ? { shape } : { lng: -71.2, lat: 42.2 };
           onSave(
             existing
-              ? { title: "Castle Island", lng: -71, lat: 42, sections: [], version: 1 }
-              : { title: "New note", lng: -71.2, lat: 42.2, sections: [] },
-          )
-        }
+              ? { title: "Castle Island", lng: -71, lat: 42, sections: [], version: 1, ...(shape ? { shape } : {}) }
+              : { title: "New note", sections: [], ...anchor },
+          );
+        }}
       >
         Save stub
       </button>
