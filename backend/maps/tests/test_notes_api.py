@@ -801,3 +801,27 @@ def test_point_notes_have_null_shape(boston):
     r = Client().get(f"/api/v1/maps/{boston['map'].id}/notes")
     got = next(x for x in r.json() if x["title"] == "Beacon Hill")  # the fixture point note
     assert got["shape"] is None and got["lng"] is not None
+
+
+def _post_note(boston, body):
+    return Client().post(
+        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+
+
+def test_create_rejects_both_point_and_shape(boston):
+    body = {
+        "title": "x",
+        "lng": -71.0,
+        "lat": 42.0,
+        "shape": {"kind": "polygon", "coordinates": [[-71, 42], [-71, 43], [-70, 43], [-71, 42]]},
+        "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
+    }
+    assert _post_note(boston, body).status_code == 422
+
+
+def test_create_rejects_no_anchor(boston):
+    body = {"title": "x", "sections": [{"order": 0, "content": "c", "rule_type": "public"}]}
+    assert _post_note(boston, body).status_code == 422

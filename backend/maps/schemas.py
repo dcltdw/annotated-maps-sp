@@ -25,6 +25,26 @@ class ShapeOut(Schema):
     coordinates: list[tuple[float, float]]
 
 
+class ShapeIn(Schema):
+    kind: str  # "polygon" | "line"
+    coordinates: list[tuple[float, float]]  # [lng, lat] pairs
+
+    @field_validator("kind")
+    @classmethod
+    def _kind_valid(cls, v: str) -> str:
+        if v not in ("polygon", "line"):
+            raise ValueError(f"invalid shape kind {v!r}")
+        return v
+
+    @model_validator(mode="after")
+    def _enough_coordinates(self) -> ShapeIn:
+        if self.kind == "polygon" and len(self.coordinates) < 3:
+            raise ValueError("a polygon needs at least 3 coordinates")
+        if self.kind == "line" and len(self.coordinates) < 2:
+            raise ValueError("a line needs at least 2 coordinates")
+        return self
+
+
 class AppendOut(Schema):
     id: UUID
     author_id: UUID
@@ -88,8 +108,9 @@ class SectionIn(Schema):
 
 class NoteIn(Schema):
     title: str = ""
-    lng: float
-    lat: float
+    lng: float | None = None
+    lat: float | None = None
+    shape: ShapeIn | None = None
     sections: list[SectionIn] = []
 
     @field_validator("title")
@@ -105,6 +126,14 @@ class NoteIn(Schema):
         if not v:
             raise ValueError("a note needs at least one section")
         return v
+
+    @model_validator(mode="after")
+    def _exactly_one_anchor(self) -> NoteIn:
+        has_point = self.lng is not None and self.lat is not None
+        has_shape = self.shape is not None
+        if has_point == has_shape:  # both, or neither
+            raise ValueError("provide exactly one anchor: lng+lat OR shape")
+        return self
 
 
 class AppendIn(Schema):
