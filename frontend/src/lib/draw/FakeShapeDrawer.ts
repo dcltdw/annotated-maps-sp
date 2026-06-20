@@ -10,7 +10,7 @@ export class FakeShapeDrawer implements ShapeDrawer {
     this.lastMode = mode;
     this.onComplete = onComplete;
   }
-  editShape(_: DrawShape, __: (s: DrawShape) => void): void {}
+  editShape(_shape: DrawShape, _onChange: (s: DrawShape) => void): void {}
   cancel(): void {
     this.onComplete = null;
   }
