@@ -106,13 +106,13 @@ export function MapScreen() {
     setPendingShape(null);
   }, []);
 
-  // Enter draw mode: arm the polygon drawer; stay in "view" so the map/markers keep
-  // rendering. Suppress click-to-drop while drawing (see onMapClick gating below).
-  const handleStartDraw = useCallback(() => {
+  // Enter draw mode: arm the requested drawer (polygon/line); stay in "view" so the
+  // map/markers keep rendering. Suppress click-to-drop while drawing (onMapClick gating).
+  const handleStartDraw = useCallback((drawShapeMode: DrawMode) => {
     if (!canWrite) return;
     setSelectedId(null);
     setPendingShape(null);
-    setDrawMode("polygon");
+    setDrawMode(drawShapeMode);
   }, [canWrite]);
 
   // Polygon finished: capture it, stop drawing. In create flow this opens the editor;
@@ -227,8 +227,9 @@ export function MapScreen() {
   const editorPanel = mode !== "view" ? (
     <>
       {isRegionEdit && (
-        <button type="button" className="redraw-area" onClick={handleStartDraw}>
-          {t("screen.redrawArea")}
+        <button type="button" className="redraw-area"
+          onClick={() => handleStartDraw(editorShape?.kind === "line" ? "line" : "polygon")}>
+          {t(editorShape?.kind === "line" ? "screen.redrawRoute" : "screen.redrawArea")}
         </button>
       )}
       <NoteEditor
@@ -276,12 +277,19 @@ export function MapScreen() {
             />
           </Suspense>
           {canWrite && mode === "view" && !drawMode && (
-            <button className="draw-area" onClick={handleStartDraw}>
-              {t("screen.drawArea")}
-            </button>
+            <>
+              <button className="draw-area" onClick={() => handleStartDraw("polygon")}>
+                {t("screen.drawArea")}
+              </button>
+              <button className="draw-route" onClick={() => handleStartDraw("line")}>
+                {t("screen.drawRoute")}
+              </button>
+            </>
           )}
           {drawMode && (
-            <div className="drawing-hint" role="status">{t("screen.drawingHint")}</div>
+            <div className="drawing-hint" role="status">
+              {t(drawMode === "line" ? "screen.drawingHintRoute" : "screen.drawingHint")}
+            </div>
           )}
           {selected && !panelOpen && mode === "view" && !drawMode && (
             <button className="reopen" aria-label={t("screen.reopenAria")} onClick={() => setPanelOpen(true)}>
