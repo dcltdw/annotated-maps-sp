@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Group, NoteEdit, NoteInput, NoteUpdateInput, SectionInput } from "../api/types";
+import type { Group, NoteEdit, NoteInput, NoteUpdateInput, SectionInput, Shape } from "../api/types";
 import { SectionEditor } from "./SectionEditor";
 
 const blankSection = (order: number): SectionInput => ({
@@ -10,6 +10,7 @@ const blankSection = (order: number): SectionInput => ({
 interface Props {
   lng: number;
   lat: number;
+  shape?: Shape;
   groups: Group[];
   authorLabel: string;
   existing?: NoteEdit; // present => edit mode
@@ -18,7 +19,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export function NoteEditor({ lng, lat, groups, authorLabel, existing, variant = "note", onSave, onCancel }: Props) {
+export function NoteEditor({ lng, lat, shape, groups, authorLabel, existing, variant = "note", onSave, onCancel }: Props) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [sections, setSections] = useState<SectionInput[]>(existing?.sections ?? [blankSection(0)]);
@@ -31,7 +32,8 @@ export function NoteEditor({ lng, lat, groups, authorLabel, existing, variant = 
     if (sections.some((s) => s.rule_type === "audience" && ((s.rule_params.group_ids as string[]) ?? []).length === 0))
       return setError(t("editor.audienceGroup"));
     const ordered = sections.map((s, i) => ({ ...s, order: i }));
-    const base: NoteInput = { title: title.trim(), lng, lat, sections: ordered };
+    const anchor = shape ? { shape } : { lng, lat };
+    const base: NoteInput = { title: title.trim(), ...anchor, sections: ordered };
     onSave(existing ? { ...base, version: existing.version } : base);
   }
 

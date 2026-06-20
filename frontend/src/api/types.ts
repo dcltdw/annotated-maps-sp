@@ -55,7 +55,13 @@ export interface SectionInput {
   teaser: boolean;
   teaser_text: string;
 }
-export interface NoteInput { title: string; lng: number; lat: number; sections: SectionInput[]; }
+export interface NoteInput {
+  title: string;
+  lng?: number;
+  lat?: number;
+  shape?: Shape; // present for region notes instead of lng/lat
+  sections: SectionInput[];
+}
 export interface NoteUpdateInput extends NoteInput { version: number; }
 
 export type SectionEdit = SectionInput;
@@ -64,6 +70,7 @@ export interface NoteEdit {
   title: string;
   lng: number | null;
   lat: number | null;
+  shape?: Shape | null;
   version: number;
   sections: SectionEdit[];
 }
