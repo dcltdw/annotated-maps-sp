@@ -55,9 +55,25 @@ class TenantScopedModel(BaseModel):
 class User(BaseModel):
     display_name = models.CharField(max_length=200)
     reputation = models.PositiveIntegerField(default=0)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    # Django-hasher string; blank = cannot log in
+    password = models.CharField(max_length=128, blank=True, default="")
 
     def __str__(self) -> str:
         return self.display_name
+
+
+class AuthSession(BaseModel):
+    """A bearer-token session. We store only the SHA-256 of the token, never the raw token."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="auth_sessions")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    created_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True, default="")
+
+    def __str__(self) -> str:
+        return f"session for {self.user_id}"
 
 
 class Group(TenantScopedModel):
