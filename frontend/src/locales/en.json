@@ -10,6 +10,8 @@
   "screen.drawRoute": "✏️ Draw route",
   "screen.redrawRoute": "Redraw route",
   "screen.drawingHintRoute": "Click to add points; double-click to finish the route.",
+  "screen.drawCircle": "✏️ Draw circle",
+  "screen.drawingHintCircle": "Click the center, then click again to set the radius.",
   "switcher.label": "Viewing as",
   "switcher.guest": "Guest",
   "switcher.viewer": "Viewer",

@@ -151,6 +151,24 @@ test("Draw route arms line mode and finishing a line opens the editor in create 
   expect(screen.getByTestId("editor-has-shape").textContent).toBe("shape");
 });
 
+test("Draw circle arms circle mode and finishing a polygon opens the editor in create mode with a shape anchor", async () => {
+  render(<MapScreen />);
+  await screen.findByRole("button", { name: "pin n1" });
+  await userEvent.click(screen.getByRole("button", { name: "Owner" }));
+  await waitFor(() => expect(fetchNotes).toHaveBeenCalledWith("m1", "u1"));
+
+  // Arm circle draw mode via the "Draw circle" button
+  expect(screen.getByTestId("draw-mode").textContent).toBe("none");
+  await userEvent.click(screen.getByRole("button", { name: /draw circle/i }));
+  expect(screen.getByTestId("draw-mode").textContent).toBe("circle");
+
+  // Emit a finished polygon shape (terra-draw circle adapter emits a polygon) → editor opens in create mode with a shape anchor
+  await userEvent.click(screen.getByRole("button", { name: "finish polygon" }));
+  expect(await screen.findByTestId("note-editor")).toBeInTheDocument();
+  expect(screen.getByText("create-mode")).toBeInTheDocument();
+  expect(screen.getByTestId("editor-has-shape").textContent).toBe("shape");
+});
+
 test("create: save calls createNote then re-fetches notes", async () => {
   render(<MapScreen />);
   await screen.findByRole("button", { name: "pin n1" });
