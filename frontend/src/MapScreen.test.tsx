@@ -52,6 +52,9 @@ vi.mock("./components/MapView", () => ({
         <button onClick={() => onShapeDrawn?.({ kind: "polygon", coordinates: [[-71, 42], [-71, 43], [-72, 43]] })}>
           finish polygon
         </button>
+        <button onClick={() => onShapeDrawn?.({ kind: "line", coordinates: [[-71, 42], [-71, 43]] })}>
+          finish line
+        </button>
       </>
     );
   },
@@ -128,6 +131,24 @@ test("as a persona, clicking the map opens the NoteEditor in create mode", async
   await userEvent.click(screen.getByRole("button", { name: "click map" }));
   expect(await screen.findByTestId("note-editor")).toBeInTheDocument();
   expect(screen.getByText("create-mode")).toBeInTheDocument();
+});
+
+test("Draw route arms line mode and finishing a line opens the editor in create mode", async () => {
+  render(<MapScreen />);
+  await screen.findByRole("button", { name: "pin n1" });
+  await userEvent.click(screen.getByRole("button", { name: "Owner" }));
+  await waitFor(() => expect(fetchNotes).toHaveBeenCalledWith("m1", "u1"));
+
+  // Arm line draw mode via the "Draw route" button
+  expect(screen.getByTestId("draw-mode").textContent).toBe("none");
+  await userEvent.click(screen.getByRole("button", { name: /draw route/i }));
+  expect(screen.getByTestId("draw-mode").textContent).toBe("line");
+
+  // Emit a finished line shape → editor opens in create mode with a shape anchor
+  await userEvent.click(screen.getByRole("button", { name: "finish line" }));
+  expect(await screen.findByTestId("note-editor")).toBeInTheDocument();
+  expect(screen.getByText("create-mode")).toBeInTheDocument();
+  expect(screen.getByTestId("editor-has-shape").textContent).toBe("shape");
 });
 
 test("create: save calls createNote then re-fetches notes", async () => {
