@@ -1,21 +1,33 @@
 from __future__ import annotations
 
+from django.contrib.auth.hashers import make_password
 from django.contrib.gis.geos import LineString, Point, Polygon
 
 from core.models import Group, Membership, Tenant, User
 from maps.models import Map, Note, Section
 
+DEMO_PASSWORD = "demo-pass-12345"  # public demo credential, surfaced in the UI hint
+
 
 def build_boston_demo() -> dict:
     tenant, _ = Tenant.objects.get_or_create(slug="boston", defaults={"name": "Boston Demo"})
 
-    owner, _ = User.objects.get_or_create(display_name="You (owner)", defaults={"reputation": 100})
-    friend, _ = User.objects.get_or_create(display_name="A Friend", defaults={"reputation": 10})
+    _hashed = make_password(DEMO_PASSWORD)
+    owner, _ = User.objects.get_or_create(
+        display_name="You (owner)",
+        defaults={"reputation": 100, "email": "owner@demo.example", "password": _hashed},
+    )
+    friend, _ = User.objects.get_or_create(
+        display_name="A Friend",
+        defaults={"reputation": 10, "email": "friend@demo.example", "password": _hashed},
+    )
     runner, _ = User.objects.get_or_create(
-        display_name="Run-club Member", defaults={"reputation": 30}
+        display_name="Run-club Member",
+        defaults={"reputation": 30, "email": "runner@demo.example", "password": _hashed},
     )
     local, _ = User.objects.get_or_create(
-        display_name="Reputable Local", defaults={"reputation": 60}
+        display_name="Reputable Local",
+        defaults={"reputation": 60, "email": "local@demo.example", "password": _hashed},
     )
 
     for user, role in [
