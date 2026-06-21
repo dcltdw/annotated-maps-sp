@@ -21,3 +21,17 @@ def test_seed_includes_an_area_and_a_route(db):
     data = build_boston_demo()
     assert data["area_note"].area is not None and data["area_note"].is_seed
     assert data["route_note"].path is not None and data["route_note"].is_seed
+
+
+def test_seed_personas_can_log_in(db):
+    from django.contrib.auth.hashers import check_password
+
+    from maps.seed import DEMO_PASSWORD, build_boston_demo
+
+    data = build_boston_demo()
+    friend = data["friend"]
+    assert friend.email == "friend@demo.example"
+    assert check_password(DEMO_PASSWORD, friend.password)  # the seeded login works
+    assert data["owner"].email == "owner@demo.example"
+    assert data["runner"].email == "runner@demo.example"
+    assert data["local"].email == "local@demo.example"
