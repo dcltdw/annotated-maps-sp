@@ -32,3 +32,6 @@ def test_seed_personas_can_log_in(db):
     friend = data["friend"]
     assert friend.email == "friend@demo.example"
     assert check_password(DEMO_PASSWORD, friend.password)  # the seeded login works
+    assert data["owner"].email == "owner@demo.example"
+    assert data["runner"].email == "runner@demo.example"
+    assert data["local"].email == "local@demo.example"

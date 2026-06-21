@@ -12,22 +12,37 @@ DEMO_PASSWORD = "demo-pass-12345"  # public demo credential, surfaced in the UI 
 def build_boston_demo() -> dict:
     tenant, _ = Tenant.objects.get_or_create(slug="boston", defaults={"name": "Boston Demo"})
 
-    _hashed = make_password(DEMO_PASSWORD)
     owner, _ = User.objects.get_or_create(
         display_name="You (owner)",
-        defaults={"reputation": 100, "email": "owner@demo.example", "password": _hashed},
+        defaults={
+            "reputation": 100,
+            "email": "owner@demo.example",
+            "password": make_password(DEMO_PASSWORD),
+        },
     )
     friend, _ = User.objects.get_or_create(
         display_name="A Friend",
-        defaults={"reputation": 10, "email": "friend@demo.example", "password": _hashed},
+        defaults={
+            "reputation": 10,
+            "email": "friend@demo.example",
+            "password": make_password(DEMO_PASSWORD),
+        },
     )
     runner, _ = User.objects.get_or_create(
         display_name="Run-club Member",
-        defaults={"reputation": 30, "email": "runner@demo.example", "password": _hashed},
+        defaults={
+            "reputation": 30,
+            "email": "runner@demo.example",
+            "password": make_password(DEMO_PASSWORD),
+        },
     )
     local, _ = User.objects.get_or_create(
         display_name="Reputable Local",
-        defaults={"reputation": 60, "email": "local@demo.example", "password": _hashed},
+        defaults={
+            "reputation": 60,
+            "email": "local@demo.example",
+            "password": make_password(DEMO_PASSWORD),
+        },
     )
 
     for user, role in [
