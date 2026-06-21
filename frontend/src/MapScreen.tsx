@@ -284,11 +284,20 @@ export function MapScreen() {
               <button className="draw-route" onClick={() => handleStartDraw("line")}>
                 {t("screen.drawRoute")}
               </button>
+              <button className="draw-circle" onClick={() => handleStartDraw("circle")}>
+                {t("screen.drawCircle")}
+              </button>
             </>
           )}
           {drawMode && (
             <div className="drawing-hint" role="status">
-              {t(drawMode === "line" ? "screen.drawingHintRoute" : "screen.drawingHint")}
+              {t(
+                drawMode === "line"
+                  ? "screen.drawingHintRoute"
+                  : drawMode === "circle"
+                    ? "screen.drawingHintCircle"
+                    : "screen.drawingHint",
+              )}
             </div>
           )}
           {selected && !panelOpen && mode === "view" && !drawMode && (
