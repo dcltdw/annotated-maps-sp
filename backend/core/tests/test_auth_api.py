@@ -54,6 +54,14 @@ def test_login_succeeds_and_is_generic_on_failure(db):
     assert no_user.status_code == 401
 
 
+def test_make_password_none_is_unusable(db):
+    from django.contrib.auth.hashers import check_password, make_password
+
+    dummy = make_password(None)
+    assert not check_password("anything", dummy)
+    assert not check_password("", dummy)
+
+
 def test_me_and_logout(db):
     signup = _post(
         "/signup", {"email": "a@example.com", "password": "longenough", "display_name": "A"}

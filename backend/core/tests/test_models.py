@@ -33,7 +33,6 @@ def test_default_manager_is_soft_delete():
     assert type(Tenant._base_manager).__name__ == "Manager"
 
 
-@pytest.mark.django_db
 def test_user_has_email_and_password_fields(db):
     from core.models import User
 
@@ -42,9 +41,7 @@ def test_user_has_email_and_password_fields(db):
     assert u.email == "x@example.com" and u.password == "hashed"
 
 
-@pytest.mark.django_db
 def test_email_is_unique_but_nullable(db):
-    import pytest
     from django.db import IntegrityError
 
     from core.models import User
@@ -56,7 +53,6 @@ def test_email_is_unique_but_nullable(db):
         User.objects.create(display_name="D", email="dup@example.com")
 
 
-@pytest.mark.django_db
 def test_authsession_links_to_user(db):
     from datetime import timedelta
 

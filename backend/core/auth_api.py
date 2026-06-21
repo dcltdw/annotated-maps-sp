@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from django.contrib.auth.hashers import check_password, make_password
+from django.db import IntegrityError
 from ninja import Router, Schema, Status
 from ninja.errors import HttpError
 from pydantic import field_validator
@@ -54,11 +55,14 @@ class AuthOut(Schema):
 def signup(request, payload: SignupIn):
     if User.objects.filter(email=payload.email).exists():
         raise HttpError(409, "That email is already registered.")
-    user = User.objects.create(
-        email=payload.email,
-        password=make_password(payload.password),
-        display_name=payload.display_name,
-    )
+    try:
+        user = User.objects.create(
+            email=payload.email,
+            password=make_password(payload.password),
+            display_name=payload.display_name,
+        )
+    except IntegrityError:
+        raise HttpError(409, "That email is already registered.") from None
     return Status(201, {"token": create_session(user, request), "user": user})
 
 
