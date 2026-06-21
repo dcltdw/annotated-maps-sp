@@ -36,11 +36,19 @@ def test_signup_rejects_duplicate_email_and_short_password(db):
     assert dup.status_code == 409
     weak = _post("/signup", {"email": "b@example.com", "password": "short", "display_name": "B"})
     assert weak.status_code == 422
+    blank_name = _post(
+        "/signup",
+        {"email": "blankname@example.com", "password": "longenough", "display_name": "   "},
+    )
+    assert blank_name.status_code == 422
 
 
 def test_login_succeeds_and_is_generic_on_failure(db):
     _post("/signup", {"email": "a@example.com", "password": "longenough", "display_name": "A"})
-    assert _post("/login", {"email": "a@example.com", "password": "longenough"}).status_code == 200
+    r = _post("/login", {"email": "a@example.com", "password": "longenough"})
+    assert r.status_code == 200
+    b = r.json()
+    assert b["token"] and b["user"]["email"] == "a@example.com"
     assert _post("/login", {"email": "a@example.com", "password": "wrongpass"}).status_code == 401
     no_user = _post("/login", {"email": "nobody@example.com", "password": "longenough"})
     assert no_user.status_code == 401

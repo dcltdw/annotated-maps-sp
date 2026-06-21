@@ -38,7 +38,7 @@ def create_session(user: User, request: HttpRequest) -> str:
     return raw
 
 
-def _bearer_token(request: HttpRequest) -> str | None:
+def bearer_token(request: HttpRequest) -> str | None:
     header = request.headers.get("Authorization", "")
     prefix = "Bearer "
     return header[len(prefix) :].strip() if header.startswith(prefix) else None
@@ -46,7 +46,7 @@ def _bearer_token(request: HttpRequest) -> str | None:
 
 def authed_user(request: HttpRequest) -> User | None:
     """The user behind a valid, non-expired bearer token; None otherwise."""
-    token = _bearer_token(request)
+    token = bearer_token(request)
     if not token:
         return None
     session = (

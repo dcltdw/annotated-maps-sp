@@ -7,7 +7,7 @@ from ninja import Router, Schema, Status
 from ninja.errors import HttpError
 from pydantic import field_validator
 
-from core.auth import authed_user, create_session
+from core.auth import authed_user, bearer_token, create_session, hash_token
 from core.models import User
 
 router = Router()
@@ -80,11 +80,9 @@ def logout(request):
     if user is None:
         raise HttpError(401, "Not signed in.")
     # delete the specific presenting session
-    from core.auth import hash_token
-
-    header = request.headers.get("Authorization", "")
-    token = header[len("Bearer ") :].strip()
-    user.auth_sessions.filter(token_hash=hash_token(token)).delete()
+    token = bearer_token(request)
+    if token:
+        user.auth_sessions.filter(token_hash=hash_token(token)).delete()
     return Status(204, None)
 
 
