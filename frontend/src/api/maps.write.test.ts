@@ -47,23 +47,23 @@ test("fetchGroups hits the groups endpoint", async () => {
 
 test("createNote attaches the bearer token when one is stored", async () => {
   setToken("tok-abc");
-  const spy = vi
+  const fetchSpy = vi
     .spyOn(globalThis, "fetch")
     .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ id: "n1" }), { status: 201 })));
   await createNote("m1", { title: "T", lng: -71, lat: 42, sections: [] }, null);
-  const init = spy.mock.calls[0][1] as RequestInit;
+  const init = fetchSpy.mock.calls[0][1] as RequestInit;
   expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-abc");
-  expect(spy.mock.calls[0][0]).not.toContain("preview_as"); // null previewAs omits the param
+  expect(fetchSpy.mock.calls[0][0]).not.toContain("preview_as"); // null previewAs omits the param
   clearToken();
 });
 
 test("createNote omits Authorization when no token is stored", async () => {
   clearToken();
-  const spy = vi
+  const fetchSpy = vi
     .spyOn(globalThis, "fetch")
     .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ id: "n1" }), { status: 201 })));
   await createNote("m1", { title: "T", lng: -71, lat: 42, sections: [] }, "owner");
-  const init = spy.mock.calls[0][1] as RequestInit;
+  const init = fetchSpy.mock.calls[0][1] as RequestInit;
   expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
-  expect(spy.mock.calls[0][0]).toContain("preview_as=owner"); // string previewAs still sent
+  expect(fetchSpy.mock.calls[0][0]).toContain("preview_as=owner"); // string previewAs still sent
 });

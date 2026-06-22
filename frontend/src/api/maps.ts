@@ -20,7 +20,7 @@ export const fetchMaps = () => getJson<MapOut[]>(`${API_BASE}/maps`);
 export const fetchViewers = (mapId: string) =>
   getJson<Viewer[]>(`${API_BASE}/maps/${mapId}/viewers`);
 export const fetchNotes = (mapId: string, previewAs: string | null) =>
-  getJson<NoteOut[]>(`${API_BASE}/maps/${mapId}/notes${previewAs ? `?preview_as=${previewAs}` : ""}`);
+  getJson<NoteOut[]>(`${API_BASE}/maps/${mapId}/notes${previewQuery(previewAs)}`);
 
 export interface ApiError extends Error { status: number; }
 export function makeApiError(status: number, message: string): ApiError {
