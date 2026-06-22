@@ -23,7 +23,13 @@ export function AuthBar({ user, onAuthed, onLoggedOut }: Props) {
     return (
       <div className="authbar">
         <span className="authbar__who">▸ {user.display_name}</span>
-        <button type="button" onClick={async () => { await logout(); onLoggedOut(); }}>
+        <button type="button" onClick={async () => {
+          try {
+            await logout();
+          } finally {
+            onLoggedOut();
+          }
+        }}>
           {t("auth.logout")}
         </button>
       </div>
@@ -55,7 +61,7 @@ export function AuthBar({ user, onAuthed, onLoggedOut }: Props) {
           {isSignup && (
             <label>
               {t("auth.displayName")}
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </label>
           )}
           <label>

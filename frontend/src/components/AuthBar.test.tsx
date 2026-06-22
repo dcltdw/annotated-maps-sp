@@ -42,6 +42,7 @@ test("toggling to sign up calls signup with the display name", async () => {
   await userEvent.type(screen.getByLabelText(/password/i), "longenough");
   await userEvent.click(screen.getByRole("button", { name: /^sign up$/i }));
   await waitFor(() => expect(spy).toHaveBeenCalledWith("a@x.com", "longenough", "Ada"));
+  await waitFor(() => expect(onAuthed).toHaveBeenCalledWith(USER));
 });
 
 test("a failed login shows an error and does not report a user", async () => {
