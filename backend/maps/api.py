@@ -49,8 +49,8 @@ def list_maps(request):
 
 @router.get("/maps/{map_id}/viewers", response=list[ViewerOut])
 def list_viewers(request, map_id: UUID):
-    # Demo scaffolding: the seeded members of this map's tenant, for the preview-as switcher.
-    # FIXME(A5): replaced by real authenticated identity.
+    # The seeded members of this map's tenant, for the anonymous SANDBOX_MODE persona
+    # switcher (the "preview as" demo). Authenticated users sign in via /api/v1/auth instead.
     the_map = get_object_or_404(Map, id=map_id)
     user_ids = Membership.objects.filter(tenant=the_map.tenant).values_list("user_id", flat=True)
     return [
