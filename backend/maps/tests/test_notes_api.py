@@ -7,7 +7,13 @@ from django.test import Client
 
 from core.models import Group, Tenant, User
 from maps.models import Map, Note, Section
+from maps.tests.conftest import client_as
 from maps.visibility import section_label
+
+
+@pytest.fixture(autouse=True)
+def _sandbox(settings):
+    settings.SANDBOX_MODE = True
 
 
 @pytest.fixture
@@ -65,8 +71,8 @@ def test_contributor_creates_a_point_note(boston):
         "lat": 42.35,
         "sections": [{"order": 0, "content": "hi", "rule_type": "public"}],
     }
-    resp = Client().post(
-        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+    resp = client_as(boston["owner"]).post(
+        f"/api/v1/maps/{boston['map'].id}/notes",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -98,7 +104,7 @@ def test_author_can_soft_delete_own_note(boston):
         author=boston["owner"],
         point=Point(-71.0, 42.0),
     )
-    resp = Client().delete(f"/api/v1/notes/{note.id}?preview_as={boston['owner'].id}")
+    resp = client_as(boston["owner"]).delete(f"/api/v1/notes/{note.id}")
     assert resp.status_code == 204
     assert Note.objects.filter(id=note.id).count() == 0  # hidden by default manager
     assert Note.all_objects.filter(id=note.id).count() == 1  # soft-deleted, still present
@@ -112,7 +118,7 @@ def test_non_author_cannot_delete(boston):
         author=boston["owner"],
         point=Point(-71.0, 42.0),
     )
-    resp = Client().delete(f"/api/v1/notes/{note.id}?preview_as={other.id}")
+    resp = client_as(other).delete(f"/api/v1/notes/{note.id}")
     assert resp.status_code == 403
     assert Note.objects.filter(id=note.id).count() == 1  # not deleted
 
@@ -150,8 +156,8 @@ def test_create_rejects_invalid_rule_type(boston):
         "lat": 42.0,
         "sections": [{"order": 0, "content": "c", "rule_type": "bogus"}],
     }
-    resp = Client().post(
-        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+    resp = client_as(boston["owner"]).post(
+        f"/api/v1/maps/{boston['map'].id}/notes",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -238,8 +244,8 @@ def test_locked_section_with_empty_teaser_text_returns_null(boston):
 
 
 def _post(boston, payload):
-    return Client().post(
-        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+    return client_as(boston["owner"]).post(
+        f"/api/v1/maps/{boston['map'].id}/notes",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -335,7 +341,7 @@ def _note_with_sections(boston):
 
 def test_author_gets_raw_note_for_edit(boston):
     note = _note_with_sections(boston)
-    body = Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={boston['owner'].id}").json()
+    body = client_as(boston["owner"]).get(f"/api/v1/notes/{note.id}/edit").json()
     assert body["title"] == "Editable"
     assert body["version"] == note.version
     gate = body["sections"][1]
@@ -346,13 +352,13 @@ def test_author_gets_raw_note_for_edit(boston):
 def test_non_author_cannot_get_edit(boston):
     note = _note_with_sections(boston)
     other = User.objects.create(display_name="Nope")
-    assert Client().get(f"/api/v1/notes/{note.id}/edit?preview_as={other.id}").status_code == 403
+    assert client_as(other).get(f"/api/v1/notes/{note.id}/edit").status_code == 403
     assert Client().get(f"/api/v1/notes/{note.id}/edit").status_code == 403  # guest
 
 
-def _put(note_id, payload, who):
-    return Client().put(
-        f"/api/v1/notes/{note_id}?preview_as={who}",
+def _put(note_id, payload, user):
+    return client_as(user).put(
+        f"/api/v1/notes/{note_id}",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -367,7 +373,7 @@ def test_author_edits_own_note(boston):
         "version": note.version,
         "sections": [{"order": 0, "content": "only one now", "rule_type": "public"}],
     }
-    resp = _put(note.id, payload, boston["owner"].id)
+    resp = _put(note.id, payload, boston["owner"])
     assert resp.status_code == 200
     assert resp.json()["id"] == str(note.id)
     assert resp.json()["version"] == note.version + 1
@@ -386,7 +392,7 @@ def test_edit_rejects_invalid_body(boston):
         "version": note.version,
         "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
     }
-    assert _put(note.id, payload, boston["owner"].id).status_code == 422
+    assert _put(note.id, payload, boston["owner"]).status_code == 422
 
 
 def test_edit_version_conflict_returns_409(boston):
@@ -401,7 +407,7 @@ def test_edit_version_conflict_returns_409(boston):
         "version": stale,
         "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
     }
-    assert _put(note.id, payload, boston["owner"].id).status_code == 409
+    assert _put(note.id, payload, boston["owner"]).status_code == 409
 
 
 def test_two_edits_with_the_same_starting_version_second_conflicts(boston):
@@ -414,10 +420,10 @@ def test_two_edits_with_the_same_starting_version_second_conflicts(boston):
         "version": v0,
         "sections": [{"order": 0, "content": "a", "rule_type": "public"}],
     }
-    r1 = _put(note.id, body, boston["owner"].id)
+    r1 = _put(note.id, body, boston["owner"])
     assert r1.status_code == 200 and r1.json()["version"] == v0 + 1
     body["title"] = "second"
-    r2 = _put(note.id, body, boston["owner"].id)
+    r2 = _put(note.id, body, boston["owner"])
     assert r2.status_code == 409
     note.refresh_from_db()
     assert note.title == "first"  # the conflicting second edit did not apply
@@ -433,7 +439,7 @@ def test_non_author_cannot_edit(boston):
         "version": note.version,
         "sections": [{"order": 0, "content": "c", "rule_type": "public"}],
     }
-    assert _put(note.id, payload, other.id).status_code == 403
+    assert _put(note.id, payload, other).status_code == 403
 
 
 def test_guest_cannot_edit(boston):
@@ -500,9 +506,9 @@ def test_appends_nest_under_parent_and_filter_independently(boston):
     assert "my private note" not in [s["content"] for s in a3["sections"]]
 
 
-def _append(parent_id, payload, who):
-    return Client().post(
-        f"/api/v1/notes/{parent_id}/appends?preview_as={who}",
+def _append(parent_id, payload, user):
+    return client_as(user).post(
+        f"/api/v1/notes/{parent_id}/appends",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -520,7 +526,7 @@ def test_contributor_appends_to_anothers_note(boston):
     resp = _append(
         parent.id,
         {"title": "Tip", "sections": [{"content": "sunset", "rule_type": "public"}]},
-        friend.id,
+        friend,
     )
     assert resp.status_code == 201
     ap = Note.objects.get(id=resp.json()["id"])
@@ -538,7 +544,7 @@ def test_append_allows_empty_title(boston):
     resp = _append(
         parent.id,
         {"sections": [{"content": "c", "rule_type": "public"}]},
-        boston["owner"].id,
+        boston["owner"],
     )
     assert resp.status_code == 201
     assert Note.objects.get(id=resp.json()["id"]).title == ""
@@ -575,7 +581,7 @@ def test_cannot_append_to_an_append(boston):
     resp = _append(
         child.id,
         {"sections": [{"content": "c", "rule_type": "public"}]},
-        boston["owner"].id,
+        boston["owner"],
     )
     assert resp.status_code == 400
 
@@ -587,7 +593,7 @@ def test_append_rejects_zero_sections(boston):
         author=boston["owner"],
         point=Point(-71.0, 42.0),
     )
-    assert _append(parent.id, {"sections": []}, boston["owner"].id).status_code == 422
+    assert _append(parent.id, {"sections": []}, boston["owner"]).status_code == 422
 
 
 def _make_append(boston, author):
@@ -616,8 +622,8 @@ def test_author_edits_own_append(boston):
         "version": ap.version,
         "sections": [{"order": 0, "content": "new", "rule_type": "public"}],
     }
-    resp = Client().put(
-        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+    resp = client_as(friend).put(
+        f"/api/v1/appends/{ap.id}",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -634,9 +640,9 @@ def test_non_author_cannot_edit_append(boston):
         "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
     }
     assert (
-        Client()
+        client_as(boston["owner"])
         .put(
-            f"/api/v1/appends/{ap.id}?preview_as={boston['owner'].id}",
+            f"/api/v1/appends/{ap.id}",
             data=json.dumps(payload),
             content_type="application/json",
         )
@@ -656,9 +662,9 @@ def test_append_edit_version_conflict_409(boston):
         "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
     }
     assert (
-        Client()
+        client_as(friend)
         .put(
-            f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+            f"/api/v1/appends/{ap.id}",
             data=json.dumps(payload),
             content_type="application/json",
         )
@@ -676,15 +682,15 @@ def test_two_append_edits_with_the_same_starting_version_second_conflicts(boston
         "version": v0,
         "sections": [{"order": 0, "content": "a", "rule_type": "public"}],
     }
-    r1 = Client().put(
-        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+    r1 = client_as(friend).put(
+        f"/api/v1/appends/{ap.id}",
         data=json.dumps(payload),
         content_type="application/json",
     )
     assert r1.status_code == 200 and r1.json()["version"] == v0 + 1
     payload["title"] = "second"
-    r2 = Client().put(
-        f"/api/v1/appends/{ap.id}?preview_as={friend.id}",
+    r2 = client_as(friend).put(
+        f"/api/v1/appends/{ap.id}",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -696,9 +702,9 @@ def test_two_append_edits_with_the_same_starting_version_second_conflicts(boston
 def test_delete_and_edit_endpoints_work_on_an_append(boston):
     friend = User.objects.create(display_name="A Friend")
     ap = _make_append(boston, friend)
-    edit = Client().get(f"/api/v1/notes/{ap.id}/edit?preview_as={friend.id}").json()
+    edit = client_as(friend).get(f"/api/v1/notes/{ap.id}/edit").json()
     assert edit["title"] == "T" and edit["lng"] is None  # append has no point
-    assert Client().delete(f"/api/v1/notes/{ap.id}?preview_as={friend.id}").status_code == 204
+    assert client_as(friend).delete(f"/api/v1/notes/{ap.id}").status_code == 204
     assert Note.objects.filter(id=ap.id).count() == 0  # soft-deleted
 
 
@@ -730,8 +736,8 @@ def test_cannot_edit_a_top_level_note_via_the_append_endpoint(boston):
         "version": note.version,
         "sections": [{"order": 0, "content": "x", "rule_type": "public"}],
     }
-    resp = Client().put(
-        f"/api/v1/appends/{note.id}?preview_as={boston['owner'].id}",
+    resp = client_as(boston["owner"]).put(
+        f"/api/v1/appends/{note.id}",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -749,8 +755,8 @@ def test_create_does_not_emit_the_tuple_return_deprecation(boston):
     }
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        resp = Client().post(
-            f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+        resp = client_as(boston["owner"]).post(
+            f"/api/v1/maps/{boston['map'].id}/notes",
             data=json.dumps(payload),
             content_type="application/json",
         )
@@ -804,8 +810,8 @@ def test_point_notes_have_null_shape(boston):
 
 
 def _post_note(boston, body):
-    return Client().post(
-        f"/api/v1/maps/{boston['map'].id}/notes?preview_as={boston['owner'].id}",
+    return client_as(boston["owner"]).post(
+        f"/api/v1/maps/{boston['map'].id}/notes",
         data=json.dumps(body),
         content_type="application/json",
     )
@@ -865,8 +871,8 @@ def test_create_rejects_self_intersecting_polygon(boston):
 
 
 def _put_note(boston, note_id, body):
-    return Client().put(
-        f"/api/v1/notes/{note_id}?preview_as={boston['owner'].id}",
+    return client_as(boston["owner"]).put(
+        f"/api/v1/notes/{note_id}",
         data=json.dumps(body),
         content_type="application/json",
     )
@@ -925,6 +931,6 @@ def test_note_for_edit_returns_shape_for_a_region(boston):
         area=Polygon(((-71.1, 42.3), (-71.1, 42.4), (-71.0, 42.4), (-71.1, 42.3))),
     )
     Section.objects.create(note=n, order=0, content="x", rule_type="public")
-    r = Client().get(f"/api/v1/notes/{n.id}/edit?preview_as={boston['owner'].id}")
+    r = client_as(boston["owner"]).get(f"/api/v1/notes/{n.id}/edit")
     assert r.status_code == 200
     assert r.json()["shape"]["kind"] == "polygon" and r.json()["lng"] is None

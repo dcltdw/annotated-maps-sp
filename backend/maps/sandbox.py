@@ -4,13 +4,13 @@ settings.SANDBOX_MODE (default False → local dev + tests behave like a normal 
 from __future__ import annotations
 
 from datetime import timedelta
-from uuid import UUID
 
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
 from ninja.errors import HttpError
 
+from core.auth import Identity
 from maps.models import Note
 
 # Per-deploy caps (only enforced when SANDBOX_MODE).
@@ -43,33 +43,50 @@ def ensure_session(request: HttpRequest) -> str:
     return session_key
 
 
-def is_editable(request: HttpRequest, note: Note, preview_as: UUID | None) -> bool:
+def is_editable(request: HttpRequest, note: Note, identity: Identity) -> bool:
     """Whether the caller may edit/delete `note` (drives the read API's `editable`)."""
-    if settings.SANDBOX_MODE:
-        sk = request.session.session_key
-        return (not note.is_seed) and bool(sk) and note.session_key == sk
-    return note.author_id == preview_as
+    if identity.user_id is None:
+        return False
+    if identity.is_authenticated:
+        if settings.SANDBOX_MODE and note.is_seed:
+            return False
+        return note.author_id == identity.user_id
+    # anonymous + sandbox (identity.user_id is only non-None here under SANDBOX_MODE)
+    if note.is_seed:
+        return False
+    sk = request.session.session_key
+    return bool(sk) and note.session_key == sk
 
 
 def authorize_write(
-    request: HttpRequest, note: Note, preview_as: UUID | None, noun: str = "note"
+    request: HttpRequest, note: Note, identity: Identity, noun: str = "note"
 ) -> None:
     """Raise HttpError if the caller may not edit/delete `note`."""
-    if settings.SANDBOX_MODE:
-        if note.is_seed:
+    if identity.user_id is None:
+        raise HttpError(403, f"You can only edit your own {noun}s.")  # guest
+    if identity.is_authenticated:
+        if settings.SANDBOX_MODE and note.is_seed:
             raise HttpError(403, "The demo content is read-only.")
-        sk = request.session.session_key
-        if not sk or note.session_key != sk:
-            raise HttpError(403, "You can only change content you created in this session.")
-    else:
-        if preview_as is None or note.author_id != preview_as:
+        if note.author_id != identity.user_id:
             raise HttpError(403, f"You can only edit your own {noun}s.")
+        return
+    # anonymous + sandbox
+    if note.is_seed:
+        raise HttpError(403, "The demo content is read-only.")
+    sk = request.session.session_key
+    if not sk or note.session_key != sk:
+        raise HttpError(403, "You can only change content you created in this session.")
 
 
-def enforce_create_limits(request: HttpRequest, *, is_append: bool) -> tuple[str, str | None]:
-    """Enforce sandbox creation caps and return (session_key, client_ip) to stamp on
-    the new row. Raises HttpError(429) when a cap is hit. Caller guards on SANDBOX_MODE."""
-    session_key = ensure_session(request)
+def enforce_create_limits(
+    request: HttpRequest, *, is_append: bool, identity: Identity
+) -> tuple[str, str | None]:
+    """Enforce sandbox creation caps and return (session_key, client_ip) to stamp on the
+    new row. Raises HttpError(429) when a cap is hit. Caller guards on SANDBOX_MODE.
+
+    The global-rows and per-IP-hourly caps protect the deploy and apply to EVERY creator
+    (authenticated or anonymous). The per-session caps are anonymous-only: authenticated
+    creators are bucketed by author id, not session."""
     ip = client_ip(request)
     if Note.objects.filter(is_seed=False).count() >= MAX_EPHEMERAL_ROWS:
         raise HttpError(
@@ -84,6 +101,15 @@ def enforce_create_limits(request: HttpRequest, *, is_append: bool) -> tuple[str
         >= MAX_CREATES_PER_IP_PER_HOUR
     ):
         raise HttpError(429, "Too many additions from your network this hour — please slow down.")
+    if identity.is_authenticated:
+        # Authenticated creators are bucketed by author id, not session, so the per-session
+        # caps below don't apply. We don't yet impose a per-user create quota — the IP +
+        # global caps above bound abuse even with the public demo-persona login. To add a
+        # per-user cap later, count
+        #   Note.objects.filter(author_id=identity.user_id, is_seed=False, ...).count()
+        # here, mirroring the per-session branch below, and raise 429 past the threshold.
+        return "", (ip or None)
+    session_key = ensure_session(request)
     session_qs = Note.objects.filter(is_seed=False, session_key=session_key)
     if is_append:
         if session_qs.filter(parent__isnull=False).count() >= MAX_APPENDS_PER_SESSION:

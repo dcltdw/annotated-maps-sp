@@ -4,6 +4,11 @@ from django.test import Client
 from maps.seed import build_boston_demo
 
 
+@pytest.fixture(autouse=True)
+def _sandbox(settings):
+    settings.SANDBOX_MODE = True
+
+
 @pytest.fixture
 def demo(db):
     return build_boston_demo()

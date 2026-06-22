@@ -16,12 +16,14 @@ def viewer_for(user: User, tenant: Tenant) -> Viewer:
 
 
 def resolve_viewer(user_id: UUID | None, tenant: Tenant) -> Viewer:
-    """Resolve the current viewer from a preview-as user id. None / unknown → guest.
-    This is the auth seam: A5 replaces the user_id source with a real session.
+    """Resolve the current viewer from a user id. None / unknown → guest.
+    The user id is now produced by core.auth.resolve_identity (A5.1b), which gates it
+    behind real authentication; this function just maps an id (or None) to a Viewer.
     """
-    # FIXME(A5): preview_as is UNAUTHENTICATED identity impersonation — any caller
-    # who supplies a user id is treated as that user. Replace the user_id source
-    # with a session-authenticated identity before this ships to production.
+    # The caller passes a user id resolved by core.auth.resolve_identity: an authenticated
+    # bearer user always wins, and preview_as is honored only for an anonymous visitor under
+    # SANDBOX_MODE. So this is no longer raw impersonation — outside the sandbox an
+    # unauthenticated caller resolves to None (guest) here.
     if user_id is None:
         return Viewer()
     try:

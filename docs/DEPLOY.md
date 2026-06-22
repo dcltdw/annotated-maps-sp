@@ -92,6 +92,12 @@ The following are already set by `render.yaml` and need no action:
 
 `SANDBOX_MODE=true` is already set in `render.yaml`.
 
+### Sandbox abuse caps
+
+- Authenticated users (including the seeded demo-persona logins) are not subject to the
+  per-session note/append caps, but the per-IP-hourly and global-row caps still apply to
+  everyone in `SANDBOX_MODE` — so the public demo-persona password cannot be used to spam.
+
 ### Static web service — `annotated-maps-web`
 
 | Variable | Value |
