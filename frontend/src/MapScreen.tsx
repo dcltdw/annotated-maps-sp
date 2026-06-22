@@ -2,11 +2,13 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from "react-i18next";
 import type { ApiError } from "./api/maps";
 import { createAppend, createNote, deleteNote, fetchGroups, fetchMaps, fetchNoteForEdit, fetchNotes, fetchViewers, updateAppend, updateNote } from "./api/maps";
-import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Shape, Viewer } from "./api/types";
+import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Shape, UserOut, Viewer } from "./api/types";
 import type { DrawMode, DrawShape } from "./lib/draw";
 import { NoteEditor } from "./components/NoteEditor";
 import { NotePanel } from "./components/NotePanel";
 import { PreviewSwitcher } from "./components/PreviewSwitcher";
+import { me } from "./api/auth";
+import { AuthBar } from "./components/AuthBar";
 
 // Lazy so maplibre-gl splits into its own chunk, loaded only when the map screen mounts.
 const MapView = lazy(() => import("./components/MapView").then((m) => ({ default: m.MapView })));
@@ -17,6 +19,7 @@ export function MapScreen() {
   const [map, setMap] = useState<MapOut | null>(null);
   const [viewers, setViewers] = useState<Viewer[]>([]);
   const [previewAs, setPreviewAs] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<UserOut | null>(null);
   const [notes, setNotes] = useState<NoteOut[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -50,6 +53,10 @@ export function MapScreen() {
       .catch(() => setLoadError(true));
   }, []);
 
+  useEffect(() => {
+    me().then(setAuthUser).catch(() => setAuthUser(null));
+  }, []);
+
   // Single guarded notes loader, shared by the initial/persona-switch effect AND the
   // post-write reloads. A monotonic request id ensures only the latest fetch may set
   // state, so a slow reload (e.g. right after a save) can't clobber a newer
@@ -72,11 +79,13 @@ export function MapScreen() {
   }, [loadNotes]);
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
-  const viewerLabel = previewAs
-    ? viewers.find((v) => v.id === previewAs)?.display_name ?? t("switcher.viewer")
-    : t("switcher.guest");
+  const viewerLabel = authUser
+    ? authUser.display_name
+    : previewAs
+      ? viewers.find((v) => v.id === previewAs)?.display_name ?? t("switcher.viewer")
+      : t("switcher.guest");
 
-  const canWrite = previewAs !== null;
+  const canWrite = authUser !== null || previewAs !== null;
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
@@ -124,7 +133,7 @@ export function MapScreen() {
   }, [mode]);
 
   const handleSave = useCallback(async (note: NoteInput | NoteUpdateInput) => {
-    if (!map || !previewAs) return;
+    if (!map || !canWrite) return;
     try {
       if (mode === "create") {
         await createNote(map.id, note as NoteInput, previewAs);
@@ -146,10 +155,10 @@ export function MapScreen() {
         setError(t("editor.saveFailed"));
       }
     }
-  }, [map, previewAs, mode, editing, appendParent, resetToView, loadNotes, t]);
+  }, [map, canWrite, previewAs, mode, editing, appendParent, resetToView, loadNotes, t]);
 
   const handleEdit = useCallback(async () => {
-    if (!selected || !previewAs) return;
+    if (!selected || !canWrite) return;
     try {
       const noteEdit = await fetchNoteForEdit(selected.id, previewAs);
       setEditing(noteEdit);
@@ -157,10 +166,10 @@ export function MapScreen() {
     } catch {
       setError(t("editor.loadFailed"));
     }
-  }, [selected, previewAs, t]);
+  }, [selected, canWrite, previewAs, t]);
 
   const handleDelete = useCallback(async () => {
-    if (!selected || !previewAs) return;
+    if (!selected || !canWrite) return;
     try {
       await deleteNote(selected.id, previewAs);
       setSelectedId(null);
@@ -168,16 +177,16 @@ export function MapScreen() {
     } catch {
       setError(t("editor.deleteFailed"));
     }
-  }, [selected, previewAs, loadNotes, t]);
+  }, [selected, canWrite, previewAs, loadNotes, t]);
 
   const handleAppend = useCallback(() => {
-    if (!selected || !previewAs) return; // non-guest only (UI already gates ＋Append)
+    if (!selected || !canWrite) return; // non-guest only (UI already gates ＋Append)
     setAppendParent(selected);
     setMode("append");
-  }, [selected, previewAs]);
+  }, [selected, canWrite]);
 
   const handleEditAppend = useCallback(async (appendId: string) => {
-    if (!selected || !previewAs) return;
+    if (!selected || !canWrite) return;
     try {
       const ed = await fetchNoteForEdit(appendId, previewAs);
       setAppendParent(selected);
@@ -186,17 +195,17 @@ export function MapScreen() {
     } catch {
       setError(t("editor.loadFailed"));
     }
-  }, [selected, previewAs, t]);
+  }, [selected, canWrite, previewAs, t]);
 
   const handleDeleteAppend = useCallback(async (appendId: string) => {
-    if (!previewAs) return;
+    if (!canWrite) return;
     try {
       await deleteNote(appendId, previewAs);
       loadNotes();
     } catch {
       setError(t("editor.deleteFailed"));
     }
-  }, [previewAs, loadNotes, t]);
+  }, [canWrite, previewAs, loadNotes, t]);
 
   if (loadError) return <p className="loading">{t("screen.error")}</p>;
   if (!map) return <p className="loading">{t("screen.loading")}</p>;
@@ -253,7 +262,14 @@ export function MapScreen() {
       )}
       <header className="topbar">
         <strong>{t("app.title")} · {map.name}</strong>
-        <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
+        {!authUser && (
+          <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
+        )}
+        <AuthBar
+          user={authUser}
+          onAuthed={(u) => { setAuthUser(u); setPreviewAs(null); }}
+          onLoggedOut={() => setAuthUser(null)}
+        />
       </header>
       {error && (
         <div className="editor-error-banner" role="alert">
