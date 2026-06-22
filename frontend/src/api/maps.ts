@@ -1,8 +1,17 @@
 import { API_BASE } from "./apiBase";
+import { getToken } from "./auth";
 import type { AppendInput, AppendUpdateInput, Group, MapOut, NoteEdit, NoteInput, NoteOut, NoteUpdateInput, Viewer } from "./types";
 
+function authHeaders(base: Record<string, string> = {}): Record<string, string> {
+  const token = getToken();
+  return token ? { ...base, Authorization: `Bearer ${token}` } : base;
+}
+function previewQuery(previewAs: string | null): string {
+  return previewAs ? `?preview_as=${previewAs}` : "";
+}
+
 async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
+  const res = await fetch(url, { credentials: "include", headers: authHeaders() });
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
   return res.json() as Promise<T>;
 }
@@ -24,7 +33,7 @@ async function sendJson<T>(url: string, method: string, body: unknown): Promise<
   const res = await fetch(url, {
     method,
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -41,15 +50,15 @@ async function sendJson<T>(url: string, method: string, body: unknown): Promise<
 }
 
 export const fetchGroups = (mapId: string) => getJson<Group[]>(`${API_BASE}/maps/${mapId}/groups`);
-export const fetchNoteForEdit = (noteId: string, previewAs: string) =>
-  getJson<NoteEdit>(`${API_BASE}/notes/${noteId}/edit?preview_as=${previewAs}`);
-export const createNote = (mapId: string, note: NoteInput, previewAs: string) =>
-  sendJson<{ id: string }>(`${API_BASE}/maps/${mapId}/notes?preview_as=${previewAs}`, "POST", note);
-export const updateNote = (noteId: string, note: NoteUpdateInput, previewAs: string) =>
-  sendJson<{ id: string; version: number }>(`${API_BASE}/notes/${noteId}?preview_as=${previewAs}`, "PUT", note);
-export const deleteNote = (noteId: string, previewAs: string) =>
-  sendJson<null>(`${API_BASE}/notes/${noteId}?preview_as=${previewAs}`, "DELETE", undefined);
-export const createAppend = (parentId: string, append: AppendInput, previewAs: string) =>
-  sendJson<{ id: string }>(`${API_BASE}/notes/${parentId}/appends?preview_as=${previewAs}`, "POST", append);
-export const updateAppend = (appendId: string, append: AppendUpdateInput, previewAs: string) =>
-  sendJson<{ id: string; version: number }>(`${API_BASE}/appends/${appendId}?preview_as=${previewAs}`, "PUT", append);
+export const fetchNoteForEdit = (noteId: string, previewAs: string | null) =>
+  getJson<NoteEdit>(`${API_BASE}/notes/${noteId}/edit${previewQuery(previewAs)}`);
+export const createNote = (mapId: string, note: NoteInput, previewAs: string | null) =>
+  sendJson<{ id: string }>(`${API_BASE}/maps/${mapId}/notes${previewQuery(previewAs)}`, "POST", note);
+export const updateNote = (noteId: string, note: NoteUpdateInput, previewAs: string | null) =>
+  sendJson<{ id: string; version: number }>(`${API_BASE}/notes/${noteId}${previewQuery(previewAs)}`, "PUT", note);
+export const deleteNote = (noteId: string, previewAs: string | null) =>
+  sendJson<null>(`${API_BASE}/notes/${noteId}${previewQuery(previewAs)}`, "DELETE", undefined);
+export const createAppend = (parentId: string, append: AppendInput, previewAs: string | null) =>
+  sendJson<{ id: string }>(`${API_BASE}/notes/${parentId}/appends${previewQuery(previewAs)}`, "POST", append);
+export const updateAppend = (appendId: string, append: AppendUpdateInput, previewAs: string | null) =>
+  sendJson<{ id: string; version: number }>(`${API_BASE}/appends/${appendId}${previewQuery(previewAs)}`, "PUT", append);
