@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 vi.mock("./api/maps", () => ({
   fetchMaps: vi.fn().mockResolvedValue([{ id: "m1", name: "Boston", lng: -71, lat: 42, zoom: 12 }]),
@@ -100,7 +100,15 @@ vi.mock("./api/auth", () => ({
 }));
 
 import { MapScreen } from "./MapScreen";
+import { me as meMock } from "./api/auth";
 import { createAppend, createNote, deleteNote, fetchNoteForEdit, fetchNotes, updateAppend } from "./api/maps";
+
+// Reset me() to its default (logged-out) between tests so a queued mockResolvedValueOnce
+// from one test cannot leak into the next.
+beforeEach(() => {
+  vi.mocked(meMock).mockReset();
+  vi.mocked(meMock).mockResolvedValue(null);
+});
 
 test("loads Boston as Guest, opens a note, and re-fetches when the viewer changes", async () => {
   render(<MapScreen />);

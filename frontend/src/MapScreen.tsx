@@ -180,7 +180,7 @@ export function MapScreen() {
   }, [selected, canWrite, previewAs, loadNotes, t]);
 
   const handleAppend = useCallback(() => {
-    if (!selected || !canWrite) return; // non-guest only (UI already gates ＋Append)
+    if (!selected || !canWrite) return; // write-capable only: an authenticated user or a selected persona (UI already gates ＋Append)
     setAppendParent(selected);
     setMode("append");
   }, [selected, canWrite]);
@@ -214,8 +214,8 @@ export function MapScreen() {
   const editorLng = mode === "edit" ? (editing?.lng ?? map.lng) : (draft?.[0] ?? map.lng);
   const editorLat = mode === "edit" ? (editing?.lat ?? map.lat) : (draft?.[1] ?? map.lat);
 
-  // Editing requires both server-granted ownership AND a selected persona — acting as
-  // Guest can't write, so we don't show an edit affordance that would dead-click.
+  // Editing requires both server-granted ownership AND write capability (an authenticated user or
+  // a selected persona) — a guest can't write, so we don't show an edit affordance that would dead-click.
   const canEdit = (selected?.editable ?? false) && canWrite;
 
   const editorVariant = mode === "append" || mode === "edit-append" ? "append" : "note";
