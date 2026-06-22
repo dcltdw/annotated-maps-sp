@@ -69,5 +69,16 @@
   "mod.delSession": "Del session",
   "mod.delIp": "Del IP",
   "mod.confirmSession": "Delete ALL content from this session?",
-  "mod.confirmIp": "Delete ALL content from this IP?"
+  "mod.confirmIp": "Delete ALL content from this IP?",
+  "auth.login": "Log in",
+  "auth.signup": "Sign up",
+  "auth.logout": "Log out",
+  "auth.email": "Email",
+  "auth.password": "Password",
+  "auth.displayName": "Display name",
+  "auth.needAccount": "Need an account? Sign up",
+  "auth.haveAccount": "Have an account? Log in",
+  "auth.demoHint": "Try the demo: friend@demo.example / demo-pass-12345",
+  "auth.failed": "That didn't work — check your details and try again.",
+  "auth.close": "Close"
 }
