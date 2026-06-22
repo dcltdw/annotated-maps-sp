@@ -82,3 +82,10 @@ export interface AppendInput {
 export interface AppendUpdateInput extends AppendInput {
   version: number;
 }
+
+export interface UserOut {
+  id: string;
+  email: string | null;
+  display_name: string;
+  reputation: number;
+}

@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { createNote, deleteNote, fetchGroups, updateNote } from "./maps";
+import { clearToken, setToken } from "./auth";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -42,4 +43,27 @@ test("fetchGroups hits the groups endpoint", async () => {
   const s = spy(200, []);
   await fetchGroups("m1");
   expect(s.mock.calls[0][0]).toContain("/maps/m1/groups");
+});
+
+test("createNote attaches the bearer token when one is stored", async () => {
+  setToken("tok-abc");
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ id: "n1" }), { status: 201 })));
+  await createNote("m1", { title: "T", lng: -71, lat: 42, sections: [] }, null);
+  const init = fetchSpy.mock.calls[0][1] as RequestInit;
+  expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-abc");
+  expect(fetchSpy.mock.calls[0][0]).not.toContain("preview_as"); // null previewAs omits the param
+  clearToken();
+});
+
+test("createNote omits Authorization when no token is stored", async () => {
+  clearToken();
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ id: "n1" }), { status: 201 })));
+  await createNote("m1", { title: "T", lng: -71, lat: 42, sections: [] }, "owner");
+  const init = fetchSpy.mock.calls[0][1] as RequestInit;
+  expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+  expect(fetchSpy.mock.calls[0][0]).toContain("preview_as=owner"); // string previewAs still sent
 });

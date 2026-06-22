@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 vi.mock("./api/maps", () => ({
   fetchMaps: vi.fn().mockResolvedValue([{ id: "m1", name: "Boston", lng: -71, lat: 42, zoom: 12 }]),
@@ -91,8 +91,24 @@ vi.mock("./components/NoteEditor", () => ({
   ),
 }));
 
+vi.mock("./api/auth", () => ({
+  me: vi.fn(() => Promise.resolve(null)),
+  // AuthBar imports login/signup/logout; provide no-op stubs so the real AuthBar renders.
+  login: vi.fn(),
+  signup: vi.fn(),
+  logout: vi.fn(() => Promise.resolve()),
+}));
+
 import { MapScreen } from "./MapScreen";
+import { me as meMock } from "./api/auth";
 import { createAppend, createNote, deleteNote, fetchNoteForEdit, fetchNotes, updateAppend } from "./api/maps";
+
+// Reset me() to its default (logged-out) between tests so a queued mockResolvedValueOnce
+// from one test cannot leak into the next.
+beforeEach(() => {
+  vi.mocked(meMock).mockReset();
+  vi.mocked(meMock).mockResolvedValue(null);
+});
 
 test("loads Boston as Guest, opens a note, and re-fetches when the viewer changes", async () => {
   render(<MapScreen />);
@@ -333,4 +349,21 @@ test("⋯ on own append calls deleteNote then re-fetches", async () => {
     expect((fetchNotes as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(before),
   );
   vi.restoreAllMocks();
+});
+
+test("restores an authenticated user via me() and hides the persona switcher", async () => {
+  const { me } = await import("./api/auth");
+  (me as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    id: "u1", email: "a@x.com", display_name: "Ada", reputation: 0,
+  });
+  render(<MapScreen />);
+  // The logged-in chip shows the user; the "Viewing as" persona switcher is gone.
+  expect(await screen.findByText(/Ada/)).toBeInTheDocument();
+  expect(screen.queryByText("Viewing as")).not.toBeInTheDocument();
+});
+
+test("a logged-out visitor sees the persona switcher and a Log in button", async () => {
+  render(<MapScreen />);
+  expect(await screen.findByText("Viewing as")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /log in/i })).toBeInTheDocument();
 });
