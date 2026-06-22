@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import {
-  clearToken as _clearToken, // exported but tested via side-effects (getToken checks)
-  getToken,
-  login,
-  logout,
-  me,
-  signup,
-} from "./auth";
+import { getToken, login, logout, me, signup } from "./auth";
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
