@@ -5,6 +5,18 @@ from core.models import Tenant, User
 from maps.models import Map, Note, Section
 
 
+def client_as(user):
+    """A Django test Client that authenticates as `user` via an A5.1a bearer token —
+    every request carries `Authorization: Bearer <token>`. Use this for write-path tests
+    (the authenticated identity owns content by author id)."""
+    from django.test import Client, RequestFactory
+
+    from core.auth import create_session
+
+    token = create_session(user, RequestFactory().post("/"))
+    return Client(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+
 @pytest.fixture
 def world(db):
     """A minimal demo world: one tenant/map, two personas, and one SEED note."""

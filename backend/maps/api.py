@@ -11,6 +11,7 @@ from django.utils import timezone
 from ninja import Router, Status
 from ninja.errors import HttpError
 
+from core.auth import resolve_identity
 from core.models import Group, Membership, User
 from core.visibility import Visibility
 from core.visibility.resolve import resolve_viewer
@@ -114,7 +115,8 @@ def _visible_sections(note: Note, viewer) -> list[SectionOut]:
 @router.get("/maps/{map_id}/notes", response=list[NoteOut])
 def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
     the_map = get_object_or_404(Map, id=map_id)
-    viewer = resolve_viewer(preview_as, the_map.tenant)
+    identity = resolve_identity(request, preview_as)
+    viewer = resolve_viewer(identity.user_id, the_map.tenant)
     top_level = (
         the_map.notes.filter(parent__isnull=True)
         .select_related("author")
@@ -137,7 +139,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                     author_name=ap.author.display_name,
                     title=ap.title,
                     sections=ap_sections,
-                    editable=is_editable(request, ap, preview_as),
+                    editable=is_editable(request, ap, identity),
                 )
             )
         out.append(
@@ -149,7 +151,7 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
                 lat=note.point.y if note.point else None,
                 sections=visible,
                 appends=appends,
-                editable=is_editable(request, note, preview_as),
+                editable=is_editable(request, note, identity),
                 shape=_note_shape(note),
             )
         )
@@ -159,12 +161,13 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
 @router.post("/maps/{map_id}/notes", response={201: NoteCreated})
 def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None = None):
     the_map = get_object_or_404(Map, id=map_id)
-    if preview_as is None:
-        raise HttpError(403, "Sign in (preview-as) to add notes.")
-    author = get_object_or_404(User, id=preview_as)
+    identity = resolve_identity(request, preview_as)
+    if identity.user_id is None:
+        raise HttpError(403, "Sign in to add notes.")
+    author = get_object_or_404(User, id=identity.user_id)
     session_key, created_ip = "", None
     if settings.SANDBOX_MODE:
-        session_key, created_ip = enforce_create_limits(request, is_append=False)
+        session_key, created_ip = enforce_create_limits(request, is_append=False, identity=identity)
     anchor = _anchor_fields(payload)  # may raise 422 on invalid geometry
     note = Note.objects.create(
         tenant=the_map.tenant,
@@ -191,7 +194,8 @@ def create_note(request, map_id: UUID, payload: NoteIn, preview_as: UUID | None 
 @router.get("/notes/{note_id}/edit", response=NoteEditOut)
 def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
-    authorize_write(request, note, preview_as, noun="note")
+    identity = resolve_identity(request, preview_as)
+    authorize_write(request, note, identity, noun="note")
     return NoteEditOut(
         id=note.id,
         title=note.title,
@@ -216,7 +220,8 @@ def note_for_edit(request, note_id: UUID, preview_as: UUID | None = None):
 @router.delete("/notes/{note_id}", response={204: None})
 def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
-    authorize_write(request, note, preview_as, noun="note")
+    identity = resolve_identity(request, preview_as)
+    authorize_write(request, note, identity, noun="note")
     note.soft_delete()
     return Status(204, None)
 
@@ -224,7 +229,8 @@ def delete_note(request, note_id: UUID, preview_as: UUID | None = None):
 @router.put("/notes/{note_id}", response={200: NoteUpdated})
 def update_note(request, note_id: UUID, payload: NoteUpdateIn, preview_as: UUID | None = None):
     note = get_object_or_404(Note, id=note_id)
-    authorize_write(request, note, preview_as, noun="note")
+    identity = resolve_identity(request, preview_as)
+    authorize_write(request, note, identity, noun="note")
     anchor = _anchor_fields(payload)  # may raise 422; computed before the atomic claim
     with transaction.atomic():
         # Atomically claim the version: exactly one of two racing PUTs can match
@@ -261,7 +267,8 @@ def update_append(
     request, append_id: UUID, payload: AppendUpdateIn, preview_as: UUID | None = None
 ):
     append = get_object_or_404(Note, id=append_id)
-    authorize_write(request, append, preview_as, noun="append")
+    identity = resolve_identity(request, preview_as)
+    authorize_write(request, append, identity, noun="append")
     if append.parent_id is None:
         # Refuse to edit a top-level note through the append endpoint — that would
         # bypass the note write schema (e.g. its required title). Use PUT /notes/{id}.
@@ -293,14 +300,15 @@ def update_append(
 @router.post("/notes/{parent_id}/appends", response={201: NoteCreated})
 def create_append(request, parent_id: UUID, payload: AppendIn, preview_as: UUID | None = None):
     parent = get_object_or_404(Note, id=parent_id)
-    if preview_as is None:
-        raise HttpError(403, "Sign in (preview-as) to append.")
+    identity = resolve_identity(request, preview_as)
+    if identity.user_id is None:
+        raise HttpError(403, "Sign in to append.")
     if parent.parent_id is not None:
         raise HttpError(400, "You can only append to a top-level note.")
-    author = get_object_or_404(User, id=preview_as)
+    author = get_object_or_404(User, id=identity.user_id)
     session_key, created_ip = "", None
     if settings.SANDBOX_MODE:
-        session_key, created_ip = enforce_create_limits(request, is_append=True)
+        session_key, created_ip = enforce_create_limits(request, is_append=True, identity=identity)
     append = Note.objects.create(
         tenant=parent.tenant,
         map=parent.map,

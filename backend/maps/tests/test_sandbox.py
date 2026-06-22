@@ -4,6 +4,7 @@ from django.test import Client, RequestFactory
 
 from maps.models import Note
 from maps.sandbox import client_ip
+from maps.tests.conftest import client_as
 
 
 def test_client_ip_uses_last_forwarded_for_hop():
@@ -92,7 +93,7 @@ def test_sandbox_stamps_session_and_ip_on_create(world, settings):
 
 def test_non_sandbox_create_is_uncapped_and_unstamped(world, settings):
     settings.SANDBOX_MODE = False
-    note_id = _create_note(Client(), world, world["alice"])
+    note_id = _create_note(client_as(world["alice"]), world, world["alice"])
     n = Note.objects.get(id=note_id)
     assert n.session_key == "" and n.created_ip is None
 
@@ -182,8 +183,10 @@ def test_editable_true_only_for_own_session_in_sandbox(world, settings):
 
 def test_editable_matches_author_when_not_sandbox(world, settings):
     settings.SANDBOX_MODE = False
-    note_id = _create_note(Client(), world, world["alice"])
-    seen = next(n for n in _list(Client(), world, world["alice"]) if n["id"] == note_id)
+    note_id = _create_note(client_as(world["alice"]), world, world["alice"])
+    notes_as_alice = _list(client_as(world["alice"]), world, world["alice"])
+    seen = next(n for n in notes_as_alice if n["id"] == note_id)
     assert seen["editable"] is True
-    seen_other = next(n for n in _list(Client(), world, world["bob"]) if n["id"] == note_id)
+    notes_as_bob = _list(client_as(world["bob"]), world, world["bob"])
+    seen_other = next(n for n in notes_as_bob if n["id"] == note_id)
     assert seen_other["editable"] is False
