@@ -204,7 +204,7 @@ async function wireAuthRoutes(
 
 test.describe("auth loop (login → bearer-authed create)", () => {
   test("login → authed create note — bearer header sent, no preview_as, note renders", async ({ page }) => {
-    const { getLastCreateRequest } = await wireAuthRoutes(page);
+    await wireAuthRoutes(page);
     await page.goto("/");
 
     // ---- Step 1: Logged-out state ----
@@ -221,9 +221,9 @@ test.describe("auth loop (login → bearer-authed create)", () => {
     await page.getByLabel(/email/i).fill("owner@demo.example");
     await page.getByLabel(/password/i).fill("demo-pass-12345");
 
-    // Click the submit button — in login mode its text is also "Log in";
-    // pick the submit button (type=submit) to avoid clicking the toggle again.
-    await page.getByRole("button", { name: "Log in" }).filter({ hasText: "Log in" }).last().click();
+    // Click the submit button — use type=submit to unambiguously target the form
+    // submit, not the toggle button (which is type=button).
+    await page.locator('button[type="submit"]').click();
 
     // ---- Step 3: Logged-in state ----
     // Topbar now shows the user's display name
@@ -246,22 +246,25 @@ test.describe("auth loop (login → bearer-authed create)", () => {
     await titleInput.fill("Authed Note");
     await page.getByLabel("Section content").first().fill("written while logged in");
 
-    // Save
-    await page.getByRole("button", { name: "Save note" }).click();
+    // Save — capture the POST request explicitly so the assertion can't race
+    // an optimistic-close refactor (editor closing before the 201 arrives).
+    const [createReq] = await Promise.all([
+      page.waitForRequest(
+        (r) => r.method() === "POST" && /\/api\/v1\/maps\/.*\/notes/.test(r.url()),
+      ),
+      page.getByRole("button", { name: "Save note" }).click(),
+    ]);
 
     // Editor closes
     await expect(titleInput).not.toBeVisible();
 
     // ---- Step 5: Key assertions on the captured POST request ----
-    const createReq = getLastCreateRequest();
-    expect(createReq).not.toBeNull();
-
     // (a) The request carried the bearer token
-    const authHeader = createReq!.headers()["authorization"] ?? "";
+    const authHeader = createReq.headers()["authorization"] ?? "";
     expect(authHeader).toBe(`Bearer ${E2E_TOKEN}`);
 
     // (b) The URL has NO preview_as query param
-    const createUrl = new URL(createReq!.url());
+    const createUrl = new URL(createReq.url());
     expect(createUrl.searchParams.has("preview_as")).toBe(false);
 
     // (c) The new note renders — a marker should appear
