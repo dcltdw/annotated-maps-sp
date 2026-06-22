@@ -4,7 +4,7 @@ import pytest
 from django.contrib.gis.geos import Point
 from django.test import Client
 
-from core.models import Tenant, User
+from core.models import Membership, Tenant, User
 from maps.models import Map, Note, Section
 from maps.tests.conftest import client_as
 
@@ -14,6 +14,8 @@ def scene(db):
     t = Tenant.objects.create(name="Boston", slug="boston")
     real = User.objects.create(display_name="Real")
     persona = User.objects.create(display_name="Persona")
+    Membership.objects.create(tenant=t, user=real, role=Membership.Role.CONTRIBUTOR)
+    Membership.objects.create(tenant=t, user=persona, role=Membership.Role.VIEWER)
     m = Map.objects.create(tenant=t, name="Boston", center=Point(-71.06, 42.36))
     note = Note.objects.create(tenant=t, map=m, author=real, title="N", point=Point(-71.0, 42.3))
     Section.objects.create(note=note, order=0, content="hi", rule_type=Section.RuleType.PUBLIC)
