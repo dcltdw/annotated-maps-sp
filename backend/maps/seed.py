@@ -140,14 +140,27 @@ def build_boston_demo() -> dict:
         tenant=tenant,
         map=the_map,
         author=runner,
-        title="Charles Esplanade out-and-back",
+        title="Charles River loop",
         defaults={
             "is_seed": True,
+            # Closed loop along the Charles River basin: start at Memorial Drive &
+            # Mass Ave (Cambridge), east along Memorial Drive, across the Longfellow
+            # Bridge to Boston, back west along the Esplanade, closing over the Mass
+            # Ave (Harvard) Bridge. First and last vertex coincide. (lng, lat)
             "path": LineString(
-                (-71.0735, 42.3562),
-                (-71.0820, 42.3575),
-                (-71.0905, 42.3585),
-                (-71.0980, 42.3590),
+                (-71.0920, 42.3578),
+                (-71.0880, 42.3596),
+                (-71.0840, 42.3610),
+                (-71.0805, 42.3627),
+                (-71.0793, 42.3641),
+                (-71.0745, 42.3628),
+                (-71.0707, 42.3611),
+                (-71.0745, 42.3573),
+                (-71.0800, 42.3546),
+                (-71.0858, 42.3525),
+                (-71.0905, 42.3517),
+                (-71.0913, 42.3548),
+                (-71.0920, 42.3578),
             ),
         },
     )
@@ -156,7 +169,11 @@ def build_boston_demo() -> dict:
             note=route_note,
             order=0,
             rule_type=Section.RuleType.PUBLIC,
-            content="Flat riverside path. ~2km each way; water fountain at the footbridge.",
+            content=(
+                "Flat ~4.5 km loop: east along Memorial Drive, over the Longfellow "
+                "Bridge, back along the Esplanade, closing across the Mass Ave bridge. "
+                "Water fountains near both bridges."
+            ),
         )
 
     return {
