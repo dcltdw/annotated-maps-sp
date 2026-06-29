@@ -157,6 +157,8 @@ The script exercises (in order):
    asserts HTTP 201.
 6. `GET /maps/{id}/notes?preview_as={persona}` again — asserts the new note has
    `editable: true` (session-owned).
+7. `DELETE /notes/{new_id}?preview_as={persona}` — deletes the note it created so
+   the smoke test leaves no pin behind in the sandbox; asserts HTTP 204.
 
 On success all steps print `OK  step N: …` and the script exits 0.
 Any failure prints `FAIL step N: …` to stderr and exits 1.

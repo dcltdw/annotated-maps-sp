@@ -122,4 +122,44 @@ test.describe("region read path", () => {
       )
       .toBeGreaterThanOrEqual(2);
   });
+
+  test("hovering a region shows a peek popup with the note's sections", async ({ page }) => {
+    await wireRoutes(page);
+    await page.goto("/");
+
+    await expect(page.locator(".maplibregl-canvas")).toBeVisible();
+    await page.waitForFunction(
+      () => !!(window as unknown as { __map?: import("maplibre-gl").Map }).__map,
+    );
+    await page.waitForFunction(() => {
+      const m = (window as unknown as { __map?: import("maplibre-gl").Map }).__map;
+      return !!m && !!m.getLayer("regions-fill");
+    });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const m = (window as unknown as { __map?: import("maplibre-gl").Map }).__map;
+            if (!m) return -1;
+            m.triggerRepaint();
+            return m.querySourceFeatures("regions").length;
+          }),
+        { timeout: 10_000 },
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    // Move the real cursor onto a pixel inside the polygon so maplibre fires the
+    // region mousemove handler that drives the peek popup.
+    const pt = await page.evaluate(() => {
+      const m = (window as unknown as { __map?: import("maplibre-gl").Map }).__map!;
+      const p = m.project([-71.07, 42.3532]); // interior of the POLYGON_NOTE rectangle
+      const c = m.getCanvas().getBoundingClientRect();
+      return { x: c.left + p.x, y: c.top + p.y };
+    });
+    await page.mouse.move(pt.x, pt.y);
+
+    const popup = page.locator(".maplibregl-popup");
+    await expect(popup).toContainText("Public Garden");
+    await expect(popup).toContainText("A lovely public garden.");
+  });
 });

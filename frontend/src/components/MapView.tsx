@@ -68,6 +68,10 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
   // Stable ref so the once-only region layer click handlers select via the latest onSelect.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  // Stable ref so the once-only region hover handlers read the latest notes (for the
+  // peek popup) without re-binding — the region effect re-runs on notes only to setData.
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
   // Stable ref so the draw effect hands the drawer the latest completion handler.
   const onShapeDrawnRef = useRef(onShapeDrawn);
   onShapeDrawnRef.current = onShapeDrawn;
@@ -218,16 +222,23 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
         filter: ["==", ["geometry-type"], "LineString"],
         paint: { "line-color": "#dc2626", "line-width": 3 },
       });
+      // One reusable popup for region/line hover — mirrors the marker peek, showing the
+      // viewer's visibility-filtered sections. Tracks the cursor via mousemove.
+      const regionPopup = new maplibregl.Popup({ offset: 8, closeButton: false, closeOnClick: false });
       for (const layer of ["regions-fill", "regions-line"]) {
         map.on("click", layer, (e) => {
           const id = e.features?.[0]?.properties?.noteId;
           if (id) onSelectRef.current?.(String(id));
         });
-        map.on("mouseenter", layer, () => {
+        map.on("mousemove", layer, (e) => {
           map.getCanvas().style.cursor = "pointer";
+          const id = e.features?.[0]?.properties?.noteId;
+          const note = id ? notesRef.current.find((n) => n.id === String(id)) : undefined;
+          if (note) regionPopup.setLngLat(e.lngLat).setHTML(peekHtml(note)).addTo(map);
         });
         map.on("mouseleave", layer, () => {
           map.getCanvas().style.cursor = "";
+          regionPopup.remove();
         });
       }
     };
