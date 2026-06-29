@@ -86,6 +86,12 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.on("click", (e: maplibregl.MapMouseEvent) => {
+      // A click that lands on an existing region/route selects it (handled by the
+      // per-layer click handlers); it must NOT also drop a new pin. Markers stop their
+      // own propagation, but region/line features are canvas-rendered, so bail here when
+      // the click hit one.
+      const layers = ["regions-fill", "regions-line"].filter((l) => map.getLayer(l));
+      if (layers.length && map.queryRenderedFeatures(e.point, { layers }).length) return;
       onMapClickRef.current?.(e.lngLat.lng, e.lngLat.lat);
     });
     mapRef.current = map;
@@ -174,7 +180,12 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
           el.style.cursor = "pointer";
           el.addEventListener("mouseenter", () => popup.setLngLat([n.lng as number, n.lat as number]).addTo(map));
           el.addEventListener("mouseleave", () => popup.remove());
-          el.addEventListener("click", () => onSelect(n.id));
+          // Stop the click bubbling to the map container, or the map "click" handler
+          // would also fire and drop a new pin instead of selecting this one.
+          el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onSelect(n.id);
+          });
           return { marker, popup };
         });
     };
