@@ -48,6 +48,10 @@ const { Marker, Popup, MapCtor, markerEls, capturedHandlers } = vi.hoisted(() =>
     getSource: vi.fn().mockReturnValue(undefined),
     addSource: vi.fn(),
     addLayer: vi.fn(),
+    // The map click handler guards pin-creation by checking whether the click hit a
+    // region/route feature; with no layers present it falls through to onMapClick.
+    getLayer: vi.fn().mockReturnValue(undefined),
+    queryRenderedFeatures: vi.fn().mockReturnValue([]),
     getCanvas: vi.fn().mockReturnValue({ style: {} }),
   };
   const MapCtor = vi.fn(function () {
