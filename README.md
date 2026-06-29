@@ -2,6 +2,8 @@
 
 A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See `docs/superpowers/specs/` for design documents and `docs/architecture/production-lenses.md` for the architectural backlog.
 
+Demo at https://annotated-maps-web.onrender.com/
+
 ## Local development
 
 ### Backend
