@@ -1,8 +1,16 @@
 # Annotated Maps
 
+[![Annotated Maps — section-level map annotations, live Boston demo](docs/img/hero.png)](https://annotated-maps-web.onrender.com/)
+
 A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See `docs/superpowers/specs/` for design documents and `docs/architecture/production-lenses.md` for the architectural backlog.
 
-Demo at https://annotated-maps-web.onrender.com/
+**▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
+
+## Section-level visibility
+
+Every note is composed of **sections**, each gated to a different audience — public, friends, a group, a reputation threshold, or private. The same note shows different content depending on who is viewing it; switch personas with the **"Viewing as"** control to watch the markers and detail panel re-filter live.
+
+![A note's detail panel showing public, friends, running-club, reputation-gated, and private sections side by side](docs/img/visibility.png)
 
 ## Local development
 
@@ -70,4 +78,6 @@ cd frontend && npm run test -- --run
 - **annotated-maps-api** — Docker service running the Django/Gunicorn backend
 - **annotated-maps-web** — static site serving the compiled Vite SPA
 
-Render creates automatic per-PR preview environments. The database is external (Neon Postgres + PostGIS); set the `DATABASE_URL` environment variable per environment in the Render dashboard. `DJANGO_ALLOWED_HOSTS` must also be set per environment to include the service's public hostname.
+- **annotated-maps-reaper** — Docker cron job that reaps ephemeral sandbox notes daily
+
+The database is external (Neon Postgres + PostGIS); set the `DATABASE_URL` environment variable per environment in the Render dashboard. `DJANGO_ALLOWED_HOSTS` must also be set per environment to include the service's public hostname. See `docs/DEPLOY.md` for the full runbook.
