@@ -293,7 +293,7 @@ export function MapScreen() {
             />
           </Suspense>
           {canWrite && mode === "view" && !drawMode && (
-            <>
+            <div className="draw-tools">
               <button className="draw-area" onClick={() => handleStartDraw("polygon")}>
                 {t("screen.drawArea")}
               </button>
@@ -303,7 +303,7 @@ export function MapScreen() {
               <button className="draw-circle" onClick={() => handleStartDraw("circle")}>
                 {t("screen.drawCircle")}
               </button>
-            </>
+            </div>
           )}
           {drawMode && (
             <div className="drawing-hint" role="status">

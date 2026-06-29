@@ -101,15 +101,28 @@ export function MapView({ center, zoom, notes, onSelect, onMapClick, onDraftMove
     const map = mapRef.current;
     if (!map) return;
     let cancelled = false;
+    // terra-draw's mount() calls map.addSource/addLayer, which throw "Style is not
+    // done loading" if the style hasn't finished loading yet. Under production timing
+    // the async build resolves before the style loads, the throw aborts setup, and the
+    // whole map renders blank. Gate mount() on the style load — the same guard the
+    // marker and region effects below use.
     (async () => {
       const drawer = await createShapeDrawer();
       if (cancelled) {
         drawer.destroy();
         return;
       }
-      drawer.mount(map);
-      drawerRef.current = drawer;
-      setDrawerReady(true);
+      const mount = () => {
+        if (cancelled) {
+          drawer.destroy();
+          return;
+        }
+        drawer.mount(map);
+        drawerRef.current = drawer;
+        setDrawerReady(true);
+      };
+      if (map.isStyleLoaded?.()) mount();
+      else map.once("load", mount);
     })();
     return () => {
       cancelled = true;
