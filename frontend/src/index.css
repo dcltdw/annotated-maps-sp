@@ -17,7 +17,11 @@ body {
 .switcher button[aria-pressed="true"] { border-color: #16a34a; background: rgba(22,163,74,.14); font-weight: 600; }
 .stage { flex: 1; display: flex; min-height: 0; }
 .map-wrap { position: relative; flex: 1.3; min-width: 0; }
-.map { position: absolute; inset: 0; }
+/* Two-class specificity (0,2,0) so this beats maplibre-gl.css's
+   `.maplibregl-map { position: relative }`, which maplibre adds to this same
+   element at init. Equal-specificity + later source order would otherwise let
+   maplibre win in the production bundle, collapsing the map to height 0. */
+.map-wrap > .map { position: absolute; inset: 0; }
 .reopen { position: absolute; top: 50%; transform: translateY(-50%); right: 0; z-index: 5; background: #111e; color: #fff; border: none; border-radius: 6px 0 0 6px; padding: 12px 9px; cursor: pointer; }
 /* Note surfaces are explicitly light — never theme-inherited (the popover-contrast lesson). */
 .note-panel { flex: 1; min-width: 280px; max-width: 380px; overflow: auto; background: #fff; color: #111; border-left: 1px solid #ddd; padding: 10px 12px; }
