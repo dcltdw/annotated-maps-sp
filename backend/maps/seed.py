@@ -129,11 +129,47 @@ def build_boston_demo() -> dict:
         },
     )
     if area_created:
-        Section.objects.create(
-            note=area_note,
-            order=0,
-            rule_type=Section.RuleType.PUBLIC,
-            content="Swan boats + the willows. Calm loop, good for an easy shakeout.",
+        # A spread of visibility tiers so each persona sees different hover content
+        # (mirrors the Castle Island pin). Authored by the Reputable Local.
+        Section.objects.bulk_create(
+            [
+                Section(
+                    note=area_note,
+                    order=0,
+                    rule_type=Section.RuleType.PUBLIC,
+                    content="Swan boats + the willows. Calm loop, good for an easy shakeout.",
+                ),
+                Section(
+                    note=area_note,
+                    order=1,
+                    rule_type=Section.RuleType.AUDIENCE,
+                    rule_params={"user_ids": [str(friend.id)]},
+                    content="Meet by the Make Way for Ducklings statues — easy landmark.",
+                ),
+                Section(
+                    note=area_note,
+                    order=2,
+                    rule_type=Section.RuleType.AUDIENCE,
+                    teaser=True,
+                    rule_params={"group_ids": [str(club.id)]},
+                    content="Club shakeout: two laps of the lagoon path, then out onto the Common.",
+                ),
+                Section(
+                    note=area_note,
+                    order=3,
+                    rule_type=Section.RuleType.ATTRIBUTE_GATE,
+                    rule_params={"attribute": "reputation", "threshold": 50},
+                    content=(
+                        "Local tip: the Arlington St gate opens earliest — quietest before 8am."
+                    ),
+                ),
+                Section(
+                    note=area_note,
+                    order=4,
+                    rule_type=Section.RuleType.PRIVATE,
+                    content="Note to self: confirm the swan boats are running before recommending.",
+                ),
+            ]
         )
 
     route_note, route_created = Note.objects.get_or_create(
@@ -165,15 +201,87 @@ def build_boston_demo() -> dict:
         },
     )
     if route_created:
+        # A spread of visibility tiers so each persona sees different hover content.
+        # Authored by the Run-club Member.
+        Section.objects.bulk_create(
+            [
+                Section(
+                    note=route_note,
+                    order=0,
+                    rule_type=Section.RuleType.PUBLIC,
+                    content=(
+                        "Flat ~4.5 km loop: east along Memorial Drive, over the Longfellow "
+                        "Bridge, back along the Esplanade, closing across the Mass Ave bridge. "
+                        "Water fountains near both bridges."
+                    ),
+                ),
+                Section(
+                    note=route_note,
+                    order=1,
+                    rule_type=Section.RuleType.AUDIENCE,
+                    rule_params={"user_ids": [str(friend.id)]},
+                    content=(
+                        "Start from the Mass Ave bridge so you finish with the Esplanade views."
+                    ),
+                ),
+                Section(
+                    note=route_note,
+                    order=2,
+                    rule_type=Section.RuleType.AUDIENCE,
+                    teaser=True,
+                    rule_params={"group_ids": [str(club.id)]},
+                    content="Club tempo: pick it up between the bridges, float the bridge climbs.",
+                ),
+                Section(
+                    note=route_note,
+                    order=3,
+                    rule_type=Section.RuleType.ATTRIBUTE_GATE,
+                    rule_params={"attribute": "reputation", "threshold": 50},
+                    content="Trusted tip: the Esplanade puddles near the lagoon after heavy rain.",
+                ),
+                Section(
+                    note=route_note,
+                    order=4,
+                    rule_type=Section.RuleType.PRIVATE,
+                    content=(
+                        "Reminder: refill at the Longfellow fountain — "
+                        "the Mass Ave one is often off."
+                    ),
+                ),
+            ]
+        )
+
+    # Friends-only pin: its single top-level section is friend-audience, so the note
+    # itself is hidden from everyone except the friend (and the owner, as author).
+    # 9 Tyler St, Chinatown. The Friend persona adds their own take as an append.
+    china_pearl, china_created = Note.objects.get_or_create(
+        tenant=tenant,
+        map=the_map,
+        author=owner,
+        title="China Pearl",
+        defaults={"point": Point(-71.0600, 42.3514), "is_seed": True},
+    )
+    if china_created:
         Section.objects.create(
-            note=route_note,
+            note=china_pearl,
+            order=0,
+            rule_type=Section.RuleType.AUDIENCE,
+            rule_params={"user_ids": [str(friend.id)]},
+            content="Favorite dim sum place.",
+        )
+        friend_take = Note.objects.create(
+            tenant=tenant,
+            map=the_map,
+            author=friend,
+            parent=china_pearl,
+            is_seed=True,
+        )
+        # Public within the (friends-only) pin, so the owner sees the friend's note too.
+        Section.objects.create(
+            note=friend_take,
             order=0,
             rule_type=Section.RuleType.PUBLIC,
-            content=(
-                "Flat ~4.5 km loop: east along Memorial Drive, over the Longfellow "
-                "Bridge, back along the Esplanade, closing across the Mass Ave bridge. "
-                "Water fountains near both bridges."
-            ),
+            content="Best shumai in town!",
         )
 
     return {
@@ -187,4 +295,5 @@ def build_boston_demo() -> dict:
         "note": note,
         "area_note": area_note,
         "route_note": route_note,
+        "china_pearl": china_pearl,
     }

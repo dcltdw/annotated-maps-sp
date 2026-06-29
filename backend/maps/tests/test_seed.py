@@ -23,6 +23,23 @@ def test_seed_includes_an_area_and_a_route(db):
     assert data["route_note"].path is not None and data["route_note"].is_seed
 
 
+def test_seed_china_pearl_is_friends_only(db):
+    data = build_boston_demo()
+    pin = data["china_pearl"]
+    assert pin.point is not None and pin.is_seed
+    # The pin's only top-level section is friend-audience, so list_notes (which hides a
+    # note when no section is visible to the viewer) shows it to the friend alone.
+    sections = list(pin.sections.all())
+    assert len(sections) == 1
+    assert sections[0].rule_type == "audience"
+    assert str(data["friend"].id) in sections[0].rule_params["user_ids"]
+    # The friend's own take is a friend-authored append on the same pin.
+    appends = list(pin.appends.all())
+    assert len(appends) == 1
+    assert appends[0].author_id == data["friend"].id
+    assert "shumai" in (appends[0].sections.first().content or "").lower()
+
+
 def test_seed_personas_can_log_in(db):
     from django.contrib.auth.hashers import check_password
 
