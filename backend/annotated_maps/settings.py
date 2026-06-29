@@ -47,6 +47,10 @@ INSTALLED_APPS = [
 ]
 
 DATABASES = {"default": env.db("DATABASE_URL")}
+# This is a GeoDjango app: always use the PostGIS backend regardless of the
+# DATABASE_URL scheme. Neon/Render/psql hand out `postgresql://` strings, which
+# env.db() would otherwise map to the non-spatial backend (no geo_db_type).
+DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 
 # Stateless app tier: sessions live in the DB, not in-process.
