@@ -204,6 +204,14 @@ def main() -> None:
     _ok(6, f"session ownership OK — note id={new_note_id!r} editable=true")
 
     # ------------------------------------------------------------------
+    # Step 7 — Clean up so the smoke test leaves no pin behind in the public
+    # sandbox. The session owns the note it just created, so it may delete it.
+    # ------------------------------------------------------------------
+    status, _ = call("DELETE", f"/notes/{new_note_id}?preview_as={persona}")
+    _assert(status == 204, 7, f"expected HTTP 204 deleting the smoke note, got {status}")
+    _ok(7, f"cleanup OK — deleted smoke note id={new_note_id!r}")
+
+    # ------------------------------------------------------------------
     # All done
     # ------------------------------------------------------------------
     print("\n\033[32mAll smoke-test checks passed.\033[0m")
