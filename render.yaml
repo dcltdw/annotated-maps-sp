@@ -16,8 +16,6 @@ services:
         value: "false"
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
-      - key: GIT_SHA
-        fromCommit: true
       - key: SANDBOX_MODE
         value: "true"
       - key: CORS_ALLOWED_ORIGINS

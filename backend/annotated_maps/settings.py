@@ -116,7 +116,9 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 API_VERSION = "1.0.0"
-GIT_SHA = env("GIT_SHA", default="dev")
+# Render injects the deployed commit as RENDER_GIT_COMMIT; fall back to that
+# (there is no render.yaml `fromCommit` field), then to "dev" for local runs.
+GIT_SHA = env("GIT_SHA", default=env("RENDER_GIT_COMMIT", default="dev"))
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
