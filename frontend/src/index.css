@@ -1,16 +1,25 @@
 /* Annotated Maps base styles */
+/* The app is light-only for now. Pin color-scheme to light so the browser never
+   flips default text/control colors to dark with the OS theme (which produced
+   white-on-white surfaces), and set explicit foreground + background at the root
+   so every surface inherits a defined pair rather than a UA default. A future
+   dark mode should be an explicit, deliberate theme — not OS-inherited. */
 :root {
   font-family: system-ui, sans-serif;
-  color-scheme: light dark;
+  color-scheme: light;
+  background: #fff;
+  color: #111;
 }
 
 body {
   margin: 0;
+  background: #fff;
+  color: #111;
 }
 
 .screen { height: 100vh; display: flex; flex-direction: column; }
 .sandbox-banner { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fcd34d; padding: 6px 12px; font-size: 13px; text-align: center; }
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #8883; flex-wrap: wrap; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #8883; flex-wrap: wrap; background: #fff; color: #111; }
 .switcher { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .switcher__label { opacity: .65; }
 .switcher button { padding: 4px 10px; border-radius: 999px; border: 1px solid #888; background: transparent; cursor: pointer; }
