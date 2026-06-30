@@ -24,6 +24,7 @@ export function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [waking, setWaking] = useState(false);
 
   // Write-mode state
   const [mode, setMode] = useState<Mode>("view");
@@ -41,16 +42,38 @@ export function MapScreen() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    fetchMaps()
-      .then((maps) => {
-        const m = maps[0] ?? null;
-        setMap(m);
-        if (m) {
-          fetchViewers(m.id).then(setViewers).catch(() => setViewers([]));
-          fetchGroups(m.id).then(setGroups).catch(() => setGroups([]));
-        } else setLoadError(true);
-      })
-      .catch(() => setLoadError(true));
+    let cancelled = false;
+    // The API runs on free hosting that spins down when idle, so the first request after
+    // a gap (or a transient network hiccup) can fail or stall. Retry with backoff so the
+    // demo self-heals instead of stranding the visitor on an error until a manual reload.
+    const loadMap = async () => {
+      const backoffsMs = [0, 1500, 3000, 5000, 8000, 12000, 15000]; // ~44s across 7 tries
+      for (let i = 0; i < backoffsMs.length; i++) {
+        if (backoffsMs[i]) await new Promise((r) => setTimeout(r, backoffsMs[i]));
+        if (cancelled) return;
+        try {
+          const maps = await fetchMaps();
+          if (cancelled) return;
+          const m = maps[0] ?? null;
+          setMap(m);
+          if (m) {
+            fetchViewers(m.id).then(setViewers).catch(() => setViewers([]));
+            fetchGroups(m.id).then(setGroups).catch(() => setGroups([]));
+          } else {
+            setLoadError(true); // a 200 with no maps is a data problem, not transient
+          }
+          return;
+        } catch {
+          if (cancelled) return;
+          setWaking(true); // first failure → show the "waking up" message while we retry
+        }
+      }
+      if (!cancelled) setLoadError(true); // every attempt failed
+    };
+    void loadMap();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -208,7 +231,7 @@ export function MapScreen() {
   }, [canWrite, previewAs, loadNotes, t]);
 
   if (loadError) return <p className="loading">{t("screen.error")}</p>;
-  if (!map) return <p className="loading">{t("screen.loading")}</p>;
+  if (!map) return <p className="loading">{t(waking ? "screen.waking" : "screen.loading")}</p>;
 
   // Coordinates for the editor: edit uses the stored note's coords, create uses the draft pin.
   const editorLng = mode === "edit" ? (editing?.lng ?? map.lng) : (draft?.[0] ?? map.lng);
