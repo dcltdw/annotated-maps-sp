@@ -113,29 +113,24 @@ wait for the next auto-deploy from a git push).
 
 ---
 
-## 4. First deploy — migrations + seed data
+## 4. Migrations + seed data — automatic
 
 The API service `preDeployCommand` in `render.yaml` is:
 
 ```
-uv run python manage.py migrate
+uv run python manage.py migrate && uv run python manage.py seed_demo --refresh
 ```
 
-Render runs this automatically before each deploy, so migrations are applied
-without any manual intervention.
+Render runs this automatically **before every deploy**, so migrations are applied
+and the demo seed is rebuilt with no manual intervention. `--refresh` deletes the
+existing seed notes (`is_seed=True`, cascading their sections/appends) and recreates
+them from the current code, so changes to `maps/seed.py` take effect on the next
+deploy. User-created notes (`is_seed=False`) and the personas/map/groups are left
+intact, so visitor content and logins survive a re-seed.
 
-Once the API service status shows **Live**, seed the demo content **once**:
-
-1. In the Render dashboard, open `annotated-maps-api` → **Shell**.
-2. Run:
-   ```bash
-   uv run python manage.py seed_demo
-   ```
-   Expected output: `Seeded map <id> with the Castle Island note.`
-
-The seed note is marked `is_seed=True` in the database, making it permanent and
-read-only in sandbox mode. Do **not** run `seed_demo` again — it is
-idempotent (uses `get_or_create`), but running it unnecessarily is noise.
+Seed notes are read-only in sandbox mode. To re-apply seed changes without a code
+push, trigger a Manual Deploy, or run `uv run python manage.py seed_demo --refresh`
+from the `annotated-maps-api` **Shell**.
 
 ---
 
