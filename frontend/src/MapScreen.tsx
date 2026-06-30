@@ -138,6 +138,32 @@ export function MapScreen() {
     setPendingShape(null);
   }, []);
 
+  // A write can fail with an auth status (the bearer token may have expired mid-session,
+  // after which the API treats us as a guest → 403). When we still believe we're logged
+  // in, re-validate via me(): it returns null only when the token is truly gone (it clears
+  // it on 401) and throws on network/server errors. If the token is dead, drop to anonymous
+  // and prompt a re-login; otherwise it's a genuine permission denial — let the caller show
+  // its normal error. Returns true when it handled an expiry (caller should stop).
+  const handleAuthExpiry = useCallback(
+    async (e: unknown): Promise<boolean> => {
+      if (authUser === null) return false;
+      const status = (e as ApiError).status;
+      if (status !== 401 && status !== 403) return false;
+      let current: UserOut | null;
+      try {
+        current = await me();
+      } catch {
+        return false; // couldn't verify (network/server) — don't log out spuriously
+      }
+      if (current) return false; // token still valid → genuine permission error
+      resetToView(); // close any open editor (also clears error) before we message
+      setAuthUser(null);
+      setError(t("auth.sessionExpired"));
+      return true;
+    },
+    [authUser, resetToView, t],
+  );
+
   // Enter draw mode: arm the requested drawer (polygon/line); stay in "view" so the
   // map/markers keep rendering. Suppress click-to-drop while drawing (onMapClick gating).
   const handleStartDraw = useCallback((drawShapeMode: DrawMode) => {
@@ -170,6 +196,7 @@ export function MapScreen() {
       resetToView();
       loadNotes();
     } catch (e) {
+      if (await handleAuthExpiry(e)) return;
       if ((e as ApiError).status === 409) {
         setError(t("editor.conflict"));
       } else if ((e as ApiError).status === 429) {
@@ -178,7 +205,7 @@ export function MapScreen() {
         setError(t("editor.saveFailed"));
       }
     }
-  }, [map, canWrite, previewAs, mode, editing, appendParent, resetToView, loadNotes, t]);
+  }, [map, canWrite, previewAs, mode, editing, appendParent, resetToView, loadNotes, handleAuthExpiry, t]);
 
   const handleEdit = useCallback(async () => {
     if (!selected || !canWrite) return;
@@ -197,10 +224,11 @@ export function MapScreen() {
       await deleteNote(selected.id, previewAs);
       setSelectedId(null);
       loadNotes();
-    } catch {
+    } catch (e) {
+      if (await handleAuthExpiry(e)) return;
       setError(t("editor.deleteFailed"));
     }
-  }, [selected, canWrite, previewAs, loadNotes, t]);
+  }, [selected, canWrite, previewAs, loadNotes, handleAuthExpiry, t]);
 
   const handleAppend = useCallback(() => {
     if (!selected || !canWrite) return; // write-capable only: an authenticated user or a selected persona (UI already gates ＋Append)
@@ -225,10 +253,11 @@ export function MapScreen() {
     try {
       await deleteNote(appendId, previewAs);
       loadNotes();
-    } catch {
+    } catch (e) {
+      if (await handleAuthExpiry(e)) return;
       setError(t("editor.deleteFailed"));
     }
-  }, [canWrite, previewAs, loadNotes, t]);
+  }, [canWrite, previewAs, loadNotes, handleAuthExpiry, t]);
 
   if (loadError) return <p className="loading">{t("screen.error")}</p>;
   if (!map) return <p className="loading">{t(waking ? "screen.waking" : "screen.loading")}</p>;
