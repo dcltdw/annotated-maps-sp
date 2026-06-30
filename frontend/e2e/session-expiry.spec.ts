@@ -54,18 +54,25 @@ test("an expired session on a write logs out with a 'session expired' prompt", a
     r.request().method() === "GET" ? r.fulfill({ json: [NOTE] }) : r.continue(),
   );
 
-  // /auth/me: the mount call authenticates; afterwards the token is "expired".
-  let meCalls = 0;
+  // /auth/me reflects token state, NOT a call count: it returns the user until the
+  // token "expires" (set by the delete below), then 401. State-based so it's robust to
+  // the extra mount-time call React StrictMode makes in dev — a count-based mock would
+  // flakily 401 on that second call and log the user straight back out.
+  let expired = false;
+  let meChecksAfterExpiry = 0;
   await page.route("**/api/v1/auth/me", (r) => {
-    meCalls += 1;
-    return meCalls === 1 ? r.fulfill({ json: USER }) : r.fulfill({ status: 401, json: {} });
+    if (expired) {
+      meChecksAfterExpiry += 1;
+      return r.fulfill({ status: 401, json: {} });
+    }
+    return r.fulfill({ json: USER });
   });
-  // The delete write fails the way a guest's would once the token is dead.
-  await page.route("**/api/v1/notes/*", (r) =>
-    r.request().method() === "DELETE"
-      ? r.fulfill({ status: 403, json: { detail: "You can only edit your own notes." } })
-      : r.continue(),
-  );
+  // The delete write fails the way a guest's would; from here the token is dead.
+  await page.route("**/api/v1/notes/*", (r) => {
+    if (r.request().method() !== "DELETE") return r.continue();
+    expired = true;
+    return r.fulfill({ status: 403, json: { detail: "You can only edit your own notes." } });
+  });
 
   page.on("dialog", (d) => d.accept()); // accept the delete confirm
 
@@ -81,5 +88,5 @@ test("an expired session on a write logs out with a 'session expired' prompt", a
   // The write 403s, the /auth/me re-check 401s → expiry handling kicks in.
   await expect(page.getByText(/your session expired/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
-  expect(meCalls).toBeGreaterThanOrEqual(2);
+  expect(meChecksAfterExpiry).toBeGreaterThanOrEqual(1); // the write triggered a re-check
 });
