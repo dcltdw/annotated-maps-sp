@@ -81,5 +81,6 @@
   "auth.haveAccount": "Have an account? Log in",
   "auth.demoHint": "Try the demo: friend@demo.example / demo-pass-12345",
   "auth.failed": "That didn't work — check your details and try again.",
+  "auth.sessionExpired": "Your session expired — please log in again.",
   "auth.close": "Close"
 }
