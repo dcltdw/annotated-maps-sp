@@ -1,7 +1,8 @@
 {
   "app.title": "Annotated Maps",
   "screen.loading": "Loading map…",
-  "screen.error": "Couldn't load the map. Is the backend running?",
+  "screen.waking": "Waking up the demo server — on free hosting this can take up to a minute…",
+  "screen.error": "The map server isn't responding — it may still be waking up (free hosting spins it down when idle). Please reload in a moment.",
   "screen.reopen": "◀ note",
   "screen.reopenAria": "Reopen note panel",
   "screen.drawArea": "✏️ Draw area",
