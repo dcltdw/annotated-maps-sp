@@ -12,7 +12,7 @@ test("About toggles a popover with the author and a new-tab link to the repo", a
   await userEvent.click(screen.getByRole("button", { name: /about/i }));
 
   const dialog = screen.getByRole("dialog");
-  expect(dialog).toHaveTextContent(/built by david leung/i);
+  expect(dialog).toHaveTextContent(/author: david leung/i);
   const link = screen.getByRole("link", { name: /github/i });
   expect(link).toHaveAttribute("href", "https://github.com/dcltdw/annotated-maps-sp");
   expect(link).toHaveAttribute("target", "_blank");
