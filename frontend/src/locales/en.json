@@ -1,5 +1,9 @@
 {
   "app.title": "Annotated Maps",
+  "about.label": "About",
+  "about.desc": "A demo of section-level, per-audience map annotations.",
+  "about.by": "Built by David Leung",
+  "about.source": "View source on GitHub ↗",
   "screen.loading": "Loading map…",
   "screen.waking": "Waking up the demo server — on free hosting this can take up to a minute…",
   "screen.error": "The map server isn't responding — it may still be waking up (free hosting spins it down when idle). Please reload in a moment.",
