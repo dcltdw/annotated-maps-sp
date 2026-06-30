@@ -4,7 +4,9 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /api/v1/health
-    preDeployCommand: uv run python manage.py migrate
+    # Migrate, then rebuild the demo seed from code so each deploy re-applies it
+    # (--refresh, since seed_demo is otherwise get_or_create and won't update notes).
+    preDeployCommand: uv run python manage.py migrate && uv run python manage.py seed_demo --refresh
     envVars:
       - key: DATABASE_URL
         sync: false   # Neon connection string, set per-environment

@@ -23,6 +23,30 @@ def test_seed_includes_an_area_and_a_route(db):
     assert data["route_note"].path is not None and data["route_note"].is_seed
 
 
+def test_seed_demo_refresh_rebuilds_seed_only(db):
+    from django.contrib.gis.geos import Point
+    from django.core.management import call_command
+
+    data = build_boston_demo()
+    seed_count = Note.objects.filter(is_seed=True).count()
+    assert seed_count > 0
+    # A user-created (non-seed) note must survive a refresh untouched.
+    user_note = Note.objects.create(
+        tenant=data["tenant"],
+        map=data["map"],
+        author=data["friend"],
+        title="a visitor's pin",
+        point=Point(-71.06, 42.35),
+        is_seed=False,
+    )
+
+    call_command("seed_demo", "--refresh")
+
+    # Seed content is rebuilt, not duplicated; user content is left alone.
+    assert Note.objects.filter(is_seed=True).count() == seed_count
+    assert Note.objects.filter(id=user_note.id).exists()
+
+
 def test_seed_china_pearl_is_friends_only(db):
     data = build_boston_demo()
     pin = data["china_pearl"]
