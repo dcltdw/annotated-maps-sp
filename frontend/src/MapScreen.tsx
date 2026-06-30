@@ -9,6 +9,7 @@ import { NotePanel } from "./components/NotePanel";
 import { PreviewSwitcher } from "./components/PreviewSwitcher";
 import { me } from "./api/auth";
 import { AuthBar } from "./components/AuthBar";
+import { AboutButton } from "./components/AboutButton";
 
 // Lazy so maplibre-gl splits into its own chunk, loaded only when the map screen mounts.
 const MapView = lazy(() => import("./components/MapView").then((m) => ({ default: m.MapView })));
@@ -313,7 +314,10 @@ export function MapScreen() {
         <div className="sandbox-banner">{t("sandbox.banner")}</div>
       )}
       <header className="topbar">
-        <strong>{t("app.title")} · {map.name}</strong>
+        <div className="topbar__brand">
+          <strong>{t("app.title")} · {map.name}</strong>
+          <AboutButton />
+        </div>
         {!authUser && (
           <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
         )}

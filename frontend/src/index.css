@@ -20,6 +20,15 @@ body {
 .screen { height: 100vh; display: flex; flex-direction: column; }
 .sandbox-banner { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fcd34d; padding: 6px 12px; font-size: 13px; text-align: center; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #8883; flex-wrap: wrap; background: #fff; color: #111; }
+.topbar__brand { display: flex; align-items: center; gap: 8px; }
+.about { position: relative; }
+.about__toggle { padding: 3px 10px; border-radius: 999px; border: 1px solid #888; background: transparent; color: #111; cursor: pointer; font-size: 13px; }
+.about__popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 250px; background: #fff; color: #111; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 12px 14px; }
+.about__heading { font-weight: 700; margin: 0 0 4px; }
+.about__desc { font-size: 13px; color: #444; margin: 0 0 8px; }
+.about__by { font-size: 13px; margin: 0 0 8px; }
+.about__link { font-size: 13px; color: #2563eb; text-decoration: none; }
+.about__link:hover { text-decoration: underline; }
 .switcher { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .switcher__label { opacity: .65; }
 .switcher button { padding: 4px 10px; border-radius: 999px; border: 1px solid #888; background: transparent; cursor: pointer; }
