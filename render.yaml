@@ -4,9 +4,11 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /api/v1/health
-    # Migrate, then rebuild the demo seed from code so each deploy re-applies it
-    # (--refresh, since seed_demo is otherwise get_or_create and won't update notes).
-    preDeployCommand: uv run python manage.py migrate && uv run python manage.py seed_demo --refresh
+    # Migrate, then rebuild the demo seed from code (--refresh) on every deploy.
+    # Render does NOT run preDeployCommand through a shell, so `&&` can't chain —
+    # the steps live in predeploy.sh, which sh runs in order. (predeploy.sh is at
+    # /app/predeploy.sh via the Dockerfile's `COPY backend/ ./`.)
+    preDeployCommand: sh predeploy.sh
     envVars:
       - key: DATABASE_URL
         sync: false   # Neon connection string, set per-environment
