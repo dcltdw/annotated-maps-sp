@@ -54,6 +54,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
+      - run: npm run e2e:prod # production-build guards (built CSS) against `vite preview`
 
   pr-rigor:
     if: github.event_name == 'pull_request'
