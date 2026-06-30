@@ -31,6 +31,4 @@ class Command(BaseCommand):
             deleted, _ = Note.all_objects.filter(is_seed=True).delete()
             self.stdout.write(self.style.WARNING(f"Refresh: removed {deleted} seed object(s)."))
         data = build_boston_demo()
-        self.stdout.write(
-            self.style.SUCCESS(f"Seeded map {data['map'].id} with the demo notes.")
-        )
+        self.stdout.write(self.style.SUCCESS(f"Seeded map {data['map'].id} with the demo notes."))
