@@ -6,6 +6,8 @@ A multi-tenant, permissioned map-annotation platform. Teams can create and share
 
 **▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
 
+**▶ [Production-engineering roadmap](ROADMAP.md)** — what this project demonstrates today (CI gates, Docker, declarative deploys) and what's next (Kubernetes/Helm, Terraform + EKS, OpenTelemetry), with proof links for every shipped milestone.
+
 ## Section-level visibility
 
 Every note is composed of **sections**, each gated to a different audience — public, friends, a group, a reputation threshold, or private. The same note shows different content depending on who is viewing it; switch personas with the **"Viewing as"** control to watch the markers and detail panel re-filter live.
