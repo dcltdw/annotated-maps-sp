@@ -18,7 +18,8 @@ def _visible_contents(map_id, preview_as=None):
     url = f"/api/v1/maps/{map_id}/notes"
     if preview_as:
         url += f"?preview_as={preview_as}"
-    note = Client().get(url).json()[0]
+    notes = Client().get(url).json()
+    note = next(n for n in notes if n["title"].startswith("Castle Island"))
     return {s["content"] for s in note["sections"] if s["visibility"] == "visible"}
 
 
@@ -42,7 +43,8 @@ def test_audience_friend_sees_the_parking_tip(demo):
 
 def test_non_member_does_not_see_running_club_section_but_gets_a_teaser(demo):
     url = f"/api/v1/maps/{demo['map'].id}/notes?preview_as={demo['dimsum_friend'].id}"
-    note = Client().get(url).json()[0]
+    notes = Client().get(url).json()
+    note = next(n for n in notes if n["title"].startswith("Castle Island"))
     club_sections = [s for s in note["sections"] if s["content"] and "Sullivan" in s["content"]]
     assert club_sections == []  # not visible to a non-member
     assert any(s["visibility"] == "teaser" for s in note["sections"])  # but teased (opt-in)
