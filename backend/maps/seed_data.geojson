@@ -73,6 +73,425 @@
           {"rule": "public", "content": "Best shumai in town!"}
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0602, 42.3512]},
+      "properties": {
+        "slug": "winsor-dim-sum",
+        "title": "Winsor Dim Sum Cafe",
+        "author": "dimsum-friend",
+        "sections": [
+          {"rule": "public", "content": "No-frills Chinatown dim sum, order off the paper instead of waiting on a cart — faster, and it comes out hot."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Our go-to after a slow Sunday morning — grab the table by the window, it's quieter."},
+          {"rule": "audience", "groups": ["dim-sum-crew"], "teaser": true, "content": "Crew order: rice rolls first, then the pan-fried turnip cake while it's still crisp."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: skip the printed specials board and just ask what's fresh out of the kitchen."},
+          {"rule": "private", "content": "Note to self: bring small bills, and grab extra napkins on the way in."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0607, 42.3502]},
+      "properties": {
+        "slug": "great-taste-bakery",
+        "title": "Great Taste Bakery",
+        "author": "dimsum-friend",
+        "sections": [
+          {"rule": "public", "content": "Chinatown bakery-and-restaurant combo — egg tarts and roast pork buns straight from the case."},
+          {"rule": "audience", "groups": ["dim-sum-crew"], "content": "Crew pick: grab a bag of egg tarts to go after we eat next door."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0597, 42.3509]},
+      "properties": {
+        "slug": "taiwan-cafe",
+        "title": "Taiwan Cafe",
+        "author": "dimsum-friend",
+        "sections": [
+          {"rule": "public", "content": "Taiwanese comfort food tucked into Chinatown — the three-cup chicken is the move."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0566, 42.3654]},
+      "properties": {
+        "slug": "regina-pizzeria",
+        "title": "Regina Pizzeria",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "The original North End location — brick oven, thin crust, a line out the door most nights."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Go early or go late — the middle of dinner rush is rough on Thacher St."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0546, 42.3647]},
+      "properties": {
+        "slug": "mikes-pastry",
+        "title": "Mike's Pastry",
+        "author": "dimsum-friend",
+        "sections": [
+          {"rule": "public", "content": "The North End's cannoli institution — the line looks worse than it is, it moves fast."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0552, 42.3641]},
+      "properties": {
+        "slug": "modern-pastry",
+        "title": "Modern Pastry",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "The quieter North End cannoli shop, one block from Mike's — locals are split on which is better."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0561, 42.3633]},
+      "properties": {
+        "slug": "neptune-oyster",
+        "title": "Neptune Oyster",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Tiny North End raw bar, standing room at the counter — the lobster roll is why people wait."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: put your name in, then go walk Hanover St for twenty minutes instead of standing outside."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0570, 42.3614]},
+      "properties": {
+        "slug": "union-oyster-house",
+        "title": "Union Oyster House",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "America's oldest continuously operating restaurant — raw bar downstairs, dining room up top."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: the oyster bar seats are first-come — grab one there instead of waiting for a table."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0546, 42.3600]},
+      "properties": {
+        "slug": "quincy-market",
+        "title": "Quincy Market",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "The historic market hall beside Faneuil Hall — food stalls, street performers, foot traffic all day."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: where locals actually eat is the side stalls facing North Market, not the main aisle."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0623, 42.3557]},
+      "properties": {
+        "slug": "thinking-cup",
+        "title": "Thinking Cup",
+        "author": "running-friend",
+        "sections": [
+          {"rule": "public", "content": "Solid coffee stop a couple blocks from the Common — good spot to warm up before or after a loop."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0707, 42.3580]},
+      "properties": {
+        "slug": "tatte-beacon-hill",
+        "title": "Tatte Beacon Hill",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Beacon Hill bakery-cafe — the pastry case is the whole reason to stop, seating is tight."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0489, 42.3513]},
+      "properties": {
+        "slug": "flour-fort-point",
+        "title": "Flour Bakery (Fort Point)",
+        "author": "running-friend",
+        "sections": [
+          {"rule": "public", "content": "Joanne Chang's bakery in Fort Point — the sticky buns are worth the detour on their own."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Good refuel stop after the Harborwalk route — grab something before the T ride back."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0805, 42.3369]},
+      "properties": {
+        "slug": "toro-south-end",
+        "title": "Toro",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "South End tapas spot — the grilled corn with cotija is the dish everyone ends up ordering."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Worth the wait at the bar if the dining room's full — same menu, more fun anyway."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[-71.0430, 42.3535], [-71.0389, 42.3505], [-71.0355, 42.3450], [-71.0330, 42.3405], [-71.0290, 42.3380], [-71.0220, 42.3370], [-71.0136, 42.3380]]},
+      "properties": {
+        "slug": "harborwalk-southie",
+        "title": "Harborwalk — Seaport to Castle Island",
+        "author": "runner",
+        "sections": [
+          {"rule": "public", "content": "Waterfront path from the Seaport down through Southie to Castle Island — flat, breezy, good views the whole way."},
+          {"rule": "audience", "groups": ["running-club"], "content": "Club long-run route — mile markers are rough, but the harbor breeze keeps the pace honest."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[-71.0800, 42.3546], [-71.0905, 42.3517], [-71.1005, 42.3512], [-71.1075, 42.3532]]},
+      "properties": {
+        "slug": "bu-bridge-extension",
+        "title": "Esplanade — BU Bridge out-and-back",
+        "author": "running-friend",
+        "sections": [
+          {"rule": "public", "content": "Extend the Esplanade path west to the BU Bridge and back — adds a solid stretch of riverside miles."},
+          {"rule": "audience", "groups": ["running-club"], "content": "Turn around at the BU Bridge underpass — footing gets rougher past it."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[-71.0755, 42.3475], [-71.0790, 42.3430], [-71.0830, 42.3390], [-71.0880, 42.3350], [-71.0950, 42.3300]]},
+      "properties": {
+        "slug": "southwest-corridor",
+        "title": "Southwest Corridor path",
+        "author": "runner",
+        "sections": [
+          {"rule": "public", "content": "Linear park path from Back Bay down through Jamaica Plain, mostly shaded, good for a longer effort off the streets."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Quietest stretch is south of Roxbury Crossing — fewer crossings to break stride."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[-71.0656, 42.3554], [-71.0640, 42.3585], [-71.0685, 42.3560], [-71.0709, 42.3525], [-71.0656, 42.3554]]},
+      "properties": {
+        "slug": "common-garden-shakeout",
+        "title": "Common & Garden shakeout",
+        "author": "running-friend",
+        "sections": [
+          {"rule": "public", "content": "Short easy loop linking the Common and the Public Garden — perfect for a shakeout or a warmup."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[-71.0685, 42.3537], [-71.0640, 42.3585], [-71.0620, 42.3570], [-71.0625, 42.3564], [-71.0656, 42.3524], [-71.0685, 42.3537]]]},
+      "properties": {
+        "slug": "boston-common",
+        "title": "Boston Common",
+        "author": "owner",
+        "sections": [
+          {"rule": "public", "content": "The oldest public park in the country — wide-open lawns, the Frog Pond, and paths crisscrossing every which way."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Meet at the Park St T entrance — easiest landmark for everyone."},
+          {"rule": "audience", "groups": ["running-club"], "teaser": true, "content": "Club strides: the Tremont St mall path is flat enough for a set of strides after an easy loop."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: the Beacon St side empties out first in the evening — quieter laps over there."},
+          {"rule": "private", "content": "Reminder: double check the Frog Pond schedule before sending anyone over in summer."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[-71.0515, 42.3612], [-71.0495, 42.3627], [-71.0483, 42.3617], [-71.0505, 42.3603], [-71.0515, 42.3612]]]},
+      "properties": {
+        "slug": "columbus-park",
+        "title": "Christopher Columbus Park",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Waterfront park behind Faneuil Hall — rose garden, harbor views, a good spot to catch your breath."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Good bench-sitting spot after a big dim sum lunch — right on the water."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[-71.0546, 42.3655], [-71.0536, 42.3661], [-71.0531, 42.3655], [-71.0541, 42.3649], [-71.0546, 42.3655]]]},
+      "properties": {
+        "slug": "paul-revere-mall",
+        "title": "Paul Revere Mall (the Prado)",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Brick plaza between Hanover St and the Old North Church — the statue and the fountains make it a nice cut-through."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[-71.1210, 42.3765], [-71.1185, 42.3782], [-71.1165, 42.3765], [-71.1195, 42.3750], [-71.1210, 42.3765]]]},
+      "properties": {
+        "slug": "cambridge-common",
+        "title": "Cambridge Common",
+        "author": "runner",
+        "sections": [
+          {"rule": "public", "content": "Historic green space just off Harvard Square — playgrounds, monuments, plenty of room to stretch."},
+          {"rule": "audience", "groups": ["running-club"], "content": "Club meets at the Garden St corner before Cambridge loops."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0450, 42.3305]},
+      "properties": {
+        "slug": "track-tuesdays",
+        "title": "Track Tuesdays",
+        "author": "runner",
+        "sections": [
+          {"rule": "audience", "groups": ["running-club"], "content": "Weekly club track meetup at the Moakley Park track — bring spikes or flats, whichever you're working on."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0765, 42.3617]},
+      "properties": {
+        "slug": "longfellow-viewpoint",
+        "title": "Longfellow Bridge viewpoint",
+        "author": "running-friend",
+        "sections": [
+          {"rule": "public", "content": "Best skyline-over-the-river view from the Boston side of the 'salt and pepper' bridge."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0705, 42.3577]},
+      "properties": {
+        "slug": "acorn-street",
+        "title": "Acorn Street",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "One of the most photographed streets in the country — narrow cobblestones and gas lamps, Beacon Hill at its most postcard."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0625, 42.3564]},
+      "properties": {
+        "slug": "park-st-tip",
+        "title": "Park St — walk, don't ride",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Park St station sits right at the corner of the Common — the hub for the Red and Green Lines."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: for one stop in either direction, walking beats waiting on the platform."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0656, 42.3554]},
+      "properties": {
+        "slug": "frog-pond",
+        "title": "Frog Pond",
+        "author": "owner",
+        "sections": [
+          {"rule": "public", "content": "Right in the middle of the Common — ice skating in winter, a splash pad in summer, always some kind of crowd around it."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0800, 42.3546]},
+      "properties": {
+        "slug": "esplanade-fountain",
+        "title": "Esplanade water fountain",
+        "author": "runner",
+        "sections": [
+          {"rule": "public", "content": "Water fountain right along the Esplanade path — easy to miss if you're not looking for it."},
+          {"rule": "audience", "groups": ["running-club"], "content": "Club refill stop mid-route — reliable pressure, rarely a line."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0430, 42.3535]},
+      "properties": {
+        "slug": "fan-pier-view",
+        "title": "Fan Pier skyline view",
+        "author": "running-friend",
+        "sections": [
+          {"rule": "public", "content": "Open plaza in the Seaport with a straight-on view of the downtown skyline across the harbor."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Good photo stop at the far end of the Harborwalk route."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0597, 42.3589]},
+      "properties": {
+        "slug": "steaming-kettle",
+        "title": "The Steaming Kettle",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Giant copper kettle sign near Government Center — an old Boston landmark hanging right over the sidewalk."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "slug": "regina-take",
+        "author": "runner",
+        "parent": "regina-pizzeria",
+        "sections": [
+          {"rule": "public", "content": "Post-long-run tradition: one slice standing at the counter before the ride home."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "slug": "mikes-vs-modern",
+        "author": "local",
+        "parent": "mikes-pastry",
+        "sections": [
+          {"rule": "public", "content": "Team Modern, honestly — the ricotta filling is less sweet and the shop's never as mobbed."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "slug": "loop-extension-take",
+        "author": "running-friend",
+        "parent": "charles-river-loop",
+        "sections": [
+          {"rule": "public", "content": "I usually tack on the BU Bridge extension for extra miles — see my route for the out-and-back."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "slug": "common-take",
+        "author": "dimsum-friend",
+        "parent": "boston-common",
+        "sections": [
+          {"rule": "public", "content": "After a big dim sum lunch, a slow lap of the Common's flat paths is the perfect walk-it-off."}
+        ]
+      }
     }
   ]
 }

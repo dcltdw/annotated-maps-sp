@@ -127,3 +127,40 @@ def test_shipped_seed_file_validates():
 
     seed = load_seed_file(SEED_PATH)  # no raise = the shipped file is valid
     assert len(seed.top_level) >= 4
+
+
+def test_seed_content_mix(db):
+    from maps.seed import SEED_PATH
+    from maps.seed_schema import load_seed_file
+
+    seed = load_seed_file(SEED_PATH)
+    top = seed.top_level
+    assert 30 <= len(top) <= 38
+    assert 4 <= len(seed.appends) <= 6
+    # Geometry variety
+    kinds = [f.geometry.type for f in top]  # type: ignore[union-attr]  # schema guarantees top-level geometry is non-null
+    assert kinds.count("LineString") >= 5  # existing loop + 4 new routes
+    assert kinds.count("Polygon") >= 5  # existing garden + 4 new areas
+    # Texture: majority simple (<=2 sections), a handful of full ladders
+    simple = [f for f in top if len(f.properties.sections) <= 2]
+    full = [
+        f
+        for f in top
+        if {"public", "audience", "attribute_gate", "private"}
+        <= {s.rule for s in f.properties.sections}
+    ]
+    assert len(simple) >= len(top) * 0.5
+    assert 4 <= len(full) <= 6
+    # Every persona authors something
+    assert {f.properties.author for f in seed.features} == {
+        "owner",
+        "running-friend",
+        "dimsum-friend",
+        "runner",
+        "local",
+    }
+    # At least one whole-note group-gated entry (all sections group-audience)
+    gated = [
+        f for f in top if all(s.rule == "audience" and s.groups for s in f.properties.sections)
+    ]
+    assert len(gated) >= 1
