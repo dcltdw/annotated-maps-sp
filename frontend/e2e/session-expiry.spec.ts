@@ -14,7 +14,7 @@ const MINIMAL_STYLE = {
   layers: [{ id: "bg", type: "background", paint: { "background-color": "#e8e8e8" } }],
 };
 const MAP = { id: "m1", name: "Greater Boston", lng: -71.0589, lat: 42.3601, zoom: 13 };
-const USER = { id: "u1", display_name: "A Friend", email: "friend@demo.example", reputation: 10 };
+const USER = { id: "u1", display_name: "A Running Friend", email: "running.friend@demo.example", reputation: 10 };
 const NOTE = {
   id: "n1",
   author_id: "u1",

@@ -28,7 +28,7 @@ test("opening the popover and submitting logs in and reports the user", async ()
 test("the demo-login hint is shown in the popover", async () => {
   render(<AuthBar user={null} onAuthed={() => {}} onLoggedOut={() => {}} />);
   await userEvent.click(screen.getByRole("button", { name: /log in/i }));
-  expect(screen.getByText(/friend@demo\.example/)).toBeInTheDocument();
+  expect(screen.getByText(/running\.friend@demo\.example/)).toBeInTheDocument();
 });
 
 test("toggling to sign up calls signup with the display name", async () => {
