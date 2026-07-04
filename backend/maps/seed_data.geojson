@@ -1,0 +1,78 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0136, 42.3380]},
+      "properties": {
+        "slug": "castle-island-loop",
+        "title": "Castle Island — Pleasure Bay Loop",
+        "author": "owner",
+        "sections": [
+          {"rule": "public", "content": "Flat, scenic ~2.5-mi loop around the bay. Great easy day."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Parking fills by 9am — use the far lot by the fort."},
+          {"rule": "audience", "groups": ["running-club"], "teaser": true, "content": "Water fountain + restrooms by the fort; Sullivan's sells water & Gatorade."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted-local tip: the back stretch ices over first in winter."},
+          {"rule": "private", "content": "Reminder: right knee twinges on the back stretch — ease off."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[-71.0723, 42.3539], [-71.0699, 42.3551], [-71.0685, 42.3537], [-71.0709, 42.3525], [-71.0723, 42.3539]]]},
+      "properties": {
+        "slug": "boston-public-garden",
+        "title": "Boston Public Garden",
+        "author": "local",
+        "sections": [
+          {"rule": "public", "content": "Swan boats + the willows. Calm loop, good for an easy shakeout."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Meet by the Make Way for Ducklings statues — easy landmark."},
+          {"rule": "audience", "groups": ["running-club"], "teaser": true, "content": "Club shakeout: two laps of the lagoon path, then out onto the Common."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Local tip: the Arlington St gate opens earliest — quietest before 8am."},
+          {"rule": "private", "content": "Note to self: confirm the swan boats are running before recommending."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [[-71.0920, 42.3578], [-71.0880, 42.3596], [-71.0840, 42.3610], [-71.0805, 42.3627], [-71.0793, 42.3641], [-71.0745, 42.3628], [-71.0707, 42.3611], [-71.0745, 42.3573], [-71.0800, 42.3546], [-71.0858, 42.3525], [-71.0905, 42.3517], [-71.0913, 42.3548], [-71.0920, 42.3578]]},
+      "properties": {
+        "slug": "charles-river-loop",
+        "title": "Charles River loop",
+        "author": "runner",
+        "docs": "TOUR SHOWCASE — the demo tour opens this note by title. Keep the title and the full rule spread. See docs/superpowers/specs/2026-07-04-demo-tour-design.md before editing.",
+        "sections": [
+          {"rule": "public", "content": "Flat ~4.5 km loop: east along Memorial Drive, over the Longfellow Bridge, back along the Esplanade, closing across the Mass Ave bridge. Water fountains near both bridges."},
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Start from the Mass Ave bridge so you finish with the Esplanade views."},
+          {"rule": "audience", "groups": ["running-club"], "teaser": true, "content": "Club tempo: pick it up between the bridges, float the bridge climbs."},
+          {"rule": "attribute_gate", "attribute": "reputation", "threshold": 50, "content": "Trusted tip: the Esplanade puddles near the lagoon after heavy rain."},
+          {"rule": "private", "content": "Reminder: refill at the Longfellow fountain — the Mass Ave one is often off."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-71.0600, 42.3514]},
+      "properties": {
+        "slug": "china-pearl",
+        "title": "China Pearl",
+        "author": "owner",
+        "sections": [
+          {"rule": "audience", "users": ["running-friend", "dimsum-friend"], "content": "Favorite dim sum place."}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "slug": "china-pearl-take",
+        "author": "dimsum-friend",
+        "parent": "china-pearl",
+        "sections": [
+          {"rule": "public", "content": "Best shumai in town!"}
+        ]
+      }
+    }
+  ]
+}

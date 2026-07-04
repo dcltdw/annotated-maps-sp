@@ -30,18 +30,18 @@ def test_guest_sees_only_public(demo):
 
 
 def test_private_never_leaks_to_a_non_owner(demo):
-    for persona in ("friend", "runner", "local"):
+    for persona in ("running_friend", "dimsum_friend", "runner", "local"):
         contents = _visible_contents(demo["map"].id, demo[persona].id)
         assert not any("knee" in c for c in contents), f"private leaked to {persona}"
 
 
 def test_audience_friend_sees_the_parking_tip(demo):
-    contents = _visible_contents(demo["map"].id, demo["friend"].id)
+    contents = _visible_contents(demo["map"].id, demo["running_friend"].id)
     assert any("Parking fills" in c for c in contents)
 
 
 def test_non_member_does_not_see_running_club_section_but_gets_a_teaser(demo):
-    url = f"/api/v1/maps/{demo['map'].id}/notes?preview_as={demo['friend'].id}"
+    url = f"/api/v1/maps/{demo['map'].id}/notes?preview_as={demo['dimsum_friend'].id}"
     note = Client().get(url).json()[0]
     club_sections = [s for s in note["sections"] if s["content"] and "Sullivan" in s["content"]]
     assert club_sections == []  # not visible to a non-member
@@ -54,8 +54,10 @@ def test_running_club_member_sees_the_club_section(demo):
 
 
 def test_reputation_gate_opens_only_at_threshold(demo):
-    # friend has rep 10 (below threshold 50) — gate closed
-    assert not any("ices over" in c for c in _visible_contents(demo["map"].id, demo["friend"].id))
+    # running_friend has rep 10 (below threshold 50) — gate closed
+    assert not any(
+        "ices over" in c for c in _visible_contents(demo["map"].id, demo["running_friend"].id)
+    )
     # local has rep 60 (above threshold 50) — gate open
     assert any("ices over" in c for c in _visible_contents(demo["map"].id, demo["local"].id))
 
