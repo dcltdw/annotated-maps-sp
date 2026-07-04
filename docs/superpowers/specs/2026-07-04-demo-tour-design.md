@@ -50,6 +50,15 @@ Targets are located via `data-tour="…"` attributes on stable containers
 (map wrap, PreviewSwitcher, NotePanel, AuthBar) — never on map markers or
 other dynamic children, so the tour has no coupling to MapLibre internals.
 
+**Editability requirement:** steps are declared as a data array
+(`{target, copyKey, sideEffect?}`), not imperative code — copy edits touch
+only `en.json`; adding/reordering a passive step is one array entry (+ a
+`data-tour` attribute); only a *new kind* of side effect requires wiring a
+callback. e2e asserts behavior (overlay, switch happened, panel opened),
+never copy strings, so wording changes don't break tests. The
+`tourSeenV1` key doubles as a version lever — bump it to re-show a revamped
+tour to returning visitors once.
+
 ### 2. Step sequence
 
 | # | Spotlight | Copy gist | Side effect |
