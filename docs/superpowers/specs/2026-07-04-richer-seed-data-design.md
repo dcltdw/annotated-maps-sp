@@ -31,12 +31,11 @@ seed).
 
 ## Non-goals
 
-- No product/API/frontend changes. This slice only changes what data the seed
-  produces and how it is authored.
+- No product/API changes. One deliberate frontend exception: the demo-login
+  hint string (AuthBar / `en.json`) updates to a new persona email — see §4.
+  Everything else about the app is untouched.
 - No user-facing GeoJSON import feature (recorded as a backlog seam — see
   "Future seam" below).
-- No new demo personas (the four demo logins and the UI hint stay exactly as
-  they are).
 
 ## Design
 
@@ -48,12 +47,14 @@ seed).
   - `slug` (stable unique id, used for idempotent get_or_create and
     parent references)
   - `title` (absent/null for appends, which are untitled today)
-  - `author` (persona key: `owner` | `friend` | `runner` | `local`)
+  - `author` (persona key: `owner` | `running-friend` | `dimsum-friend` |
+    `runner` | `local`)
   - `parent` (optional: slug of the parent note — marks this feature as an
     append; geometry ignored by the loader for appends, matching the model)
   - `sections`: ordered list of `{rule_type, rule_params?, teaser?, content}`
     mirroring `Section` semantics. `rule_params` uses symbolic keys
-    (`{"users": ["friend"]}`, `{"groups": ["running-club"]}`) that the loader
+    (`{"users": ["running-friend", "dimsum-friend"]}`,
+    `{"groups": ["running-club"]}`) that the loader
     resolves to real ids at seed time — the JSON never contains database ids.
 - **`backend/maps/seed_schema.py`** — Pydantic models (`SeedFile`,
   `SeedFeature`, `SeedSection`, geometry models) that parse and validate the
@@ -92,7 +93,7 @@ cast; note-specific keys are replaced by a `notes_by_slug` mapping.
 
 | Category | Count | Geometry | Notes |
 |---|---|---|---|
-| Restaurants & cafés | 12–14 | Point | Chinatown (3–4), North End (4–5), scattered (Back Bay, Cambridge). Authored mostly by `friend` and `local`. |
+| Restaurants & cafés | 12–14 | Point | Chinatown (3–4), North End (4–5), scattered (Back Bay, Cambridge). Authored mostly by `dimsum-friend` and `local`. |
 | Running routes | 4 | LineString | Southie/Harborwalk, Esplanade→BU extension, Southwest Corridor, Common–Garden shakeout. Authored by `runner`. |
 | Parks & areas | 4–5 | Polygon | Boston Common, Christopher Columbus Park, a North End waterfront stretch, one Cambridge green. |
 | One-off tips | 6–8 | Point | Viewpoints, T-station gotchas, water fountains, a photo spot. Mixed authors. |
@@ -111,12 +112,39 @@ cast; note-specific keys are replaced by a `notes_by_slug` mapping.
 consistent with the existing seed. No claims a visitor could act on to their
 detriment (hours, prices).
 
-### 4. New group: Dim sum crew
+### 4. Persona and group changes: two friends, two groups
 
-`Group(name="Dim sum crew")` with `friend` and `local` as members. Group-gated
-content then exists in two social contexts (running + food), so persona
-switching re-filters visibly across the whole map, not just athletic notes.
-No persona changes; the demo-login hint stays accurate.
+The single "A Friend" persona splits into two friend personas so group
+membership becomes visible **through contrast** — two users at the same
+friend-tier trust level who see different group content:
+
+| Persona | Email | Rep | Friend-tier? | Groups |
+|---|---|---|---|---|
+| You (owner) | owner@demo.example | 100 | author | — |
+| **A Running Friend** *(renamed from "A Friend")* | running.friend@demo.example | 10 | yes | Running club |
+| **A Dim Sum Friend** *(new)* | dimsum.friend@demo.example | 10 | yes | Dim sum crew |
+| Run-club Member | runner@demo.example | 30 | no | Running club |
+| Reputable Local | local@demo.example | 60 | no | — |
+
+- **Groups:** Running club = {runner, running-friend}; **Dim sum crew** (new)
+  = {dimsum-friend}. Reputable Local stays out of both groups so the
+  reputation rung of the ladder stays pure (one persona per lesson).
+- **Friend-tier sections** (`user_ids`) now target *both* friends, so the two
+  friend personas differ only in group content. The China Pearl append's
+  author becomes the Dim Sum Friend (it's a dim sum take).
+- **Pedagogy of the resulting cast:** the two friends contrast group gating;
+  Run-club Member vs A Running Friend contrasts friend-tier vs group-tier
+  (club access without friendship); Reputable Local isolates the reputation
+  gate; owner sees everything plus private.
+- **Existing-user migration (in the loader, idempotent):** the production DB
+  already has the "A Friend" user with `friend@demo.example`. The loader
+  renames that user in place (display name + email → A Running Friend) when
+  found, rather than creating a parallel user — preserving any user-authored
+  notes and preventing a stale "A Friend" entry in the viewer switcher. The
+  Dim Sum Friend is a genuinely new user.
+- **Frontend hint:** the AuthBar demo-login hint (`friend@demo.example`)
+  updates to `running.friend@demo.example` (`en.json` + any tests referencing
+  the old address). This is the sole frontend edit in the slice.
 
 ### 5. `seed_preview` tool
 
@@ -141,7 +169,9 @@ the shipped file):
    effectively static for our file).
 2. **Seed tests extended** — counts by category/author, idempotency
    (`build_boston_demo()` twice → no duplicates), `--refresh` spares
-   non-seed notes, appends attach to the right parents, group membership.
+   non-seed notes, appends attach to the right parents, group memberships,
+   and the friend-rename migration (a pre-existing `friend@demo.example`
+   user is renamed in place, not duplicated).
 3. **Geometry lint test** — bounding box + validity assertions over the file.
 4. **Visual pass** — `seed_preview` output reviewed by a human, plus one
    headless-Playwright screenshot of the running app against the new seed
