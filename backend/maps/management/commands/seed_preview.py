@@ -108,7 +108,7 @@ class Command(BaseCommand):
         )
         data = json.dumps(payload).replace("</", "<\\/")  # never close the script tag
         out = Path(options["out"])
-        out.write_text(_PAGE.replace("__DATA__", data).replace("__LEGEND__", legend))
+        out.write_text(_PAGE.replace("__LEGEND__", legend).replace("__DATA__", data))
         self.stdout.write(
             self.style.SUCCESS(
                 f"OK: {len(seed.top_level)} notes, {len(seed.appends)} appends → {out}"
