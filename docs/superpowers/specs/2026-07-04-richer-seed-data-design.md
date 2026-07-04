@@ -50,7 +50,13 @@ seed).
   - `author` (persona key: `owner` | `running-friend` | `dimsum-friend` |
     `runner` | `local`)
   - `parent` (optional: slug of the parent note — marks this feature as an
-    append; geometry ignored by the loader for appends, matching the model)
+    append). **Appends carry `"geometry": null`** (valid GeoJSON), and the
+    schema enforces the pairing both ways: `parent` set ⟺ geometry null.
+    A real-looking coordinate on an append would be a lie in the file.
+  - `docs` (optional free-text documentation string — the whitelisted
+    exception to `extra="forbid"`. Used to mark load-bearing features, e.g.
+    the tour showcase carries
+    `"docs": "TOUR SHOWCASE — see 2026-07-04-demo-tour-design.md before editing"`.)
   - `sections`: ordered list of `{rule_type, rule_params?, teaser?, content}`
     mirroring `Section` semantics. `rule_params` uses symbolic keys
     (`{"users": ["running-friend", "dimsum-friend"]}`,
@@ -160,6 +166,9 @@ the shipped file):
 - **All content strings are HTML-escaped** when building the page, so the tool
   is safe on untrusted files from day one (it is a future building block for
   the import-review feature, not just a dev convenience).
+- Features carrying a `docs` property are visually badged (⚠ + the docs text
+  in the popup), so load-bearing entries — like the tour showcase — announce
+  themselves to anyone previewing the file.
 - Output file is gitignored.
 
 ### 6. Verification
@@ -173,6 +182,12 @@ the shipped file):
    and the friend-rename migration (a pre-existing `friend@demo.example`
    user is renamed in place, not duplicated).
 3. **Geometry lint test** — bounding box + validity assertions over the file.
+3a. **Showcase invariant test** — the seed file contains a note titled
+   "Charles River loop" carrying the full five-tier ladder and center-viewport
+   geometry. This note is the designated demo-tour showcase (see
+   `2026-07-04-demo-tour-design.md`); the tour slice later adds a cross-layer
+   test binding the frontend constant to this file. Failure message names the
+   tour spec so an editor knows what they are about to break.
 4. **Visual pass** — `seed_preview` output reviewed by a human, plus one
    headless-Playwright screenshot of the running app against the new seed
    before merge (final in-app confirmation; the preview tool replaces the

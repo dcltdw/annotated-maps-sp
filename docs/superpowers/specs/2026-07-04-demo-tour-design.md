@@ -75,10 +75,41 @@ showcase note open — the visitor lands on the richest view, primed to switch
 personas themselves. (Resetting to Guest would demo the product and then hide
 it again.)
 
-**Showcase note:** the seed data designates one full-ladder note near map
-center; the tour finds it in the already-loaded notes list by title constant.
-If absent (e.g. local dev without seed), step 4 is skipped — every step
-degrades by skipping, never by crashing.
+**Showcase note: "Charles River loop"** (designated; full ladder,
+center-viewport, and thematically aligned — a running route viewed as
+A Running Friend, so the club section lights up). The tour finds it in the
+already-loaded notes list via `SHOWCASE_TITLE` in `tourSteps.ts`. If absent
+(e.g. local dev without seed), step 4 is skipped — every step degrades by
+skipping, never by crashing.
+
+**Where things live (three files, one directional reference):**
+
+```
+backend/maps/seed_data.geojson   content, incl. the showcase note itself
+frontend/…/tourSteps.ts          structure: [{target, copyKey, sideEffect?}]
+                                 + SHOWCASE_TITLE — the ONLY tour→data link
+frontend/src/i18n/en.json        copy strings only (tour.*)
+```
+
+`en.json` never references data; the single functional coupling is the title
+constant, matched at runtime against API-returned notes.
+
+**Breakage guards (layered):**
+
+1. *Runtime mutation is structurally impossible* — existing mechanisms, not
+   new work: seed notes are read-only for everyone in the sandbox, the
+   moderation tool cannot delete `is_seed` rows, and `--refresh` rebuilds the
+   seed from the file on every deploy (direct-DB vandalism self-heals).
+   The only change channel is editing `seed_data.geojson` in a PR.
+2. *Human-before-CI:* the showcase feature carries a `docs` property
+   ("TOUR SHOWCASE — see this spec before editing") and `seed_preview`
+   badges it.
+3. *CI:* a cross-layer consistency test (backend, this slice) reads
+   `SHOWCASE_TITLE` out of the tour's TS source and asserts the seed file
+   contains that title with the full ladder — renaming either side alone
+   fails CI with a message naming this spec. (The seed slice ships the
+   seed-side invariant test first; this slice upgrades it to cross-layer.)
+4. *Last resort:* degrade-by-skip at runtime.
 
 ### 3. Triggering & state
 
