@@ -49,6 +49,7 @@ A **stateless app tier** behind a load balancer + **per-tenant database scaling*
 ### 7. Interoperability & extensibility
 - 🟢 **API versioning from `/v1`**; **GeoJSON/WKB** geometry → natural import/export (pairs with PostGIS, ties to GDPR export); the **preset + pluggable rule-types/collection-kinds/map-sources** system as the extensibility seam.
 - 🟡 Public API / webhooks / SSO / embeds; **full-text search** over notes/places (Postgres FTS is the cheap seam).
+- 🟡 **GeoJSON import review** — sandboxed validation of third-party files (size/vertex limits, content sanitization), description-vs-content verification (geographic containment, geometry-kind checks), and visual approval overlaid on existing data (duplicate detection, accept/reject). Building blocks shipped by the richer-seed slice: Pydantic seed schema, geometry lint, escaping `seed_preview` renderer (spec `2026-07-04-richer-seed-data-design.md`).
 
 ### 8. Mobile, offline & sync
 - 🟡 PWA → native (API-first ✓).

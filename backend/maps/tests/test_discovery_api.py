@@ -20,7 +20,13 @@ def test_maps_list_returns_boston(demo):
 def test_viewers_list_includes_all_personas(demo):
     url = f"/api/v1/maps/{demo['map'].id}/viewers"
     names = {v["display_name"] for v in Client().get(url).json()}
-    assert {"You (owner)", "A Friend", "Run-club Member", "Reputable Local"} <= names
+    assert {
+        "You (owner)",
+        "A Running Friend",
+        "A Dim Sum Friend",
+        "Run-club Member",
+        "Reputable Local",
+    } <= names
 
 
 def test_viewers_unknown_map_returns_404(demo):
