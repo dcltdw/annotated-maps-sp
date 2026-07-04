@@ -113,6 +113,26 @@ def test_polygon_must_be_closed(tmp_path):
         load_seed_file(_write(tmp_path, _doc(open_ring)))
 
 
+def test_polygon_open_ring_of_four_points_rejected(tmp_path):
+    # Length rule (>= 4 points) is satisfied here, so this exercises the
+    # ring[0] != ring[-1] closure check specifically.
+    open_ring = _feature(
+        geometry={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-71.07, 42.35],
+                    [-71.06, 42.36],
+                    [-71.05, 42.35],
+                    [-71.04, 42.34],  # not closed: first != last
+                ]
+            ],
+        }
+    )
+    with pytest.raises(SeedValidationError):
+        load_seed_file(_write(tmp_path, _doc(open_ring)))
+
+
 def test_audience_rule_needs_users_or_groups(tmp_path):
     bare = _feature(sections=[{"rule": "audience", "content": "x"}])
     with pytest.raises(SeedValidationError):
