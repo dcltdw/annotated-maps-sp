@@ -13,12 +13,13 @@ interface Props {
   onAppend?: () => void;
   onEditAppend?: (appendId: string) => void;
   onDeleteAppend?: (appendId: string) => void;
+  dataTour?: string;
 }
 
-export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDelete, previewAs, onAppend, onEditAppend, onDeleteAppend }: Props) {
+export function NotePanel({ note, viewerLabel, onCollapse, canEdit, onEdit, onDelete, previewAs, onAppend, onEditAppend, onDeleteAppend, dataTour }: Props) {
   const { t } = useTranslation();
   return (
-    <aside className="note-panel">
+    <aside className="note-panel" data-tour={dataTour}>
       <header className="note-panel__head">
         <span>📌 {note.title} · {viewerLabel}</span>
         <div className="note-panel__head-actions">

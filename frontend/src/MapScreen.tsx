@@ -10,6 +10,9 @@ import { PreviewSwitcher } from "./components/PreviewSwitcher";
 import { me } from "./api/auth";
 import { AuthBar } from "./components/AuthBar";
 import { AboutButton } from "./components/AboutButton";
+import { TourOverlay } from "./tour/TourOverlay";
+import { SHOWCASE_TITLE, TOUR_PERSONA_NAME } from "./tour/tourSteps";
+import { useTour } from "./tour/useTour";
 
 // Lazy so maplibre-gl splits into its own chunk, loaded only when the map screen mounts.
 const MapView = lazy(() => import("./components/MapView").then((m) => ({ default: m.MapView })));
@@ -115,6 +118,31 @@ export function MapScreen() {
     setSelectedId(id);
     setPanelOpen(true);
   }, []);
+
+  // --- Demo tour ---
+  const tourViewer = useMemo(
+    () => viewers.find((v) => v.display_name === TOUR_PERSONA_NAME) ?? null,
+    [viewers],
+  );
+  const showcaseNote = useMemo(
+    () => notes.find((n) => n.title === SHOWCASE_TITLE) ?? null,
+    [notes],
+  );
+  const handleTourEffect = useCallback(
+    (effect: "reset-persona" | "switch-persona" | "open-note") => {
+      if (effect === "reset-persona") setPreviewAs(null);
+      else if (effect === "switch-persona" && tourViewer) setPreviewAs(tourViewer.id);
+      else if (effect === "open-note" && showcaseNote) handleSelect(showcaseNote.id);
+    },
+    [tourViewer, showcaseNote, handleSelect],
+  );
+  const tour = useTour({
+    ready: map !== null && notes.length > 0,
+    loggedOut: authUser === null,
+    hasSwitchTarget: tourViewer !== null,
+    hasShowcase: showcaseNote !== null,
+    onEffect: handleTourEffect,
+  });
 
   const handleMapClick = useCallback((lng: number, lat: number) => {
     if (!canWrite || mode !== "view") return;
@@ -317,15 +345,24 @@ export function MapScreen() {
         <div className="topbar__brand">
           <strong>{t("app.title")} · {map.name}</strong>
           <AboutButton />
+          {import.meta.env.VITE_SANDBOX === "true" && (
+            <button type="button" className="tour-pill" onClick={tour.start}>
+              {t("tour.pill")}
+            </button>
+          )}
         </div>
         {!authUser && (
-          <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
+          <div data-tour="switcher">
+            <PreviewSwitcher viewers={viewers} current={previewAs} onChange={setPreviewAs} />
+          </div>
         )}
-        <AuthBar
-          user={authUser}
-          onAuthed={(u) => { setAuthUser(u); setPreviewAs(null); }}
-          onLoggedOut={() => setAuthUser(null)}
-        />
+        <div data-tour="authbar">
+          <AuthBar
+            user={authUser}
+            onAuthed={(u) => { setAuthUser(u); setPreviewAs(null); }}
+            onLoggedOut={() => setAuthUser(null)}
+          />
+        </div>
       </header>
       {error && (
         <div className="editor-error-banner" role="alert">
@@ -334,7 +371,7 @@ export function MapScreen() {
         </div>
       )}
       <div className="stage">
-        <div className="map-wrap">
+        <div className="map-wrap" data-tour="map">
           <Suspense fallback={<div className="map" />}>
             <MapView
               center={[map.lng, map.lat]}
@@ -391,9 +428,20 @@ export function MapScreen() {
             onAppend={handleAppend}
             onEditAppend={handleEditAppend}
             onDeleteAppend={handleDeleteAppend}
+            dataTour="panel"
           />
         )}
       </div>
+      {tour.active && tour.step && (
+        <TourOverlay
+          step={tour.step}
+          index={tour.index}
+          total={tour.total}
+          onNext={tour.next}
+          onBack={tour.back}
+          onSkip={tour.skip}
+        />
+      )}
     </div>
   );
 }

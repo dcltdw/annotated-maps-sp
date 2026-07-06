@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // A minimal valid maplibre style so the map loads without hitting OpenFreeMap.
 const MINIMAL_STYLE = {

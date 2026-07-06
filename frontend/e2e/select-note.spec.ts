@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // ---------------------------------------------------------------------------
 // Regression: clicking an existing note must SELECT it (open the detail panel),

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // ---------------------------------------------------------------------------
 // Region read-path e2e: stub the notes endpoint with one polygon (area) note
