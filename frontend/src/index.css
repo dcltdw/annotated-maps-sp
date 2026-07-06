@@ -122,7 +122,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .tour-spotlight { transition: none; }
 }
-.tour-shield { position: absolute; inset: 0; border: none; background: transparent; padding: 0; cursor: default; }
+.tour-shield { position: absolute; inset: 0; }
 .tour-card {
   position: absolute;
   bottom: 24px;

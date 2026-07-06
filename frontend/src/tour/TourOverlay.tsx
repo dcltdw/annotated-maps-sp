@@ -66,12 +66,12 @@ export function TourOverlay({ step, index, total, onNext, onBack, onSkip }: Prop
   // Focus management (spec §4): focus the card on step change, trap Tab within it,
   // and restore focus to whatever had it when the tour closes.
   useEffect(() => {
-    cardRef.current?.focus();
-  }, [step]);
-  useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     return () => previouslyFocused?.focus();
   }, []);
+  useEffect(() => {
+    cardRef.current?.focus();
+  }, [step]);
   const trapTab = (e: React.KeyboardEvent) => {
     if (e.key !== "Tab" || !cardRef.current) return;
     const focusables = cardRef.current.querySelectorAll<HTMLElement>("button");
@@ -99,17 +99,10 @@ export function TourOverlay({ step, index, total, onNext, onBack, onSkip }: Prop
       ) : (
         <div className="tour-dim" />
       )}
-      {/* click shield — the tour drives all interactions itself. A native
-          button keeps this a11y-compliant; tabIndex=-1 + aria-hidden keep it
-          out of the tab order and off screen readers, since Escape and the
+      {/* click-shield backdrop, not a semantic control: it's a click-to-dismiss
+          area for mouse users, so it's aria-hidden and inert; Escape and the
           visible Skip button already cover keyboard/AT users. */}
-      <button
-        type="button"
-        className="tour-shield"
-        onClick={onSkip}
-        tabIndex={-1}
-        aria-hidden="true"
-      />
+      <div className="tour-shield" onClick={onSkip} aria-hidden="true" />
       {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions --
           focus-trap container: onKeyDown here only intercepts Tab to cycle
           focus among the buttons inside, it's not a mouse-activated control,

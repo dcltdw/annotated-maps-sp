@@ -61,4 +61,20 @@ describe("TourOverlay", () => {
     expect(document.querySelector(".tour-spotlight")).toBeNull();
     expect(document.querySelector(".tour-dim")).not.toBeNull();
   });
+
+  it("restores focus to the pre-tour element on unmount", () => {
+    const trigger = document.createElement("button");
+    trigger.textContent = "Start Tour";
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const { unmount } = render(
+      <TourOverlay step={step()} index={0} total={6} onNext={vi.fn()} onBack={vi.fn()} onSkip={vi.fn()} />,
+    );
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
 });
