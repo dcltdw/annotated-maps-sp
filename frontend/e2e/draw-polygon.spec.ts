@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // ---------------------------------------------------------------------------
 // Draw → save e2e for polygon (area) notes.

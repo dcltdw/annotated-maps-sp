@@ -17,5 +17,9 @@ export default defineConfig({
     url: "http://localhost:5174",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    // Mirrors prod (VITE_SANDBOX=true) so the sandbox banner + tour replay pill render
+    // in e2e, same as production. Existing specs opt out of the tour auto-start via
+    // e2e/fixtures.ts, so the extra banner/pill is the only visible change for them.
+    env: { ...process.env, VITE_SANDBOX: "true" },
   },
 });
