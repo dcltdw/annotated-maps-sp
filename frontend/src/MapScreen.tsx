@@ -417,20 +417,19 @@ export function MapScreen() {
         </div>
         {mode !== "view" && editorPanel}
         {mode === "view" && selected && panelOpen && (
-          <div data-tour="panel">
-            <NotePanel
-              note={selected}
-              viewerLabel={viewerLabel}
-              onCollapse={() => setPanelOpen(false)}
-              canEdit={canEdit}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              previewAs={previewAs}
-              onAppend={handleAppend}
-              onEditAppend={handleEditAppend}
-              onDeleteAppend={handleDeleteAppend}
-            />
-          </div>
+          <NotePanel
+            note={selected}
+            viewerLabel={viewerLabel}
+            onCollapse={() => setPanelOpen(false)}
+            canEdit={canEdit}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            previewAs={previewAs}
+            onAppend={handleAppend}
+            onEditAppend={handleEditAppend}
+            onDeleteAppend={handleDeleteAppend}
+            dataTour="panel"
+          />
         )}
       </div>
       {tour.active && tour.step && (
