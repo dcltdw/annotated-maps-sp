@@ -44,6 +44,9 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: DJANGO_SECRET_KEY
-        sync: false
+        # The reaper only hard-deletes old rows; it never verifies signed cookies or
+        # tokens, so its key need NOT match the API's — let Render generate one (a bare
+        # `sync: false` here means "a human must set it", which is how this got missed).
+        generateValue: true
       - key: SANDBOX_MODE
         value: "true"
