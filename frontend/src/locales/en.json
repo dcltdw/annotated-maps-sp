@@ -86,5 +86,17 @@
   "auth.demoHint": "Try the demo: running.friend@demo.example / demo-pass-12345",
   "auth.failed": "That didn't work — check your details and try again.",
   "auth.sessionExpired": "Your session expired — please log in again.",
-  "auth.close": "Close"
+  "auth.close": "Close",
+  "tour.aria": "Guided tour",
+  "tour.pill": "✦ Take the tour",
+  "tour.welcome": "Welcome! This is a shared map where every note decides who may see it. Take the 20-second tour to see how the same map changes with the viewer.",
+  "tour.map": "A shared map of Boston. Right now you're a Guest — you only see what's public.",
+  "tour.switcher": "Everyone sees a different map. This switcher picks whose eyes you borrow.",
+  "tour.switch": "Watch — you're now A Running Friend. New pins just appeared: friend-only tips and Running-club notes that a Guest never sees.",
+  "tour.panel": "One note, many sections — each section carries its own audience: public, friends, a club, a reputation gate, or private.",
+  "tour.authbar": "Log in as any persona to write notes, or keep exploring. Try the other viewers — the dim sum crowd sees a different city.",
+  "tour.skip": "Skip",
+  "tour.back": "Back",
+  "tour.next": "Next",
+  "tour.done": "Done"
 }

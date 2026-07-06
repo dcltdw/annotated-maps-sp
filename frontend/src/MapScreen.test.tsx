@@ -1,12 +1,13 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
 
 vi.mock("./api/maps", () => ({
   fetchMaps: vi.fn().mockResolvedValue([{ id: "m1", name: "Boston", lng: -71, lat: 42, zoom: 12 }]),
   fetchViewers: vi.fn().mockResolvedValue([
     { id: "u1", display_name: "Owner", reputation: 100 },
     { id: "u2", display_name: "Friend", reputation: 10 },
+    { id: "rf1", display_name: "A Running Friend", reputation: 10 },
   ]),
   // editable mirrors the server: true only when the viewer (preview_as) authored the note/append (u1).
   fetchNotes: vi.fn().mockImplementation((_mapId: string, previewAs: string | null) => {
@@ -19,6 +20,9 @@ vi.mock("./api/maps", () => ({
           { id: "as1", order: 0, visibility: "visible", content: "great view", rule_type: "public", rule_label: "Public", teaser_text: null },
         ]},
       ]},
+      { id: "n2", author_id: "rf1", title: "Charles River loop", lng: -71.07, lat: 42.36, editable: false, shape: null, sections: [
+        { id: "s2", order: 0, visibility: "visible", content: "great loop", rule_type: "public", rule_label: "Public", teaser_text: null },
+      ], appends: [] },
     ]);
   }),
   fetchGroups: vi.fn().mockResolvedValue([{ id: "g1", name: "Running club" }]),
@@ -108,6 +112,11 @@ import { createAppend, createNote, deleteNote, fetchNoteForEdit, fetchNotes, upd
 beforeEach(() => {
   vi.mocked(meMock).mockReset();
   vi.mocked(meMock).mockResolvedValue(null);
+  // Pre-existing tests here predate the demo tour and don't expect it to auto-start.
+  // Each test file gets a fresh in-memory localStorage (see setupTests.ts), so without
+  // this the tour would auto-start (logged-out + loaded) and its dialog could interfere.
+  // The "demo tour" describe below explicitly clears this key to exercise auto-start.
+  localStorage.setItem("tourSeenV1", "1");
 });
 
 test("loads Boston as Guest, opens a note, and re-fetches when the viewer changes", async () => {
@@ -366,4 +375,42 @@ test("a logged-out visitor sees the persona switcher and a Log in button", async
   render(<MapScreen />);
   expect(await screen.findByText("Viewing as")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /log in/i })).toBeInTheDocument();
+});
+
+describe("demo tour", () => {
+  beforeEach(() => {
+    // Overrides the outer beforeEach's opt-out so these tests exercise real auto-start.
+    localStorage.clear();
+    vi.stubEnv("VITE_SANDBOX", "true"); // the replay pill is sandbox-gated
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("auto-starts once after load and marks seen", async () => {
+    render(<MapScreen />);
+    expect(await screen.findByRole("dialog", { name: /guided tour/i })).toBeInTheDocument();
+    expect(localStorage.getItem("tourSeenV1")).not.toBeNull();
+  });
+
+  it("does not auto-start when already seen, but the pill replays", async () => {
+    localStorage.setItem("tourSeenV1", "1");
+    render(<MapScreen />);
+    await screen.findByText(/Boston/); // loaded
+    expect(screen.queryByRole("dialog", { name: /guided tour/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /take the tour/i }));
+    expect(screen.getByRole("dialog", { name: /guided tour/i })).toBeInTheDocument();
+  });
+
+  it("the switch step selects the Running Friend persona", async () => {
+    render(<MapScreen />);
+    await screen.findByRole("dialog", { name: /guided tour/i });
+    // welcome → map → switcher → switch
+    const next = () => fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    next(); next(); next();
+    // the switcher button for the Running Friend viewer is now pressed
+    expect(
+      screen.getByRole("button", { name: "A Running Friend" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
 });
