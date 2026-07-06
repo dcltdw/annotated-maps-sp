@@ -106,6 +106,7 @@ vi.mock("./api/auth", () => ({
 import { MapScreen } from "./MapScreen";
 import { me as meMock } from "./api/auth";
 import { createAppend, createNote, deleteNote, fetchNoteForEdit, fetchNotes, updateAppend } from "./api/maps";
+import { TOUR_SEEN_KEY } from "./tour/tourSteps";
 
 // Reset me() to its default (logged-out) between tests so a queued mockResolvedValueOnce
 // from one test cannot leak into the next.
@@ -116,7 +117,7 @@ beforeEach(() => {
   // Each test file gets a fresh in-memory localStorage (see setupTests.ts), so without
   // this the tour would auto-start (logged-out + loaded) and its dialog could interfere.
   // The "demo tour" describe below explicitly clears this key to exercise auto-start.
-  localStorage.setItem("tourSeenV1", "1");
+  localStorage.setItem(TOUR_SEEN_KEY, "1");
 });
 
 test("loads Boston as Guest, opens a note, and re-fetches when the viewer changes", async () => {
@@ -390,11 +391,11 @@ describe("demo tour", () => {
   it("auto-starts once after load and marks seen", async () => {
     render(<MapScreen />);
     expect(await screen.findByRole("dialog", { name: /guided tour/i })).toBeInTheDocument();
-    expect(localStorage.getItem("tourSeenV1")).not.toBeNull();
+    expect(localStorage.getItem(TOUR_SEEN_KEY)).not.toBeNull();
   });
 
   it("does not auto-start when already seen, but the pill replays", async () => {
-    localStorage.setItem("tourSeenV1", "1");
+    localStorage.setItem(TOUR_SEEN_KEY, "1");
     render(<MapScreen />);
     await screen.findByText(/Boston/); // loaded
     expect(screen.queryByRole("dialog", { name: /guided tour/i })).toBeNull();

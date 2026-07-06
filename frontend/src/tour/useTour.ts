@@ -35,7 +35,9 @@ export function useTour({ ready, loggedOut, hasSwitchTarget, hasShowcase, onEffe
     setIndex(0);
   }, [ready, loggedOut]);
 
-  // Fire a step's side effect exactly once per entry.
+  // firedFor guards against double-firing within a single step entry (incl. StrictMode's
+  // double-invoke). Re-entering a step via back()→next() is a genuine new entry and
+  // re-fires its effect intentionally.
   const firedFor = useRef<number | null>(null);
   useEffect(() => {
     if (index === null || firedFor.current === index) return;

@@ -1,4 +1,5 @@
 import { test as base } from "@playwright/test";
+import { TOUR_SEEN_KEY } from "../src/tour/tourSteps";
 
 // Shared fixture for all EXISTING specs: seed `tourSeenV1` before the app's first
 // script runs so the demo tour's auto-start (map+notes ready, logged out, unseen)
@@ -7,7 +8,7 @@ import { test as base } from "@playwright/test";
 // keeps a clean (unseen) localStorage and the tour DOES auto-start there.
 export const test = base.extend({
   page: async ({ page }, use) => {
-    await page.addInitScript(() => localStorage.setItem("tourSeenV1", "1"));
+    await page.addInitScript((key) => localStorage.setItem(key, "1"), TOUR_SEEN_KEY);
     await use(page);
   },
 });
