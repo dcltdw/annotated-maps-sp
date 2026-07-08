@@ -1,0 +1,25 @@
+# deploy/helm/annotated-maps/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "annotated-maps.fullname" . }}-api
+                port: { number: 8000 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "annotated-maps.fullname" . }}-web
+                port: { number: 80 }

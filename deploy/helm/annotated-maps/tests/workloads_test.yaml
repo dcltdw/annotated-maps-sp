@@ -1,0 +1,27 @@
+# deploy/helm/annotated-maps/tests/workloads_test.yaml
+suite: web + ingress
+templates:
+  - templates/web-deployment.yaml
+  - templates/ingress.yaml
+tests:
+  - it: web probes /
+    template: templates/web-deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /
+  - it: ingress routes /api to the api service and / to the web service
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /api
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: RELEASE-NAME-annotated-maps-api
+      - equal:
+          path: spec.rules[0].http.paths[1].path
+          value: /
+      - equal:
+          path: spec.rules[0].http.paths[1].backend.service.name
+          value: RELEASE-NAME-annotated-maps-web
