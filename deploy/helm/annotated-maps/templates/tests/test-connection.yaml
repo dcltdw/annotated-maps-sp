@@ -1,0 +1,20 @@
+# `helm test annotated-maps` runs this pod: proves the API answers in-cluster.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-test-connection
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: health-check
+      image: curlimages/curl:8.10.1
+      command:
+        - sh
+        - -c
+        - >-
+          curl -fsS -H "Host: {{ .Values.ingress.host }}"
+          http://{{ include "annotated-maps.fullname" . }}-api:8000/api/v1/health

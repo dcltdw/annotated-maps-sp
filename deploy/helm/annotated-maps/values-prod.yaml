@@ -1,0 +1,33 @@
+# deploy/helm/annotated-maps/values-prod.yaml
+# ILLUSTRATIVE prod shape — not a working config. Registry refs land in
+# Milestone 4; secrets are always supplied at install time, never committed.
+image:
+  api:
+    repository: ghcr.io/dcltdw/annotated-maps-api   # placeholder registry ref
+    tag: "set-by-pipeline"
+    pullPolicy: IfNotPresent
+  web:
+    repository: ghcr.io/dcltdw/annotated-maps-web
+    tag: "set-by-pipeline"
+    pullPolicy: IfNotPresent
+
+api:
+  env:
+    sandboxMode: "true"          # the public demo IS the sandbox
+    djangoDebug: "false"
+    allowedHosts: "annotated-maps.example.com"
+    secureSslRedirect: "true"
+
+ingress:
+  host: annotated-maps.example.com
+
+postgres:
+  enabled: false                 # prod uses an external (Neon) database
+
+secrets:
+  djangoSecretKey: ""            # REQUIRED at install: --set secrets.djangoSecretKey=...
+  databaseUrl: ""                # REQUIRED at install: --set secrets.databaseUrl=...
+  modToken: ""
+
+seed:
+  refreshOnDeploy: false
