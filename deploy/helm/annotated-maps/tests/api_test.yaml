@@ -13,6 +13,9 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].livenessProbe.httpGet.httpHeaders
           content: { name: Host, value: localhost }
+      - contains:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.httpHeaders
+          content: { name: Host, value: localhost }
   - it: consumes the shared secret via envFrom
     asserts:
       - contains:
