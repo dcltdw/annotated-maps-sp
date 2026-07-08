@@ -128,7 +128,7 @@ exact commands CI runs.
 | `helm test` fails | API not actually healthy | `kubectl describe` the test pod + api pods |
 | HPA shows `<unknown>` targets | metrics-server missing/unpatched | `make kind-up` installs+patches it; `kubectl top pods` to verify |
 | Port 80 busy on host | something else on :80 | edit deploy/kind/cluster.yaml hostPort (e.g. 8080), recreate cluster |
-| Local seed edits vanish on deploy | seed.refreshOnDeploy=true (matches prod) | `helm upgrade ... --set seed.refreshOnDeploy=false` |
+| Local seed edits vanish on deploy | seed.refreshOnDeploy=true (matches Render, not the chart's prod values) | `helm upgrade ... --set seed.refreshOnDeploy=false` |
 
 ## 5. Going deeper
 
