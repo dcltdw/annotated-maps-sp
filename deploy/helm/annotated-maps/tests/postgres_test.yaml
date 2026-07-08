@@ -1,0 +1,12 @@
+suite: dev postgres gating
+templates:
+  - templates/postgres-statefulset.yaml
+  - templates/postgres-service.yaml
+tests:
+  - it: renders the dev database by default (kind values)
+    asserts:
+      - hasDocuments: { count: 1 }
+  - it: renders nothing when disabled (prod shape)
+    set: { postgres: { enabled: false }, secrets: { databaseUrl: "postgis://u:p@h:5432/d" } }
+    asserts:
+      - hasDocuments: { count: 0 }

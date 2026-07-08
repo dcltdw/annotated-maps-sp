@@ -1,0 +1,55 @@
+# Runs BEFORE Helm touches the Deployments (Render's preDeployCommand, translated).
+# Rollback stance: hooks don't run on `helm rollback`; schema stays ahead of code,
+# which is safe under the expand-contract discipline (ADR-0006). See ADR-0007.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-migrate
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "annotated-maps.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ include "annotated-maps.fullname" . }}-secrets
+          env:
+            - name: SANDBOX_MODE
+              value: {{ .Values.api.env.sandboxMode | quote }}
+            - name: DJANGO_DEBUG
+              value: {{ .Values.api.env.djangoDebug | quote }}
+            - name: DJANGO_ALLOWED_HOSTS
+              value: {{ .Values.api.env.allowedHosts | quote }}
+            - name: SECURE_SSL_REDIRECT
+              value: {{ .Values.api.env.secureSslRedirect | quote }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              i=0
+              # Wait for the DB using Django's own connection config (no URL parsing).
+              until uv run python manage.py shell -c "import django.db; django.db.connections['default'].ensure_connection()" >/dev/null 2>&1; do
+                i=$((i+1))
+                if [ "$i" -ge 30 ]; then echo "database never became ready" >&2; exit 1; fi
+                echo "waiting for database ($i/30)"; sleep 2
+              done
+              uv run python manage.py migrate --noinput
+              {{- if .Values.seed.refreshOnDeploy }}
+              uv run python manage.py seed_demo --refresh
+              {{- end }}
