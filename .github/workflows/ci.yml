@@ -65,3 +65,44 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: python .github/scripts/check_pr_body.py
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - run: make helm-checks
+
+  helm-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: chart-testing
+      - name: Build images
+        run: |
+          docker build -f backend/Dockerfile -t annotated-maps-api:dev .
+          docker build -f frontend/Dockerfile -t annotated-maps-web:dev frontend
+      - name: Load images into kind
+        run: |
+          kind load docker-image annotated-maps-api:dev --name chart-testing
+          kind load docker-image annotated-maps-web:dev --name chart-testing
+      - name: Install the chart
+        run: helm install annotated-maps deploy/helm/annotated-maps -n annotated-maps --create-namespace --wait --timeout 5m
+      - name: Rollout status
+        run: |
+          kubectl -n annotated-maps rollout status deploy/annotated-maps-api --timeout 120s
+          kubectl -n annotated-maps rollout status deploy/annotated-maps-web --timeout 120s
+      - name: helm test (in-cluster health check)
+        run: helm test annotated-maps -n annotated-maps --logs
+      - name: Smoke the web tier
+        run: |
+          kubectl -n annotated-maps port-forward svc/annotated-maps-web 8081:80 &
+          sleep 3
+          curl -fsS http://localhost:8081/ | grep -qi "<!doctype html"
