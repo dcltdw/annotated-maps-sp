@@ -134,3 +134,13 @@ if not DEBUG:
     # must be sent on cross-site XHR. SameSite=None requires Secure (set above).
     SESSION_COOKIE_SAMESITE = "None"
     CSRF_COOKIE_SAMESITE = "None"
+
+# --- Observability (M2). Default off; see docs/adr/0008 + telemetry.py. ---
+from annotated_maps.telemetry import setup_telemetry  # noqa: E402
+
+OTEL_ENABLED = env.bool("OTEL_ENABLED", default=False)
+setup_telemetry(
+    enabled=OTEL_ENABLED,
+    service_name=env("OTEL_SERVICE_NAME", default="annotated-maps-api"),
+    deploy_env=env("DEPLOY_ENV", default="local"),
+)
