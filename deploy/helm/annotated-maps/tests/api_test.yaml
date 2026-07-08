@@ -1,0 +1,29 @@
+suite: api deployment
+templates:
+  - templates/api-deployment.yaml
+tests:
+  - it: probes hit the DB-free health endpoint with an explicit Host header
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /api/v1/health
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /api/v1/health
+      - contains:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.httpHeaders
+          content: { name: Host, value: localhost }
+      - contains:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.httpHeaders
+          content: { name: Host, value: localhost }
+  - it: consumes the shared secret via envFrom
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content: { secretRef: { name: RELEASE-NAME-annotated-maps-secrets } }
+  - it: defaults to 2 replicas with resource requests set (HPA prerequisite)
+    asserts:
+      - equal: { path: spec.replicas, value: 2 }
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 100m

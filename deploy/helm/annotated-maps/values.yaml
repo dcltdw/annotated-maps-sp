@@ -1,0 +1,57 @@
+# Defaults target the LOCAL kind cluster. Prod-shaped overrides: values-prod.yaml.
+image:
+  api:
+    repository: annotated-maps-api
+    tag: dev
+    pullPolicy: Never   # kind: image is `kind load`ed; Never prevents silent registry pulls
+  web:
+    repository: annotated-maps-web
+    tag: dev
+    pullPolicy: Never
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  env:
+    sandboxMode: "true"
+    djangoDebug: "false"
+    allowedHosts: "localhost"
+    secureSslRedirect: "false"
+
+web:
+  replicas: 1
+
+ingress:
+  className: nginx
+  host: localhost
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+postgres:
+  enabled: true                     # dev-only in-cluster PostGIS; prod uses external DATABASE_URL
+  image: postgis/postgis:16-3.4
+  storage: 1Gi
+  database: annotated_maps
+  user: annotated_maps
+  password: localdev                # dev-only credential, mirrors docker-compose
+
+secrets:
+  djangoSecretKey: local-insecure-dev-key   # dev-only; prod supplies real values at install
+  modToken: ""
+  databaseUrl: ""                   # empty → derived from postgres.* when enabled; REQUIRED when postgres disabled
+
+seed:
+  refreshOnDeploy: true             # matches Render's per-deploy seed refresh; false in prod values
+
+reaper:
+  schedule: "17 4 * * *"

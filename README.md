@@ -63,6 +63,20 @@ cd backend && uv run python manage.py seed_demo
 Then open the dev server and switch personas (Guest / A Friend / Run-club Member /
 Reputable Local / owner) to watch the markers and note panel re-filter live.
 
+## Run it on Kubernetes
+
+The app ships as a Helm chart (`deploy/helm/annotated-maps`) that runs end-to-end
+on a local [kind](https://kind.sigs.k8s.io/) cluster:
+
+```bash
+make kind-up    # one-time cluster (ingress + metrics-server included)
+make deploy     # build, load, install — app at http://localhost/
+```
+
+New to Kubernetes? Start with the [Kubernetes primer](docs/kubernetes-primer.md).
+Design rationale: [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) and the
+[milestone spec](docs/superpowers/specs/2026-07-08-helm-kind-milestone-design.md).
+
 ## Tests
 
 ```bash

@@ -1,0 +1,15 @@
+# deploy/helm/annotated-maps/templates/web-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-web
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  selector:
+    {{- include "annotated-maps.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+  ports:
+    - port: 80
+      targetPort: 80

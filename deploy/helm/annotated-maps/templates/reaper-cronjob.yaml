@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-reaper
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reaper
+spec:
+  schedule: {{ .Values.reaper.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "annotated-maps.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: reaper
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: reaper
+              image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+              imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+              envFrom:
+                - secretRef:
+                    name: {{ include "annotated-maps.fullname" . }}-secrets
+              env:
+                - name: SANDBOX_MODE
+                  value: {{ .Values.api.env.sandboxMode | quote }}
+                - name: DJANGO_DEBUG
+                  value: {{ .Values.api.env.djangoDebug | quote }}
+                - name: DJANGO_ALLOWED_HOSTS
+                  value: {{ .Values.api.env.allowedHosts | quote }}
+                - name: SECURE_SSL_REDIRECT
+                  value: {{ .Values.api.env.secureSslRedirect | quote }}
+              command: ["uv", "run", "python", "manage.py", "reap_ephemeral"]

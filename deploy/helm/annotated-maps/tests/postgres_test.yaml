@@ -1,0 +1,25 @@
+suite: dev postgres gating
+templates:
+  - templates/postgres-statefulset.yaml
+  - templates/postgres-service.yaml
+tests:
+  - it: renders the dev database by default (kind values)
+    asserts:
+      - hasDocuments: { count: 1 }
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-annotated-maps-postgres
+        template: templates/postgres-service.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-annotated-maps-secrets
+                key: POSTGRES_PASSWORD
+        template: templates/postgres-statefulset.yaml
+  - it: renders nothing when disabled (prod shape)
+    set: { postgres: { enabled: false }, secrets: { databaseUrl: "postgis://u:p@h:5432/d" } }
+    asserts:
+      - hasDocuments: { count: 0 }

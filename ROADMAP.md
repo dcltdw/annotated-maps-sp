@@ -12,7 +12,7 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 | [Containerized backend](#phase-0-already-shipped) | **Docker**, **docker-compose**, **PostGIS** | ✅ Shipped | [Dockerfile](backend/Dockerfile) · [docker-compose.yml](backend/docker-compose.yml) |
 | [Declarative cloud deployment](#phase-0-already-shipped) | Blueprint-as-code, zero-downtime migrations, cron jobs | ✅ Shipped | [render.yaml](render.yaml) · [live demo](https://annotated-maps-web.onrender.com/) |
 | [Architecture as a written practice](#phase-0-already-shipped) | **ADRs**, design specs, production-concern triage | ✅ Shipped | [ADRs](docs/adr/) · [production lenses](docs/architecture/production-lenses.md) · [specs](docs/superpowers/specs/) |
-| [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | 📋 Planned | — |
+| [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | ✅ Shipped | [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) · [primer](docs/kubernetes-primer.md) · [CI runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
 | [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | 📋 Planned | — |
 | [3 — AWS infrastructure as code](#milestone-3--aws-infrastructure-as-code) | **Terraform**, **AWS EKS**, **IAM**/IRSA, **VPC** networking, ECR | 📋 Planned | — |
 | [4 — One-button ephemeral environment](#milestone-4--one-button-ephemeral-environment) | Automated deployments, infrastructure pipelines, testing gates | 📋 Planned | — |
@@ -50,7 +50,7 @@ Nothing merges red.
 
 **Trade-off considerations:** mapping an app with a deploy-time migration step onto Helm's upgrade lifecycle — what belongs in a hook Job versus an init container, and how that interacts with rollbacks.
 
-**Done means:** chart in-repo, `helm install` brings up the full app on kind, CI lints and template-tests the chart.
+**Done means:** shipped — the chart is in-repo, `helm install` brings up the full app on kind, and CI lints and template-tests the chart on every push.
 
 ## Milestone 2 — Observability
 

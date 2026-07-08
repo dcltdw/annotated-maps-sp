@@ -1,0 +1,25 @@
+# deploy/helm/annotated-maps/tests/operations_test.yaml
+suite: reaper + hpa + pdb
+templates:
+  - templates/reaper-cronjob.yaml
+  - templates/hpa.yaml
+  - templates/pdb.yaml
+tests:
+  - it: reaper runs the reap command on the values schedule and shares the secret
+    template: templates/reaper-cronjob.yaml
+    asserts:
+      - equal: { path: spec.schedule, value: "17 4 * * *" }
+      - equal: { path: spec.concurrencyPolicy, value: Forbid }
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom
+          content: { secretRef: { name: RELEASE-NAME-annotated-maps-secrets } }
+  - it: hpa targets the api deployment between 2 and 4 replicas
+    template: templates/hpa.yaml
+    asserts:
+      - equal: { path: spec.scaleTargetRef.name, value: RELEASE-NAME-annotated-maps-api }
+      - equal: { path: spec.minReplicas, value: 2 }
+      - equal: { path: spec.maxReplicas, value: 4 }
+  - it: pdb keeps at least one api pod
+    template: templates/pdb.yaml
+    asserts:
+      - equal: { path: spec.minAvailable, value: 1 }

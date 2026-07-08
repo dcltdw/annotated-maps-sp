@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-api
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      {{- include "annotated-maps.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "annotated-maps.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: {{ include "annotated-maps.fullname" . }}-secrets
+          env:
+            - name: SANDBOX_MODE
+              value: {{ .Values.api.env.sandboxMode | quote }}
+            - name: DJANGO_DEBUG
+              value: {{ .Values.api.env.djangoDebug | quote }}
+            - name: DJANGO_ALLOWED_HOSTS
+              value: {{ .Values.api.env.allowedHosts | quote }}
+            - name: SECURE_SSL_REDIRECT
+              value: {{ .Values.api.env.secureSslRedirect | quote }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.ingress.host }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.ingress.host }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}

@@ -1,0 +1,15 @@
+# Root build context (used by backend/Dockerfile, which COPYs backend/ from
+# repo root). Docker only honors a .dockerignore at the build context root,
+# so backend/.dockerignore alone does NOT apply to that build — this file is
+# what actually keeps backend/.env (macOS-only local overrides, e.g.
+# GDAL_LIBRARY_PATH pointing at a .dylib) and the host venv out of the image.
+backend/.env
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.mypy_cache/
+backend/tests/
+backend/docker-compose.yml
