@@ -1,11 +1,6 @@
-# 7. Database migrations run as Helm pre-upgrade hook Jobs
-
-Date: 2026-07-08
-
-## Status
-
-Accepted
-
+# ADR-0007: Database migrations run as Helm pre-upgrade hook Jobs
+- Status: accepted
+- Date: 2026-07-08
 ## Context
 
 On Render, `predeploy.sh` (migrate + seed refresh) runs before new code takes
@@ -24,15 +19,18 @@ debugging. All workloads (API, this hook, the reaper) consume one shared
 Secret, so their DB/security config cannot drift apart (the config-drift bug
 class we hit on Render in PR #42).
 
-## Rollback
+## Consequences
 
-Helm hooks do not run on `helm rollback`, and down-migrations don't exist
-here. Rollback therefore reverts code only; the schema stays at the newer
-version. That is safe **because of ADR-0006**: every migration is
-expand-contract (backward-compatible), so old code runs correctly against a
-newer schema. The rollback safety comes from a discipline adopted at
-migration #1 — before Kubernetes was in the picture — not from Helm
-mechanics.
+- Deploys are strictly ordered: migrate → roll pods.
+- A stuck migration fails the release visibly (`activeDeadlineSeconds`).
+- Schema rollforward-only; code rollback stays safe under expand-contract.
+- Helm hooks do not run on `helm rollback`, and down-migrations don't exist
+  here. Rollback therefore reverts code only; the schema stays at the newer
+  version. That is safe **because of ADR-0006**: every migration is
+  expand-contract (backward-compatible), so old code runs correctly against a
+  newer schema. The rollback safety comes from a discipline adopted at
+  migration #1 — before Kubernetes was in the picture — not from Helm
+  mechanics.
 
 ## Alternatives considered
 
@@ -45,9 +43,3 @@ mechanics.
   common in mature setups, but `helm install` alone would no longer produce
   a working app, violating this milestone's success criterion. Milestone 4's
   pipeline may revisit.
-
-## Consequences
-
-- Deploys are strictly ordered: migrate → roll pods.
-- A stuck migration fails the release visibly (`activeDeadlineSeconds`).
-- Schema rollforward-only; code rollback stays safe under expand-contract.
