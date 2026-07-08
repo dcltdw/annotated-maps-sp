@@ -2,15 +2,21 @@ suite: migration hook job
 templates:
   - templates/migrate-hook-job.yaml
 tests:
-  - it: is a pre-install,pre-upgrade hook that keeps failed jobs for debugging
+  - it: is a post-install,pre-upgrade hook when postgres is in-cluster (dev default) that keeps failed jobs for debugging
     asserts:
       - equal:
           path: metadata.annotations["helm.sh/hook"]
-          value: pre-install,pre-upgrade
+          value: post-install,pre-upgrade
       - equal:
           path: metadata.annotations["helm.sh/hook-delete-policy"]
           value: before-hook-creation
       - equal: { path: spec.backoffLimit, value: 1 }
+  - it: is a pre-install,pre-upgrade hook when postgres is external (prod shape)
+    set: { postgres: { enabled: false }, secrets: { databaseUrl: "postgis://u:p@h:5432/d" } }
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
   - it: consumes the shared secret and refreshes the seed by default
     asserts:
       - contains:

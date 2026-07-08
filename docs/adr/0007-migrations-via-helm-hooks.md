@@ -10,18 +10,37 @@ pipeline.
 
 ## Decision
 
-A Job annotated `helm.sh/hook: pre-install,pre-upgrade` runs
-`manage.py migrate` (plus the values-gated demo-seed refresh) to completion
-before Helm rolls any Deployment. One run per deploy regardless of replica
-count; a failed migration aborts the upgrade before new code serves traffic.
-`hook-delete-policy: before-hook-creation` keeps failed Jobs around for
-debugging. All workloads (API, this hook, the reaper) consume one shared
-Secret, so their DB/security config cannot drift apart (the config-drift bug
-class we hit on Render in PR #42).
+A Job runs `manage.py migrate` (plus the values-gated demo-seed refresh) as a
+Helm hook. Its `helm.sh/hook` annotation is values-gated on
+`postgres.enabled`, because "before Helm rolls any Deployment" means
+different things depending on where the database lives:
+
+- **`postgres.enabled=true` (dev, in-cluster PostGIS)**: `post-install,pre-upgrade`.
+  On a fresh install the database is itself a normal chart resource created
+  by this same release, so it does not exist yet when pre-install hooks run.
+  Migrate must therefore run **after** install (once the StatefulSet is up)
+  but still **before** every upgrade, so upgrades keep the migrate-before-code
+  guarantee.
+- **`postgres.enabled=false` (prod, external database)**: `pre-install,pre-upgrade`.
+  The database pre-exists independently of the release, so the strict
+  Render-equivalent ordering — migrate before any code, including the very
+  first install — holds with no caveat.
+
+Both phases keep `pre-upgrade`, so upgrades on both dev and prod always
+migrate before new code rolls. `hook-delete-policy: before-hook-creation`
+keeps failed Jobs around for debugging. All workloads (API, this hook, the
+reaper) consume one shared Secret, so their DB/security config cannot drift
+apart (the config-drift bug class we hit on Render in PR #42).
 
 ## Consequences
 
-- Deploys are strictly ordered: migrate → roll pods.
+- Deploys are strictly ordered: migrate → roll pods, on both prod (always)
+  and dev upgrades. On a **fresh dev install only**, code pods start
+  concurrently with (or before) the migrate Job, since it is deferred to
+  post-install. This is benign: the API's readiness/liveness probes are
+  DB-free (see the health endpoint), and there is no data yet for unmigrated
+  code to corrupt — the pods simply serve traffic against an empty,
+  about-to-be-migrated schema until the hook completes.
 - A stuck migration fails the release visibly (`activeDeadlineSeconds`).
 - Schema rollforward-only; code rollback stays safe under expand-contract.
 - Helm hooks do not run on `helm rollback`, and down-migrations don't exist

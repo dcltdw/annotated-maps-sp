@@ -1,4 +1,8 @@
-# Runs BEFORE Helm touches the Deployments (Render's preDeployCommand, translated).
+# Render's preDeployCommand, translated: migrate runs before new code takes
+# traffic. Hook phase is values-gated (see ADR-0007): dev's in-cluster DB is
+# born in this same release, so migrate must run post-install (after the DB
+# exists); prod's external DB pre-exists, so migrate stays strict pre-install.
+# Both phases keep pre-upgrade, so upgrades always migrate before new code rolls.
 # Rollback stance: hooks don't run on `helm rollback`; schema stays ahead of code,
 # which is safe under the expand-contract discipline (ADR-0006). See ADR-0007.
 apiVersion: batch/v1
@@ -9,7 +13,7 @@ metadata:
     {{- include "annotated-maps.labels" . | nindent 4 }}
     app.kubernetes.io/component: migrate
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": {{ if .Values.postgres.enabled }}post-install,pre-upgrade{{ else }}pre-install,pre-upgrade{{ end }}
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
