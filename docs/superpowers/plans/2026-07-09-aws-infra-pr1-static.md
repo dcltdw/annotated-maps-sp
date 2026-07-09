@@ -24,7 +24,7 @@
 - CI can *plan*, never *apply*: the CI role's permissions are read-only (inline policy below) — do not attach broader managed policies.
 - Chart changes must keep kind behavior byte-identical with default values (annotations empty → no `annotations:` key; `ingress.host` non-empty → host rule as today). `make helm-checks` green.
 - Scripts: `bash`, `set -euo pipefail`, shellcheck-clean, and **`demo-down.sh` must be safe to run repeatedly from any half-failed state** (every step tolerates already-gone).
-- Images build with `--platform linux/amd64` (dev laptop is arm64; nodes are t3 = amd64).
+- Images build with `--platform linux/amd64` explicitly (nodes are t3 = amd64; the flag makes the build correct regardless of the build host's architecture).
 - Repo conventions: `Co-Authored-By` model trailer on commits; PR body sections `## Summary / ## Provenance / ## Reasoning / ## Testing / ## Risk & rollback`.
 
 ## File Structure
@@ -745,7 +745,7 @@ helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-contro
   --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$IRSA_ARN" \
   --wait --timeout 5m
 
-echo "==> build + push images (linux/amd64 — nodes are t3, laptop is arm64)"
+echo "==> build + push images (explicit linux/amd64 — t3 nodes are amd64)"
 TAG=$(git rev-parse --short HEAD)
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "${ECR_API%%/*}"
@@ -913,7 +913,7 @@ git commit -m "feat(infra): demo-up/demo-down/demo-cost orchestration (teardown-
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.10.5"
+          terraform_version: "1.15.8"
       - name: terraform fmt
         run: terraform fmt -check -recursive deploy/terraform
       - name: terraform validate (bootstrap)
@@ -926,7 +926,7 @@ git commit -m "feat(infra): demo-up/demo-down/demo-cost orchestration (teardown-
           terraform -chdir=deploy/terraform/demo validate
       - name: tflint
         run: |
-          curl -fsSL https://github.com/terraform-linters/tflint/releases/download/v0.53.0/tflint_linux_amd64.zip -o /tmp/tflint.zip
+          curl -fsSL https://github.com/terraform-linters/tflint/releases/download/v0.63.1/tflint_linux_amd64.zip -o /tmp/tflint.zip
           (cd /tmp && unzip -o tflint.zip && sudo mv tflint /usr/local/bin/)
           tflint --chdir=deploy/terraform/bootstrap
           tflint --chdir=deploy/terraform/demo
@@ -934,7 +934,7 @@ git commit -m "feat(infra): demo-up/demo-down/demo-cost orchestration (teardown-
         run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
 ```
 
-(Pin note: use the terraform 1.10.x latest patch and tflint's current release at implementation time if newer — pin to exact versions either way; shellcheck is preinstalled on ubuntu runners.)
+(Pins match the locally-validated versions — terraform 1.15.8, tflint v0.63.1 (M2 promtool precedent); shellcheck is preinstalled on ubuntu runners. NOTE: tflint is no longer in homebrew-core; locally it was installed as the release binary — the primer's tooling note should say so.)
 
 - [ ] **Step 2: Validate + commit**
 
@@ -955,7 +955,7 @@ git commit -m "ci: infra job — terraform fmt/validate + tflint + shellcheck"
 
 - [ ] **Step 1: ADR-0009** — house style (`# ADR-0009: <title>`, `- Status: accepted`, `- Date: 2026-07-09`, Context / Decision / Consequences / Alternatives considered — mirror `docs/adr/0008-*.md`). Required content: EKS chosen because the M1 Helm chart is the asset whose portability M3 proves (kind → EKS as a values file) and Kubernetes-on-AWS is the market-relevant skill; ECS+Fargate honestly cheaper/simpler for one small app (alternative, rejected with respect); Terraform over OpenTofu for market recognition; ephemeral-vs-always-on economics (~$180/mo always-on vs ~$2 per ephemeral demo run); the app-pods-need-no-IAM note (only the ALB controller holds an IRSA role — least privilege as a decision, not a gap).
 
-- [ ] **Step 2: docs/aws-primer.md** — kubernetes-primer.md's structure and voice. Required sections: (1) the mental model — account → VPC (public/private subnets, one NAT) → EKS → the app, and the THREE no-long-lived-keys identities (laptop = Identity Center SSO; CI = GitHub OIDC; pods = IRSA) with a small ASCII diagram; (2) what each Terraform file does, one line each, with paths; (3) the commands — demo-up / demo-down / demo-cost, what each costs, the never-leave-it-up rule; (4) the live-run protocol (runbook): budgets first, per-cycle cost report, $15 ceiling → stop; (5) troubleshooting table with AT MINIMUM: orphaned-ALB destroy hang (symptom: destroy stuck on VPC/subnet deletes → re-run demo-down, it waits for ALB deletion; manual fix: delete ALB + target groups in console then re-destroy), IAM propagation delays (a just-created role failing AssumeRole for ~10s — retry), ECR auth expiry (12h token → re-run the docker login line), arm64 image on amd64 node (CrashLoopBackOff `exec format error` → the `--platform linux/amd64` flag exists for this), Terminating-pod flakes during rollouts.
+- [ ] **Step 2: docs/aws-primer.md** — kubernetes-primer.md's structure and voice. Required sections: (1) the mental model — account → VPC (public/private subnets, one NAT) → EKS → the app, and the THREE no-long-lived-keys identities (laptop = Identity Center SSO; CI = GitHub OIDC; pods = IRSA) with a small ASCII diagram; (2) what each Terraform file does, one line each, with paths; (3) the commands — demo-up / demo-down / demo-cost, what each costs, the never-leave-it-up rule; (4) the live-run protocol (runbook): budgets first, per-cycle cost report, $15 ceiling → stop; (5) troubleshooting table with AT MINIMUM: orphaned-ALB destroy hang (symptom: destroy stuck on VPC/subnet deletes → re-run demo-down, it waits for ALB deletion; manual fix: delete ALB + target groups in console then re-destroy), IAM propagation delays (a just-created role failing AssumeRole for ~10s — retry), ECR auth expiry (12h token → re-run the docker login line), wrong-arch image on amd64 node (CrashLoopBackOff `exec format error` → the `--platform linux/amd64` flag exists for this), Terminating-pod flakes during rollouts.
 
 - [ ] **Step 3: README** — in the "Run it on Kubernetes" section add one line: `Milestone 3 takes the same chart to AWS (Terraform + EKS): see [docs/aws-primer.md](docs/aws-primer.md).` (The full README/ROADMAP proof flip happens in PR-2 with the evidence.)
 

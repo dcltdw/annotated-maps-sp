@@ -160,7 +160,7 @@ the hand-written IAM files are meant to be read.
 **demo-up:** `terraform apply` → `aws eks update-kubeconfig` → helm-install
 aws-load-balancer-controller (official chart, serviceAccount annotated with
 the IRSA role ARN from `terraform output`) → `docker build` + push api/web
-images to ECR (`--platform linux/amd64` — the laptop is arm64) → helm
+images to ECR (explicit `--platform linux/amd64` — t3 nodes) → helm
 upgrade --install the app chart with `values-demo.yaml`, ECR refs, and the
 Neon **demo-branch** DATABASE_URL prompted at runtime (never stored) → poll
 the Ingress for the ALB hostname → smoke: `curl /api/v1/health` + `/` on the
@@ -259,8 +259,8 @@ README gets one line under "Run it on Kubernetes" pointing at the primer
 - **First-apply failures burning budget** — expected and budgeted (3–6
   cycles); static validation + plan reviews before every apply keep cycles
   short.
-- **arm64 laptop vs amd64 nodes** — `--platform linux/amd64` in demo-up's
-  builds; primer note (a classic silent CrashLoop otherwise).
+- **Wrong-arch image vs amd64 nodes** — explicit `--platform linux/amd64` in
+  demo-up's builds; primer note (a classic silent CrashLoop otherwise).
 
 ## Testing summary
 
