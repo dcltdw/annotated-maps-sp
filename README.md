@@ -79,6 +79,8 @@ New to Kubernetes? Start with the [Kubernetes primer](docs/kubernetes-primer.md)
 Design rationale: [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) and the
 [milestone spec](docs/superpowers/specs/2026-07-08-helm-kind-milestone-design.md).
 
+Milestone 3 takes the same chart to AWS (Terraform + EKS): see [docs/aws-primer.md](docs/aws-primer.md).
+
 ## Tests
 
 ```bash
