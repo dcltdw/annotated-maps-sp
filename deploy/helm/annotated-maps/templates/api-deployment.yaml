@@ -33,6 +33,12 @@ spec:
               value: {{ .Values.api.env.djangoDebug | quote }}
             - name: DJANGO_ALLOWED_HOSTS
               value: {{ .Values.api.env.allowedHosts | quote }}
+            # Pod IP → ALLOWED_HOSTS so the in-cluster Prometheus /metrics
+            # scrape (which addresses the pod by IP) isn't rejected as a 400.
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: SECURE_SSL_REDIRECT
               value: {{ .Values.api.env.secureSslRedirect | quote }}
           livenessProbe:

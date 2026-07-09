@@ -21,7 +21,7 @@ deploy: ## Build images, load into kind, install/upgrade the release
 	docker build -f frontend/Dockerfile -t annotated-maps-web:dev frontend
 	kind load docker-image annotated-maps-api:dev --name $(CLUSTER)
 	kind load docker-image annotated-maps-web:dev --name $(CLUSTER)
-	helm upgrade --install annotated-maps $(CHART) -n $(NS) --create-namespace --wait --timeout 5m
+	helm upgrade --install annotated-maps $(CHART) -n $(NS) --create-namespace --wait --timeout 5m $(HELM_EXTRA)
 
 kind-down: ## Delete the local cluster (removes everything)
 	kind delete cluster --name $(CLUSTER)

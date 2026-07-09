@@ -33,6 +33,14 @@ SANDBOX_MODE = env.bool("SANDBOX_MODE", default=False)
 # request (401), so they are inert until MOD_TOKEN is set on the deploy.
 MOD_TOKEN = env("MOD_TOKEN", default="")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost"])
+# In-cluster Prometheus scrapes /metrics addressing the pod by its IP, so that
+# IP arrives as the Host header. Allow the pod's own IP (injected via the
+# downward API in the Helm chart) so the scrape isn't rejected as a
+# DisallowedHost 400. Django strips the port before matching, so the bare IP
+# suffices. Empty off-cluster (e.g. Render), leaving ALLOWED_HOSTS unchanged.
+_pod_ip = env("POD_IP", default="")
+if _pod_ip:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, _pod_ip]
 
 
 # Application definition

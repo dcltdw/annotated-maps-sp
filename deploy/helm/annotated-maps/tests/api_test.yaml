@@ -16,6 +16,15 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.httpHeaders
           content: { name: Host, value: localhost }
+  - it: injects the pod IP via the downward API (Prometheus scrape Host allow-listing)
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
   - it: consumes the shared secret via envFrom
     asserts:
       - contains:
