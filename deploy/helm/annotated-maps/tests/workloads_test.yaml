@@ -13,6 +13,9 @@ tests:
   - it: ingress routes /api to the api service and / to the web service
     template: templates/ingress.yaml
     asserts:
+      - lengthEqual:
+          path: spec.rules[0].http.paths
+          count: 2
       - equal:
           path: spec.rules[0].http.paths[0].path
           value: /api

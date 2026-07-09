@@ -1,0 +1,13 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-dashboard
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    release: monitoring
+    grafana_dashboard: "1"   # picked up by the grafana sidecar
+data:
+  api-overview.json: |-
+    {{- .Files.Get "files/dashboards/api-overview.json" | nindent 4 }}
+{{- end }}

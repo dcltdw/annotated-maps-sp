@@ -55,3 +55,6 @@ seed:
 
 reaper:
   schedule: "17 4 * * *"
+
+monitoring:
+  enabled: false   # requires kube-prometheus-stack CRDs (make monitoring-up)

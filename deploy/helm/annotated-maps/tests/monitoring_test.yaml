@@ -1,0 +1,30 @@
+# deploy/helm/annotated-maps/tests/monitoring_test.yaml
+suite: monitoring gating
+templates:
+  - templates/servicemonitor.yaml
+  - templates/prometheusrule.yaml
+  - templates/dashboard-configmap.yaml
+tests:
+  - it: renders nothing by default (no Prometheus CRDs required)
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: renders all three when enabled, labeled for the monitoring release
+    set:
+      monitoring:
+        enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.labels.release
+          value: monitoring
+  - it: servicemonitor scrapes the api service's http port
+    set:
+      monitoring:
+        enabled: true
+    template: templates/servicemonitor.yaml
+    asserts:
+      - equal:
+          path: spec.endpoints[0].path
+          value: /metrics

@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -25,6 +25,13 @@ deploy: ## Build images, load into kind, install/upgrade the release
 
 kind-down: ## Delete the local cluster (removes everything)
 	kind delete cluster --name $(CLUSTER)
+
+monitoring-up: ## kube-prometheus-stack as a separate release (heavy: ~1GB RAM)
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	helm repo update prometheus-community
+	helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+	  -n monitoring --create-namespace --wait --timeout 10m \
+	  --set grafana.sidecar.dashboards.searchNamespace=ALL
 
 helm-checks: ## Static chart verification — same commands CI runs
 	helm lint $(CHART)
