@@ -82,6 +82,32 @@ jobs:
       - run: make helm-checks
       - run: make obs-checks
 
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+      - name: terraform fmt
+        run: terraform fmt -check -recursive deploy/terraform
+      - name: terraform validate (bootstrap)
+        run: |
+          terraform -chdir=deploy/terraform/bootstrap init -backend=false
+          terraform -chdir=deploy/terraform/bootstrap validate
+      - name: terraform validate (demo)
+        run: |
+          terraform -chdir=deploy/terraform/demo init -backend=false
+          terraform -chdir=deploy/terraform/demo validate
+      - name: tflint
+        run: |
+          curl -fsSL https://github.com/terraform-linters/tflint/releases/download/v0.63.1/tflint_linux_amd64.zip -o /tmp/tflint.zip
+          (cd /tmp && unzip -o tflint.zip && sudo mv tflint /usr/local/bin/)
+          tflint --chdir=deploy/terraform/bootstrap
+          tflint --chdir=deploy/terraform/demo
+      - name: shellcheck demo scripts
+        run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
+
   helm-install:
     runs-on: ubuntu-latest
     steps:

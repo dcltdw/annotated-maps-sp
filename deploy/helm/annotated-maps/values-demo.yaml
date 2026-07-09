@@ -1,0 +1,42 @@
+# deploy/helm/annotated-maps/values-demo.yaml
+# EKS demo environment (Milestone 3). Image repositories/tags and secrets are
+# NOT set here — scripts/demo-up.sh passes them (--set) from terraform
+# outputs and runtime prompts. HTTP-only on the raw ALB hostname: no domain,
+# no TLS — a stated M3 limitation (spec § Non-goals).
+image:
+  api:
+    pullPolicy: IfNotPresent
+  web:
+    pullPolicy: IfNotPresent
+
+api:
+  env:
+    sandboxMode: "true"            # the public demo IS the sandbox
+    djangoDebug: "false"
+    # Django leading-dot wildcard: any *.elb.amazonaws.com host. The ALB
+    # hostname doesn't exist until the Ingress creates it, so it can't be
+    # listed literally. Pod-IP entries still come from the downward API.
+    # localhost: the kubelet probes send Host: localhost (ingress.host is empty here); the wildcard: real ALB traffic
+    allowedHosts: "localhost,.elb.amazonaws.com"
+    secureSslRedirect: "false"     # HTTP-only demo (no cert without a domain)
+
+ingress:
+  className: alb
+  host: ""                         # match all hosts; ALB DNS unknown pre-create
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+postgres:
+  enabled: false                   # DB is a Neon branch (URL prompted at demo-up)
+
+monitoring:
+  enabled: false                   # no kube-prometheus-stack in the demo env
+
+seed:
+  refreshOnDeploy: true            # it's a demo — fresh Boston data every deploy
+
+secrets:
+  djangoSecretKey: ""              # supplied by demo-up
+  databaseUrl: ""                  # supplied by demo-up (Neon demo branch)
+  modToken: ""

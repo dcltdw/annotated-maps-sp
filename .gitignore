@@ -16,3 +16,9 @@ backend/.env
 frontend/node_modules/
 frontend/dist/
 seed_preview.html
+
+# terraform local artifacts
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
