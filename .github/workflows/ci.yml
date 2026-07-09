@@ -113,13 +113,18 @@ jobs:
           curl -fsS http://localhost:8081/ | grep -qi "<!doctype html"
       - name: Smoke the metrics endpoint (cluster-internal)
         run: |
-          kubectl -n annotated-maps port-forward svc/annotated-maps-api 8082:8000 &
+          # Prometheus scrapes each pod at its own IP, so that IP arrives as the
+          # Host header and each pod's ALLOWED_HOSTS allows only ITS OWN IP.
+          # Port-forward a specific pod and use that same pod's IP — forwarding
+          # the Service while reading .items[0]'s IP is a coin flip across
+          # replicas (pod A's IP sent to pod B → DisallowedHost 400).
+          # (phase=Running alone still matches Terminating pods — filter those out)
+          POD=$(kubectl -n annotated-maps get pod -l app.kubernetes.io/component=api \
+            --field-selector=status.phase=Running -o json \
+            | jq -r '[.items[] | select(.metadata.deletionTimestamp == null)][0].metadata.name')
+          POD_IP=$(kubectl -n annotated-maps get pod "$POD" -o jsonpath='{.status.podIP}')
+          kubectl -n annotated-maps port-forward "pod/$POD" 8082:8000 &
           sleep 3
           curl -fsS http://localhost:8082/metrics | grep -q django_http_responses_total_by_status_total
-          # Prometheus scrapes addressing the pod by IP, so that IP is the Host
-          # header — verify ALLOWED_HOSTS accepts it (else DisallowedHost 400 and
-          # the in-cluster dashboards silently go empty).
-          POD_IP=$(kubectl -n annotated-maps get pod -l app.kubernetes.io/component=api \
-            -o jsonpath='{.items[0].status.podIP}')
           curl -fsS -H "Host: ${POD_IP}:8000" http://localhost:8082/metrics \
             | grep -q django_http_responses_total_by_status_total
