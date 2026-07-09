@@ -75,7 +75,12 @@ jobs:
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
           sudo mv kubeconform /usr/local/bin/
+      - name: Install promtool
+        run: |
+          curl -sSL https://github.com/prometheus/prometheus/releases/download/v3.13.0/prometheus-3.13.0.linux-amd64.tar.gz | tar xz
+          sudo mv prometheus-3.13.0.linux-amd64/promtool /usr/local/bin/
       - run: make helm-checks
+      - run: make obs-checks
 
   helm-install:
     runs-on: ubuntu-latest
@@ -106,3 +111,8 @@ jobs:
           kubectl -n annotated-maps port-forward svc/annotated-maps-web 8081:80 &
           sleep 3
           curl -fsS http://localhost:8081/ | grep -qi "<!doctype html"
+      - name: Smoke the metrics endpoint (cluster-internal)
+        run: |
+          kubectl -n annotated-maps port-forward svc/annotated-maps-api 8082:8000 &
+          sleep 3
+          curl -fsS http://localhost:8082/metrics | grep -q django_http_responses_total_by_status_total
