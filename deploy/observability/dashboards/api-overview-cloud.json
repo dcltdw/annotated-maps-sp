@@ -15,16 +15,7 @@
   },
   "refresh": "30s",
   "templating": {
-    "list": [
-      {
-        "name": "datasource",
-        "type": "datasource",
-        "query": "prometheus",
-        "current": {},
-        "hide": 0,
-        "label": "Datasource"
-      }
-    ]
+    "list": []
   },
   "panels": [
     {
@@ -33,7 +24,7 @@
       "title": "Request rate",
       "description": "Total API requests/sec across all routes and statuses.",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
@@ -43,7 +34,7 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(rate(http_server_duration_milliseconds_count[5m]))",
           "legendFormat": "requests/sec",
           "refId": "A"
@@ -56,7 +47,7 @@
       "title": "Error ratio (SLO burn)",
       "description": "5xx responses as a fraction of all requests (SLO burn threshold 0.005 = 99.5% availability). Shows 0 when there are no errors.",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -73,7 +64,7 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count[5m])) or vector(0)",
           "legendFormat": "5xx ratio",
           "refId": "A"
@@ -86,7 +77,7 @@
       "title": "p95 latency",
       "description": "95th-percentile request latency across all routes.",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -96,7 +87,7 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_duration_milliseconds_bucket[5m])))",
           "legendFormat": "p95",
           "refId": "A"
@@ -109,7 +100,7 @@
       "title": "Fast-request ratio vs SLO",
       "description": "Ratio of requests completing under 500ms (latency SLO 0.99 = 99% under 500ms).",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -121,13 +112,13 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(rate(http_server_duration_milliseconds_bucket{le=\"500\"}[5m])) / sum(rate(http_server_duration_milliseconds_count[5m]))",
           "legendFormat": "fast ratio",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "0.99",
           "legendFormat": "SLO (0.99)",
           "refId": "B"
