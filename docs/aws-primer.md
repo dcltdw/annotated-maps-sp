@@ -36,7 +36,7 @@ access key." Three identities, three different short-lived mechanisms:
 
 ```
  laptop (you)  ──SSO──▶  IAM Identity Center  ──▶  short-lived console/CLI creds
- CI (GitHub Actions) ──OIDC──▶  annotated-maps-ci role   (push-to-main only)
+ CI (GitHub Actions) ──OIDC──▶  annotated-maps-ci role   (Environment-gated plan-on-PR)
  pods (in-cluster) ──IRSA──▶  annotated-maps-alb-controller role  (one pod, one role)
 ```
 
@@ -46,10 +46,11 @@ access key." Three identities, three different short-lived mechanisms:
 - **CI → GitHub OIDC federation.** GitHub Actions requests a short-lived
   token from GitHub's own OIDC provider and exchanges it for AWS credentials
   via `sts:AssumeRoleWithWebIdentity` — no AWS secret ever lives in GitHub.
-  The trust policy (`iam-ci.tf`) only accepts that token for a push that has
-  already landed on this repo's `main` — see
-  [ADR-0009](adr/0009-eks-over-ecs.md) for why `pull_request` is deliberately
-  excluded.
+  The trust policy (`foundation/iam-ci.tf`) only accepts that token for a job
+  that declares the protected `aws-plan` GitHub Environment, which requires a
+  human reviewer before the token is issued — see
+  [ADR-0009](adr/0009-eks-over-ecs.md) for why bare `pull_request` is
+  deliberately excluded.
 - **Pods → IRSA (IAM Roles for Service Accounts).** EKS's OIDC provider lets
   a specific Kubernetes ServiceAccount assume a specific IAM role. Exactly
   one ServiceAccount in this cluster has a role at all: the
@@ -63,18 +64,23 @@ No long-lived AWS keys exist anywhere in this system.
 
 ```
 deploy/terraform/
-├── bootstrap/main.tf          one-time state-bucket bootstrap
-└── demo/
+├── foundation/                persistent — applied once, never destroyed
+│   ├── state.tf               S3 state bucket (+ versioning, encryption)
+│   ├── iam-ci.tf              GitHub OIDC provider + CI role
+│   ├── budgets.tf             cost guardrail
+│   ├── outputs.tf             state_bucket, ci_role_arn
+│   ├── providers.tf           AWS provider + default tags
+│   ├── variables.tf           region / alert email
+│   └── versions.tf            Terraform + provider version pins
+└── demo/                      ephemeral — up/down every run
     ├── network.tf             VPC + subnets + NAT
     ├── eks.tf                 EKS cluster + node group
     ├── ecr.tf                 image repos
-    ├── iam-ci.tf              GitHub OIDC provider + CI role
     ├── iam-irsa.tf            ALB-controller IRSA role
-    ├── budgets.tf             cost guardrail
     ├── outputs.tf             values the scripts consume
     ├── backend.tf             where state lives
     ├── providers.tf           AWS provider + default tags
-    ├── variables.tf           region / cluster name / alert email
+    ├── variables.tf           region / cluster name
     ├── versions.tf            Terraform + provider version pins
     └── policies/
         └── alb-controller-iam-policy.json   vendored controller IAM policy
@@ -82,30 +88,31 @@ deploy/terraform/
 
 | File | What it does |
 |---|---|
-| [`bootstrap/main.tf`](../deploy/terraform/bootstrap/main.tf) | Creates the S3 bucket that later holds `demo/`'s remote state — applied once, with *local* state (the bucket can't store the state that creates it), gitignored. |
+| [`foundation/state.tf`](../deploy/terraform/foundation/state.tf) | Creates the S3 bucket that holds `demo/`'s remote state — applied once, with *local* state (the bucket can't store the state that creates it), gitignored. |
+| [`foundation/iam-ci.tf`](../deploy/terraform/foundation/iam-ci.tf) | Hand-written: the GitHub OIDC provider and the `annotated-maps-ci` role — read-only `plan` permissions, trust restricted to a job running under the protected `aws-plan` GitHub Environment (see §1 and [ADR-0009](adr/0009-eks-over-ecs.md)). |
+| [`foundation/budgets.tf`](../deploy/terraform/foundation/budgets.tf) | A $10/month AWS Budget with actual alerts at 50/80/100% and a forecast alert, emailed to the account owner — applied before any EKS spend exists, and never torn down, so the guardrail always covers the account. |
+| [`foundation/outputs.tf`](../deploy/terraform/foundation/outputs.tf) | The state bucket name and the CI role ARN — the latter is what `demo/backend.tf` and CI's `terraform plan` job consume. |
+| [`foundation/providers.tf`](../deploy/terraform/foundation/providers.tf), [`foundation/variables.tf`](../deploy/terraform/foundation/variables.tf), [`foundation/versions.tf`](../deploy/terraform/foundation/versions.tf) | Provider config + default tags, input variables (region, budget alert email — no default, never committed), and version pins. Plumbing, not exhibits. |
 | [`demo/network.tf`](../deploy/terraform/demo/network.tf) | Community VPC module: 2 AZs, public + private subnets, **one** shared NAT gateway (not one per AZ) — an ephemeral demo doesn't need AZ-fault-tolerant egress, and a second NAT is another ~$0.045/hr for redundancy nobody's paying to keep up. |
 | [`demo/eks.tf`](../deploy/terraform/demo/eks.tf) | Community EKS module: the cluster, a public API endpoint (no bastion for a throwaway demo), IRSA/OIDC enabled, one managed node group of 2× `t3.medium` on-demand (spot rejected — reclaims mid-debug-cycle cost more than they save at this scale). |
 | [`demo/ecr.tf`](../deploy/terraform/demo/ecr.tf) | Two image repos (`annotated-maps-api`, `annotated-maps-web`), scan-on-push, `force_delete = true` so a repo still holding images never blocks `terraform destroy`. |
-| [`demo/iam-ci.tf`](../deploy/terraform/demo/iam-ci.tf) | Hand-written: the GitHub OIDC provider and the `annotated-maps-ci` role — read-only `plan` permissions, trust restricted to a push on this repo's own `main` (see §1 and [ADR-0009](adr/0009-eks-over-ecs.md)). |
-| [`demo/iam-irsa.tf`](../deploy/terraform/demo/iam-irsa.tf) | Hand-written: the `annotated-maps-alb-controller` role, trust-bound to exactly one ServiceAccount in this cluster, holding the vendored [ALB-controller policy](../deploy/terraform/demo/policies/alb-controller-iam-policy.json). |
-| [`demo/budgets.tf`](../deploy/terraform/demo/budgets.tf) | A $10/month AWS Budget with actual alerts at 50/80/100% and a forecast alert, emailed to the account owner — applied first, before any EKS spend exists. |
-| [`demo/outputs.tf`](../deploy/terraform/demo/outputs.tf) | Cluster name, region, VPC id, ECR URLs, and both role ARNs — everything `demo-up.sh`/`demo-down.sh` read via `terraform output`. |
-| [`demo/backend.tf`](../deploy/terraform/demo/backend.tf) | Points `demo/` at the S3 bucket bootstrap created, using Terraform ≥1.10's native S3 lockfile (no DynamoDB lock table). Inert under `init -backend=false`, which is what static CI runs. |
-| [`demo/providers.tf`](../deploy/terraform/demo/providers.tf), [`demo/variables.tf`](../deploy/terraform/demo/variables.tf), [`demo/versions.tf`](../deploy/terraform/demo/versions.tf) | Provider config + default tags, input variables (region, cluster name, budget alert email — no default, never committed), and version pins. Plumbing, not exhibits. |
+| [`demo/iam-irsa.tf`](../deploy/terraform/demo/iam-irsa.tf) | Hand-written: the `annotated-maps-alb-controller` role, trust-bound to exactly one ServiceAccount in this cluster, holding the vendored [ALB-controller policy](../deploy/terraform/demo/policies/alb-controller-iam-policy.json). This role stays in `demo/`, not `foundation/`, because it's bound to the per-demo cluster's own OIDC provider — it can't outlive the cluster it's tied to. |
+| [`demo/outputs.tf`](../deploy/terraform/demo/outputs.tf) | Cluster name, region, VPC id, ECR URLs, and the ALB-controller role ARN — everything `demo-up.sh`/`demo-down.sh` read via `terraform output`. |
+| [`demo/backend.tf`](../deploy/terraform/demo/backend.tf) | Points `demo/` at the S3 bucket `foundation/` created, using Terraform ≥1.10's native S3 lockfile (no DynamoDB lock table). Inert under `init -backend=false`, which is what static CI runs. |
+| [`demo/providers.tf`](../deploy/terraform/demo/providers.tf), [`demo/variables.tf`](../deploy/terraform/demo/variables.tf), [`demo/versions.tf`](../deploy/terraform/demo/versions.tf) | Provider config + default tags, input variables (region, cluster name), and version pins. Plumbing, not exhibits. |
 | [`demo/policies/alb-controller-iam-policy.json`](../deploy/terraform/demo/policies/) | The AWS Load Balancer Controller's own published IAM policy, vendored at a pinned version (v2.17.1) rather than fetched at apply time — pinned, reviewable, diffable. |
 | [`scripts/demo-up.sh`](../scripts/demo-up.sh) | `terraform apply` → kubeconfig → install the ALB controller (IRSA-annotated) → build/push amd64 images to ECR → `helm upgrade --install` the app → poll for the ALB hostname → smoke-test it. |
 | [`scripts/demo-down.sh`](../scripts/demo-down.sh) | Uninstall the app (so the controller deletes its ALB) → **wait for the ALB to actually be gone** → uninstall the controller → `terraform destroy` → a post-destroy sweep confirming zero. Safe to re-run from any half-failed state. |
 | [`scripts/demo-cost.sh`](../scripts/demo-cost.sh) | Month-to-date AWS spend by service, via Cost Explorer — the per-cycle cost report. |
 
-> **Lifetime split (refined in Milestone 3 PR-2).** In this PR the GitHub OIDC
-> provider, the CI role, and the budget alarm live in the `demo/` stack, which
-> is torn down every run. That's fine for static verification (nothing is ever
-> applied here), but two of those resources must actually *outlive* a demo: the
-> budget alarm should always guard the account, and the CI role must exist for
-> a PR's `terraform plan` even when no demo is up. PR-2 therefore moves the OIDC
-> provider + CI role + budgets into a **persistent foundation stack** (applied
-> once, never destroyed), leaving `demo/` as pure ephemeral compute (VPC/EKS/ECR
-> + the cluster-bound IRSA role). Split by lifetime, not by layer.
+> **Lifetime split.** The GitHub OIDC provider, the CI role, and the budget
+> alarm must actually *outlive* a demo: the budget alarm should always guard
+> the account, and the CI role must exist for a PR's `terraform plan` even
+> when no demo is up. They live in the **persistent `foundation/` stack**
+> (applied once, never destroyed), while `demo/` holds pure ephemeral compute
+> (VPC/EKS/ECR + the cluster-bound IRSA role, which can't move to
+> `foundation/` because it's tied to the per-demo cluster's own OIDC
+> provider). Split by lifetime, not by layer.
 
 ## 3. Commands
 

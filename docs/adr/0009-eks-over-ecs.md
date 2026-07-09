@@ -47,11 +47,12 @@ authenticate to AWS for. This is a *decision*, recorded here so it reads as
 one: least privilege isn't "we forgot to grant the app pods a role," it's
 "the app pods have no AWS-shaped need, so none exists to grant."
 
-**CI's OIDC trust is push-to-main only.** The GitHub Actions role
-(`annotated-maps-ci`, `deploy/terraform/demo/iam-ci.tf`) trusts exactly the
-subject `repo:dcltdw/annotated-maps-sp:ref:refs/heads/main` — a push event on
-this repo's own main branch — and nothing else. See Consequences for why
-`pull_request` is deliberately excluded.
+**CI's OIDC trust is Environment-gated.** The GitHub Actions role
+(`annotated-maps-ci`, `deploy/terraform/foundation/iam-ci.tf`) trusts exactly
+the subject `repo:dcltdw/annotated-maps-sp:environment:aws-plan` — a job
+that declares the protected `aws-plan` GitHub Environment, which requires a
+human reviewer before the token is issued — and nothing else. See
+Consequences for why bare `pull_request` is deliberately excluded.
 
 ## Consequences
 
@@ -67,20 +68,20 @@ this repo's own main branch — and nothing else. See Consequences for why
   affordable for a portfolio project, and it's why `demo-down` is written to
   be safe to re-run from any half-failed state rather than something to
   babysit.
-- **Security note — why not `pull_request`:** on a public repository, a
+- **Security note — why not bare `pull_request`:** on a public repository, a
   GitHub Actions OIDC job triggered by `pull_request` produces a token whose
   subject claim is scoped to the **base** repository, not the fork —
   including for pull requests opened *from* forks. A trust policy that
   accepted `repo:dcltdw/annotated-maps-sp:pull_request` would therefore be
   assumable by any fork's PR workflow, which is not a trust boundary anyone
-  should ship on a public repo. Restricting the trust policy to
-  `ref:refs/heads/main` means only a push that has already landed on main —
-  something only a repo collaborator can produce — can assume the role. If
-  plan-on-PR is ever wanted, the safe path is a **protected GitHub
-  Environment**, whose OIDC subject takes the form
-  `repo:OWNER/REPO:environment:NAME` and can be required to have reviewers;
-  that is a deliberate future addition, not a relaxation of this trust
-  policy to bare `pull_request`.
+  should ship on a public repo. Instead the trust policy is scoped to a
+  **protected GitHub Environment**, whose OIDC subject takes the form
+  `repo:OWNER/REPO:environment:NAME` — here,
+  `repo:dcltdw/annotated-maps-sp:environment:aws-plan`. Only a job that
+  explicitly declares `environment: aws-plan` gets that subject, and the
+  Environment itself requires a human reviewer before the job runs, so a
+  fork's PR workflow still pauses for approval before any token is ever
+  issued — fork-safe while enabling plan-on-PR.
 - Because IRSA and OIDC federation are both short-lived, token-based
   credentials, and the operator's laptop uses IAM Identity Center (SSO)
   rather than an IAM user's access keys, there are no long-lived AWS

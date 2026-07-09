@@ -10,8 +10,3 @@ variable "cluster_name" {
   type        = string
   default     = "annotated-maps-demo"
 }
-
-variable "budget_alert_email" {
-  description = "Email for AWS Budgets alerts. No default on purpose: supplied at apply time, never committed."
-  type        = string
-}
