@@ -16,5 +16,5 @@ spec:
         - sh
         - -c
         - >-
-          curl -fsS -H "Host: {{ .Values.ingress.host }}"
+          curl -fsS -H "Host: {{ .Values.ingress.host | default "localhost" }}"
           http://{{ include "annotated-maps.fullname" . }}-api:8000/api/v1/health

@@ -112,7 +112,12 @@ git commit -m "docs: Milestone 3 live-run evidence — up, exercised, destroyed 
         run: |
           terraform -chdir=deploy/terraform/demo init \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-          terraform -chdir=deploy/terraform/demo plan -input=false \
+          # -lock=false: the CI role is READ-ONLY (GetObject/ListBucket on the
+          # state bucket, no PutObject). The native S3 lock writes a .tflock
+          # object, which the role deliberately can't do — a read-only plan
+          # doesn't need the lock. Without this flag the plan fails AccessDenied
+          # acquiring the lock. (Found by the PR-1 final review.)
+          terraform -chdir=deploy/terraform/demo plan -input=false -lock=false \
             -var budget_alert_email=ci-plan-placeholder@example.com
 ```
 
