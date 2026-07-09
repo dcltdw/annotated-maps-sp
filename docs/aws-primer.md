@@ -97,6 +97,16 @@ deploy/terraform/
 | [`scripts/demo-down.sh`](../scripts/demo-down.sh) | Uninstall the app (so the controller deletes its ALB) → **wait for the ALB to actually be gone** → uninstall the controller → `terraform destroy` → a post-destroy sweep confirming zero. Safe to re-run from any half-failed state. |
 | [`scripts/demo-cost.sh`](../scripts/demo-cost.sh) | Month-to-date AWS spend by service, via Cost Explorer — the per-cycle cost report. |
 
+> **Lifetime split (refined in Milestone 3 PR-2).** In this PR the GitHub OIDC
+> provider, the CI role, and the budget alarm live in the `demo/` stack, which
+> is torn down every run. That's fine for static verification (nothing is ever
+> applied here), but two of those resources must actually *outlive* a demo: the
+> budget alarm should always guard the account, and the CI role must exist for
+> a PR's `terraform plan` even when no demo is up. PR-2 therefore moves the OIDC
+> provider + CI role + budgets into a **persistent foundation stack** (applied
+> once, never destroyed), leaving `demo/` as pure ephemeral compute (VPC/EKS/ECR
+> + the cluster-bound IRSA role). Split by lifetime, not by layer.
+
 ## 3. Commands
 
     make demo-up      # terraform apply + ALB controller + image push + deploy — ~$0.20/hr while up
