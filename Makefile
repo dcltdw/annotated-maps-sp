@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -39,3 +39,8 @@ obs-up: ## Local observability stack (Grafana http://localhost:3300)
 
 obs-down: ## Tear down the local observability stack
 	docker compose -f deploy/observability/docker-compose.yml down -v
+
+obs-checks: ## Static observability checks — same commands CI runs
+	promtool check rules deploy/helm/annotated-maps/files/prometheus-rules.yaml
+	promtool test rules deploy/observability/alert-tests/rules_test.yaml
+	python3 -m json.tool deploy/helm/annotated-maps/files/dashboards/api-overview.json > /dev/null

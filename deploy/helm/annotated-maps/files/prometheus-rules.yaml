@@ -1,0 +1,31 @@
+# deploy/helm/annotated-maps/files/prometheus-rules.yaml
+# Canonical alert rules. Templated into the chart's PrometheusRule and
+# unit-tested by promtool (deploy/observability/alert-tests). PromQL here
+# MUST match docs/slos.md.
+groups:
+  - name: annotated-maps-slos
+    rules:
+      - record: am:http_error_ratio:rate5m
+        expr: >
+          sum(rate(django_http_responses_total_by_status_total{status=~"5.."}[5m]))
+          /
+          sum(rate(django_http_responses_total_by_status_total[5m]))
+      - record: am:http_fast_ratio:rate5m
+        expr: >
+          sum(rate(django_http_requests_latency_seconds_by_view_method_bucket{le="0.5"}[5m]))
+          /
+          sum(rate(django_http_requests_latency_seconds_by_view_method_count[5m]))
+      - alert: ApiAvailabilityBurn
+        expr: am:http_error_ratio:rate5m > 0.005
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "API 5xx ratio above SLO burn threshold"
+          runbook: "docs/slos.md#availability"
+      - alert: ApiLatencyBurn
+        expr: am:http_fast_ratio:rate5m < 0.99
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "API latency SLO burning (<99% of requests under 500ms)"
+          runbook: "docs/slos.md#latency"
