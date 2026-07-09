@@ -5,11 +5,14 @@ metadata:
   name: {{ include "annotated-maps.fullname" . }}
   labels:
     {{- include "annotated-maps.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - host: {{ .Values.ingress.host }}
-      http:
+    - http:
         paths:
           - path: /api
             pathType: Prefix
@@ -23,3 +26,6 @@ spec:
               service:
                 name: {{ include "annotated-maps.fullname" . }}-web
                 port: { number: 80 }
+      {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host }}
+      {{- end }}

@@ -36,10 +36,12 @@ monitoring-up: ## kube-prometheus-stack as a separate release (heavy: ~1GB RAM)
 helm-checks: ## Static chart verification — same commands CI runs
 	helm lint $(CHART)
 	helm lint $(CHART) -f $(CHART)/values-prod.yaml --set secrets.databaseUrl=$(PROD_PLACEHOLDER_DB)
+	helm lint $(CHART) -f $(CHART)/values-demo.yaml --set secrets.databaseUrl=$(PROD_PLACEHOLDER_DB)
 	helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest --verify=false
 	helm unittest $(CHART)
 	helm template annotated-maps $(CHART) | kubeconform -strict -summary -kubernetes-version 1.30.0
 	helm template annotated-maps $(CHART) -f $(CHART)/values-prod.yaml --set secrets.databaseUrl=$(PROD_PLACEHOLDER_DB) | kubeconform -strict -summary -kubernetes-version 1.30.0
+	helm template annotated-maps $(CHART) -f $(CHART)/values-demo.yaml --set secrets.databaseUrl=$(PROD_PLACEHOLDER_DB) | kubeconform -strict -summary -kubernetes-version 1.30.0
 
 obs-up: ## Local observability stack (Grafana http://localhost:3300)
 	docker compose -f deploy/observability/docker-compose.yml up -d

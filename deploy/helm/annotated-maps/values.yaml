@@ -26,6 +26,7 @@ web:
 ingress:
   className: nginx
   host: localhost
+  annotations: {}   # extra ingress annotations (e.g. ALB controller settings in values-demo)
 
 hpa:
   enabled: true

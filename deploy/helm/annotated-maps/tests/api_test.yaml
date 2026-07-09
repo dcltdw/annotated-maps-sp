@@ -16,6 +16,14 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.httpHeaders
           content: { name: Host, value: localhost }
+  - it: probe Host falls back to localhost when ingress.host is empty (ALB demo)
+    set:
+      ingress:
+        host: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.httpHeaders
+          content: { name: Host, value: localhost }
   - it: injects the pod IP via the downward API (Prometheus scrape Host allow-listing)
     asserts:
       - contains:
