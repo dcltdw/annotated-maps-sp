@@ -8,6 +8,8 @@ A multi-tenant, permissioned map-annotation platform. Teams can create and share
 
 **▶ [Production-engineering roadmap](ROADMAP.md)** — what this project demonstrates today (CI gates, Docker, declarative deploys) and what's next (Kubernetes/Helm, Terraform + EKS, OpenTelemetry), with proof links for every shipped milestone.
 
+**▶ [Live telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** — request rate, latency, and error ratio from the demo above, instrumented with OpenTelemetry and exported to Grafana Cloud (public, no login).
+
 ## Section-level visibility
 
 Every note is composed of **sections**, each gated to a different audience — public, friends, a group, a reputation threshold, or private. The same note shows different content depending on who is viewing it; switch personas with the **"Viewing as"** control to watch the markers and detail panel re-filter live.

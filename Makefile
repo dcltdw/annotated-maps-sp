@@ -51,3 +51,4 @@ obs-checks: ## Static observability checks — same commands CI runs
 	promtool check rules deploy/helm/annotated-maps/files/prometheus-rules.yaml
 	promtool test rules deploy/observability/alert-tests/rules_test.yaml
 	python3 -m json.tool deploy/helm/annotated-maps/files/dashboards/api-overview.json > /dev/null
+	python3 -m json.tool deploy/observability/dashboards/api-overview-cloud.json > /dev/null

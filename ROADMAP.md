@@ -13,7 +13,7 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 | [Declarative cloud deployment](#phase-0-already-shipped) | Blueprint-as-code, zero-downtime migrations, cron jobs | ✅ Shipped | [render.yaml](render.yaml) · [live demo](https://annotated-maps-web.onrender.com/) |
 | [Architecture as a written practice](#phase-0-already-shipped) | **ADRs**, design specs, production-concern triage | ✅ Shipped | [ADRs](docs/adr/) · [production lenses](docs/architecture/production-lenses.md) · [specs](docs/superpowers/specs/) |
 | [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | ✅ Shipped | [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) · [primer](docs/kubernetes-primer.md) · [CI runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
-| [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | 📋 Planned | — |
+| [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | ✅ Shipped | [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) · [dashboards-as-code](deploy/observability/dashboards/) · [SLOs](docs/slos.md) · [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) |
 | [3 — AWS infrastructure as code](#milestone-3--aws-infrastructure-as-code) | **Terraform**, **AWS EKS**, **IAM**/IRSA, **VPC** networking, ECR | 📋 Planned | — |
 | [4 — One-button ephemeral environment](#milestone-4--one-button-ephemeral-environment) | Automated deployments, infrastructure pipelines, testing gates | 📋 Planned | — |
 
@@ -56,11 +56,11 @@ Nothing merges red.
 
 **Plain English:** you shouldn't have to trust that the live demo works — you should be able to see it. Real dashboards over real traffic, publicly linkable.
 
-**The work:** two tiers. First, instrument Django with **OpenTelemetry** (traces + metrics, joined to the structured logs that already carry request/tenant IDs — the seam was built in Phase 0) and export from the live Render deployment to **Grafana Cloud's** free tier: always-on dashboards at zero hosting cost. Second, an in-cluster stack — **kube-prometheus-stack** installed by the Milestone 1 chart, `/metrics` via django-prometheus, dashboards and alert rules committed as code, and two written SLOs (API latency, error rate) with a short runbook.
+**The work:** two tiers. First, instrument Django with **OpenTelemetry** (traces, metrics, and logs — the logs joined to the structured request/tenant IDs from the Phase-0 seam, so a trace links straight to its log lines) and export from the live Render deployment to **Grafana Cloud's** free tier: always-on dashboards at zero hosting cost. Second, an in-cluster stack — **kube-prometheus-stack** installed by the Milestone 1 chart, `/metrics` via django-prometheus, dashboards and alert rules committed as code, and two written SLOs (API latency, error rate) with a short runbook.
 
-**Trade-off considerations:** why OpenTelemetry rather than a vendor SDK — instrumenting once against the vendor-neutral standard makes Grafana/Datadog/Honeycomb a config change, not a re-instrumentation.
+**Trade-off considerations:** why OpenTelemetry rather than a vendor SDK — instrumenting once against the vendor-neutral standard makes Grafana/Datadog/Honeycomb a config change, not a re-instrumentation. Proven, not just asserted: the same app config points at a local collector, the in-cluster Prometheus, or Grafana Cloud by changing one env var.
 
-**Done means:** a public dashboard link in the README showing live-demo traffic, plus dashboards-as-code and SLOs in-repo.
+**Done:** a [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) showing live-demo request rate, latency, and error ratio; [dashboards-as-code](deploy/observability/dashboards/) and [SLOs with a runbook](docs/slos.md) in-repo; and [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) recording the vendor-neutral decision.
 
 ## Milestone 3 — AWS infrastructure as code
 
