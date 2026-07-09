@@ -24,6 +24,19 @@ services:
         sync: false   # the web service's public URL, e.g. https://annotated-maps-web.onrender.com
       - key: MOD_TOKEN
         sync: false   # a long random string; enables the /moderate tooling
+      # Observability (M2). Telemetry exports to Grafana Cloud (free tier).
+      # Declared here so a blueprint sync doesn't drop them; values live in the
+      # Render dashboard. Secrets (the OTLP token) are sync:false — never committed.
+      - key: OTEL_ENABLED
+        value: "true"
+      - key: OTEL_SERVICE_NAME
+        value: annotated-maps-api
+      - key: DEPLOY_ENV
+        value: render
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false   # Grafana Cloud OTLP gateway, e.g. https://otlp-gateway-<region>.grafana.net/otlp
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false   # Authorization=Basic <base64>; carries the Grafana Cloud token — SECRET
   - type: web
     name: annotated-maps-web
     runtime: static
