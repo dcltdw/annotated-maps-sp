@@ -1,0 +1,11 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-slos
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    release: monitoring
+spec:
+  {{- .Files.Get "files/prometheus-rules.yaml" | nindent 2 }}
+{{- end }}

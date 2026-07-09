@@ -1,0 +1,56 @@
+# deploy/observability/alert-tests/rules_test.yaml
+# promtool unit tests for deploy/helm/annotated-maps/files/prometheus-rules.yaml.
+# Each alert has a FIRES case (synthetic series over threshold, sustained past
+# the `for: 10m` window) and a STAYS-GREEN case (under threshold, no alert).
+rule_files:
+  - ../../helm/annotated-maps/files/prometheus-rules.yaml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'django_http_responses_total_by_status_total{status="200"}'
+        values: "0+100x30"
+      - series: 'django_http_responses_total_by_status_total{status="500"}'
+        values: "0+10x30"     # 10/110 ≈ 9% errors — way over 0.5%
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ApiAvailabilityBurn
+        exp_alerts:
+          - exp_labels: { severity: page }
+            exp_annotations:
+              summary: "API 5xx ratio above SLO burn threshold"
+              runbook: "docs/slos.md#availability"
+  - interval: 1m
+    input_series:
+      - series: 'django_http_responses_total_by_status_total{status="200"}'
+        values: "0+100x30"
+      - series: 'django_http_responses_total_by_status_total{status="500"}'
+        values: "0+0x30"      # zero errors — must stay green
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ApiAvailabilityBurn
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'django_http_requests_latency_seconds_by_view_method_bucket{le="0.5"}'
+        values: "0+50x30"     # only 50 of 100 under 500ms — 50% fast, SLO 99%
+      - series: 'django_http_requests_latency_seconds_by_view_method_count'
+        values: "0+100x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ApiLatencyBurn
+        exp_alerts:
+          - exp_labels: { severity: page }
+            exp_annotations:
+              summary: "API latency SLO burning (<99% of requests under 500ms)"
+              runbook: "docs/slos.md#latency"
+  - interval: 1m
+    input_series:
+      - series: 'django_http_requests_latency_seconds_by_view_method_bucket{le="0.5"}'
+        values: "0+100x30"    # 100% fast — stays green
+      - series: 'django_http_requests_latency_seconds_by_view_method_count'
+        values: "0+100x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ApiLatencyBurn
+        exp_alerts: []

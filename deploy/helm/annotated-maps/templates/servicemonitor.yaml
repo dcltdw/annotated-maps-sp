@@ -1,0 +1,18 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "annotated-maps.fullname" . }}-api
+  labels:
+    {{- include "annotated-maps.labels" . | nindent 4 }}
+    release: monitoring   # kube-prometheus-stack's default selector
+spec:
+  selector:
+    matchLabels:
+      {{- include "annotated-maps.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}

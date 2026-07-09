@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -21,10 +21,17 @@ deploy: ## Build images, load into kind, install/upgrade the release
 	docker build -f frontend/Dockerfile -t annotated-maps-web:dev frontend
 	kind load docker-image annotated-maps-api:dev --name $(CLUSTER)
 	kind load docker-image annotated-maps-web:dev --name $(CLUSTER)
-	helm upgrade --install annotated-maps $(CHART) -n $(NS) --create-namespace --wait --timeout 5m
+	helm upgrade --install annotated-maps $(CHART) -n $(NS) --create-namespace --wait --timeout 5m $(HELM_EXTRA)
 
 kind-down: ## Delete the local cluster (removes everything)
 	kind delete cluster --name $(CLUSTER)
+
+monitoring-up: ## kube-prometheus-stack as a separate release (heavy: ~1GB RAM)
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	helm repo update prometheus-community
+	helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+	  -n monitoring --create-namespace --wait --timeout 10m \
+	  --set grafana.sidecar.dashboards.searchNamespace=ALL
 
 helm-checks: ## Static chart verification — same commands CI runs
 	helm lint $(CHART)
@@ -33,3 +40,14 @@ helm-checks: ## Static chart verification — same commands CI runs
 	helm unittest $(CHART)
 	helm template annotated-maps $(CHART) | kubeconform -strict -summary -kubernetes-version 1.30.0
 	helm template annotated-maps $(CHART) -f $(CHART)/values-prod.yaml --set secrets.databaseUrl=$(PROD_PLACEHOLDER_DB) | kubeconform -strict -summary -kubernetes-version 1.30.0
+
+obs-up: ## Local observability stack (Grafana http://localhost:3300)
+	docker compose -f deploy/observability/docker-compose.yml up -d
+
+obs-down: ## Tear down the local observability stack
+	docker compose -f deploy/observability/docker-compose.yml down -v
+
+obs-checks: ## Static observability checks — same commands CI runs
+	promtool check rules deploy/helm/annotated-maps/files/prometheus-rules.yaml
+	promtool test rules deploy/observability/alert-tests/rules_test.yaml
+	python3 -m json.tool deploy/helm/annotated-maps/files/dashboards/api-overview.json > /dev/null
