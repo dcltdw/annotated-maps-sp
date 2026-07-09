@@ -96,17 +96,19 @@ git commit -m "docs: Milestone 3 live-run evidence — up, exercised, destroyed 
 **Files:**
 - Modify: `.github/workflows/ci.yml` (infra job += OIDC plan step), `README.md`, `ROADMAP.md`
 
-- [ ] **Step 1:** Set the repo variable: `gh variable set AWS_CI_ROLE_ARN --body "<ci_role_arn output>"`. In ci.yml, give the `infra` job `permissions: { id-token: write, contents: read }` and append (after tflint/shellcheck):
+**SECURITY NOTE (from Task 3's review):** the CI role's trust policy is pinned to `repo:dcltdw/annotated-maps-sp:ref:refs/heads/main` — **push to our main only**, NOT `pull_request`. This is deliberate: on a public repo, a `pull_request`-triggered OIDC job is assumable by fork PRs (GitHub sets the same base-repo `:pull_request` sub for forks). So the OIDC `terraform plan` runs **on push to main**, not on PRs. The static checks (fmt/validate/tflint/shellcheck) still run on every PR — the roadmap's "validate/lint on every infra PR" holds; the authenticated plan is the merge-to-main gate. (If plan-on-PR is ever wanted, the secure way is a protected GitHub Environment whose sub is `...:environment:NAME` + a trust-policy entry for it — a deliberate future addition, not bare `pull_request`.)
+
+- [ ] **Step 1:** Set the repo variables: `gh variable set AWS_CI_ROLE_ARN --body "<ci_role_arn output>"` and `gh variable set TF_STATE_BUCKET --body "annotated-maps-tf-state-<ACCOUNT_ID>"`. In ci.yml, give the `infra` job `permissions: { id-token: write, contents: read }` and append (after tflint/shellcheck) — the OIDC + plan steps gated to **push-to-main** so they match the trust policy and never run for PRs/forks:
 
 ```yaml
-      - name: OIDC auth (no long-lived keys)
-        if: github.event.pull_request.head.repo.fork != true
+      - name: OIDC auth (push-to-main only; no long-lived keys)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
           aws-region: us-east-1
       - name: terraform plan (read-only role)
-        if: github.event.pull_request.head.repo.fork != true
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           terraform -chdir=deploy/terraform/demo init \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
@@ -114,7 +116,7 @@ git commit -m "docs: Milestone 3 live-run evidence — up, exercised, destroyed 
             -var budget_alert_email=ci-plan-placeholder@example.com
 ```
 
-Also `gh variable set TF_STATE_BUCKET --body "annotated-maps-tf-state-<ACCOUNT_ID>"`. Verify on this PR's own run: the OIDC step assumes `annotated-maps-ci` and plan succeeds (expected plan: creates — the env is destroyed; that's correct and proves read works). NOTE: budget email placeholder is fine for plan (no apply ever happens in CI).
+Verify on the post-merge main run (not the PR run): the OIDC step assumes `annotated-maps-ci` and plan succeeds (expected plan: creates — the env is destroyed between runs; that's correct and proves read works). NOTE: the budget-email placeholder is fine for plan (no apply ever happens in CI). Because plan runs only on main, the PR that adds this step won't exercise it on its own PR run — confirm on the merge run and capture it in the evidence.
 - [ ] **Step 2:** Add `infra` to the main ruleset's required checks (the ruleset API pattern from the M1 session — ruleset id 17463753, integration_id 15368).
 - [ ] **Step 3:** README: extend the M3 pointer line with the evidence page link. ROADMAP: Milestone 3 row `📋 Planned` → `✅ Shipped`, Proof cell → `[demo run](docs/m3-demo-run.md) · [terraform](deploy/terraform/) · [ADR-0009](docs/adr/0009-eks-over-ecs.md) · [primer](docs/aws-primer.md)`; the milestone body's "Done means" → past tense with the same links.
 - [ ] **Step 4:** Commit; open the PR (rigor sections). After merge: board card "Milestone 3" → Done; confirm no infra is up (`make demo-cost` + the sweep one last time).
