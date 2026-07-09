@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up demo-up demo-down demo-cost
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -25,6 +25,15 @@ deploy: ## Build images, load into kind, install/upgrade the release
 
 kind-down: ## Delete the local cluster (removes everything)
 	kind delete cluster --name $(CLUSTER)
+
+demo-up: ## AWS demo env: terraform apply + ALB controller + ECR push + deploy (~$$0.20/hr!)
+	./scripts/demo-up.sh
+
+demo-down: ## Tear the AWS demo down to zero (safe to re-run from any state)
+	./scripts/demo-down.sh
+
+demo-cost: ## Month-to-date AWS spend by service
+	./scripts/demo-cost.sh
 
 monitoring-up: ## kube-prometheus-stack as a separate release (heavy: ~1GB RAM)
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
