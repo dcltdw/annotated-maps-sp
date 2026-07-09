@@ -51,6 +51,8 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "min": 0,
+          "max": 1,
           "custom": { "drawStyle": "line", "fillOpacity": 10 },
           "thresholds": {
             "mode": "absolute",
@@ -65,7 +67,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-          "expr": "sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count[5m])) or vector(0)",
+          "expr": "clamp_max(sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count[5m])), 1) or vector(0)",
           "legendFormat": "5xx ratio",
           "refId": "A"
         }
