@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -33,3 +33,9 @@ helm-checks: ## Static chart verification — same commands CI runs
 	helm unittest $(CHART)
 	helm template annotated-maps $(CHART) | kubeconform -strict -summary -kubernetes-version 1.30.0
 	helm template annotated-maps $(CHART) -f $(CHART)/values-prod.yaml --set secrets.databaseUrl=$(PROD_PLACEHOLDER_DB) | kubeconform -strict -summary -kubernetes-version 1.30.0
+
+obs-up: ## Local observability stack (Grafana http://localhost:3300)
+	docker compose -f deploy/observability/docker-compose.yml up -d
+
+obs-down: ## Tear down the local observability stack
+	docker compose -f deploy/observability/docker-compose.yml down -v
