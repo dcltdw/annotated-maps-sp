@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "corsheaders",
+    "django_prometheus",
     "core",
     "maps",
 ]
@@ -65,12 +66,14 @@ CORS_ALLOW_CREDENTIALS = True
 GDAL_LIBRARY_PATH = env("GDAL_LIBRARY_PATH", default=None)
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "core.middleware.ObservabilityMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 # Django's SecurityMiddleware would emit Referrer-Policy: same-origin by default,

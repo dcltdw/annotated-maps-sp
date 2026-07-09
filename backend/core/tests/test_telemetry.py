@@ -173,5 +173,23 @@ def test_otlp_exporter_delivers_protobuf_over_http():
         server.shutdown()
 
 
-# ---------- /metrics gating (spec 9.1.4) — added in Task 3; placeholder-free:
-# Task 3 appends test_metrics_endpoint_* here.
+# ---------- /metrics gating (spec 9.1.4) ----------
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_serves_prometheus_exposition():
+    client = Client()
+    client.get("/api/v1/health")  # generate at least one sample
+    resp = client.get("/metrics")
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert "django_http_responses_total_by_status_total" in body
+
+
+@pytest.mark.django_db
+def test_metrics_is_not_reachable_under_api_prefix():
+    """The public Ingress routes only /api to this service — mounting outside
+    /api is the structural guarantee that /metrics is cluster-internal."""
+    client = Client()
+    assert client.get("/api/v1/metrics").status_code == 404
+    assert client.get("/api/metrics").status_code == 404
