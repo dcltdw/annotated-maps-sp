@@ -81,7 +81,12 @@ Consequences for why bare `pull_request` is deliberately excluded.
   explicitly declares `environment: aws-plan` gets that subject, and the
   Environment itself requires a human reviewer before the job runs, so a
   fork's PR workflow still pauses for approval before any token is ever
-  issued — fork-safe while enabling plan-on-PR.
+  issued — fork-safe while enabling plan-on-PR. One consequence for the
+  reviewer: approving an `aws-plan` run on a fork PR means vouching for its
+  `.tf` changes too, not just the workflow YAML — `terraform plan` can execute
+  code at plan time (external data sources, custom providers), and the
+  read-only role plus the approval gate are the mitigations, so the diff being
+  approved must be read, not rubber-stamped.
 - Because IRSA and OIDC federation are both short-lived, token-based
   credentials, and the operator's laptop uses IAM Identity Center (SSO)
   rather than an IAM user's access keys, there are no long-lived AWS
