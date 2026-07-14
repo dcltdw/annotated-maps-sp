@@ -39,6 +39,11 @@ fi
 echo "==> terraform destroy"
 terraform -chdir="$TF_DIR" destroy -auto-approve
 
+if [ -n "${NEON_BRANCH:-}" ]; then
+  echo "==> deleting the per-run Neon branch ($NEON_BRANCH)"
+  ./scripts/neon-branch.sh delete "$NEON_BRANCH" || true
+fi
+
 echo "==> post-destroy sweep (all three MUST be empty)"
 echo "state:";        terraform -chdir="$TF_DIR" state list 2>/dev/null || true
 echo "load balancers:"; aws elbv2 describe-load-balancers --region "$REGION" \
