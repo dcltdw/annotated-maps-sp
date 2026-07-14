@@ -108,14 +108,37 @@ jobs:
       - name: shellcheck demo scripts
         run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
 
-  infra-plan:
-    # Fork-safe `terraform plan` on PRs. It runs in the protected `aws-plan`
-    # Environment (required reviewer), so a PR — including one from a fork —
-    # PAUSES for human approval before any OIDC token is issued. The CI role's
-    # trust policy only accepts the `...:environment:aws-plan` sub, so nothing
-    # outside this Environment can assume it. The role is read-only: it can
-    # plan, never apply.
+  # Detects whether a PR touches the Terraform. infra-plan (which pauses for a
+  # human approval before it can touch AWS) then only runs — and only asks for
+  # approval — on PRs that actually change infrastructure, not on every PR.
+  changes:
     if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.f.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: f
+        name: Did this PR change deploy/terraform/?
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              | grep -q '^deploy/terraform/'; then
+            echo "terraform=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "terraform=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  infra-plan:
+    # Fork-safe `terraform plan`, only on PRs that change the Terraform. It runs
+    # in the protected `aws-plan` Environment (required reviewer), so a PR —
+    # including one from a fork — PAUSES for human approval before any OIDC token
+    # is issued. The CI role's trust policy only accepts the
+    # `...:environment:aws-plan` sub, so nothing outside this Environment can
+    # assume it. The role is read-only: it can plan, never apply.
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     environment: aws-plan
     permissions:
