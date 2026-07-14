@@ -23,36 +23,44 @@ Decisions locked during brainstorming:
 1. **Per-run Neon branch via API** — each run creates a fresh database branch,
    uses it, deletes it in teardown. `NEON_API_KEY` is the one new GitHub
    Actions secret; a connection string exists only inside a run.
-2. **Approval gate + unattended monthly:** manual dispatches are admitted
-   through a reviewer-gated `aws-deploy` Environment; the monthly cron enters
-   unattended through `aws-deploy-scheduled` (no reviewer, main-branch-only).
-   The gate sits at ENTRY only — downstream jobs, including destroy, never
-   wait on a human (§2).
+2. **No approval clicks + unattended monthly (revised 2026-07-14 at user
+   review):** dispatching IS the confirmation — `workflow_dispatch` requires
+   write access and is fork-unreachable, so a reviewer gate would be a second
+   confirmation by the same person. No job ever waits on a human (which also
+   makes teardown structurally un-blockable). Guardrails are the concurrency
+   group, the $10 budget alarm, and the alert channels. ADR-0010 records the
+   deliberate omission.
 3. **Pipeline structure:** phased make targets shared by laptop and CI
    (`demo-infra-up` / `demo-images` / `demo-app-deploy` / `demo-down`); the
    workflow's jobs mirror the phases 1:1. One orchestration code path.
 4. **KMS:** stop creating a per-cluster CMK (`create_kms_key = false`) — ends
    the ~$1/mo pending-deletion accrual per run; recorded honestly in ADR-0010.
-5. **Teardown-failure alerting is triple-channel:** auto-created GitHub issue
-   (GITHUB_TOKEN, AWS-independent) + **SNS email to dcltdw@protonmail.com**
-   (foundation-stack topic, published from the destroy job's OIDC session) +
-   the existing $10 budget alarm as the slow money backstop.
+5. **Lifecycle events on SNS, filtered email (revised at user review):** one
+   foundation-stack topic carries `demo-ready` (info: the ALB URL),
+   `run-summary` (info: green/red + cost), and `teardown-failed` (alert) —
+   each published with a `severity` message attribute. The email subscription
+   (dcltdw@protonmail.com) carries a **filter policy `severity=alert`**: the
+   inbox gets only failures by default; loosening to info events is a
+   one-line subscription change. Teardown failure remains triple-channel:
+   auto-created GitHub issue (GITHUB_TOKEN, AWS-independent) + the SNS email
+   + the $10 budget alarm as the slow money backstop. (At this volume SNS is
+   $0: publishes and email deliveries sit far inside the free tier, and
+   events with no matching subscriber are dropped silently by design.)
 6. The three M3 hardening tickets fold in: smoke **hard-fails**, secrets via
    `--set-file` (never command-line args), `demo-cost` degrades gracefully
    when Cost Explorer isn't ingested.
 
 ## Goals
 
-1. One button: a maintainer dispatches the pipeline, approves the
-   `aws-deploy` deployment once, and ~35 minutes later has a green public run
-   proving the full lifecycle — with screenshots, a Trivy report, and an SBOM
-   as downloadable artifacts.
+1. One button: a maintainer dispatches the pipeline and ~35 minutes later
+   has a green public run proving the full lifecycle — with screenshots, a
+   Trivy report, and an SBOM as downloadable artifacts. No further clicks.
 2. A red run cannot strand billable resources silently: destroy always runs,
    is re-runnable from any state, and its own failure triggers three
    independent alarms.
 3. The apply-capable role is scoped to this stack and reachable only through
-   the three Environments of §2 — no long-lived keys, fork-unreachable
-   triggers, and teardown never waits on a human.
+   the single `aws-deploy` Environment sub — no long-lived keys,
+   fork-unreachable triggers, and no job ever waits on a human.
 4. Monthly unattended run catches dependency/tool/base-image/API drift.
 5. ADR-0010 records the security and cost decisions.
 
@@ -88,43 +96,37 @@ but is **bounded where it counts**:
 - **SNS:** `sns:Publish` on the alerts topic ARN only (§5).
 
 Trust policy: `sts:AssumeRoleWithWebIdentity` from the GitHub OIDC provider,
-`aud = sts.amazonaws.com`, and `sub` StringEquals **exactly three values** —
-the three Environments of §2:
-`repo:dcltdw/annotated-maps-sp:environment:aws-deploy`,
-`repo:dcltdw/annotated-maps-sp:environment:aws-deploy-scheduled`, and
-`repo:dcltdw/annotated-maps-sp:environment:aws-deploy-auto`.
+`aud = sts.amazonaws.com`, and `sub` StringEquals **exactly one value**:
+`repo:dcltdw/annotated-maps-sp:environment:aws-deploy`.
 
-### 2. The Environments (gate model — ADR-0010's core)
+### 2. The Environment and the deliberately-omitted gate (ADR-0010's core)
 
-**Approve at entry, never downstream — the load-bearing rule.** GitHub
-requests Environment approval per *job*, and a job that starts later in a run
-can raise a fresh approval request. If the destroy job sat behind a
-required-reviewer Environment, a teardown could hang waiting for a human
-click — the exact stranded-billing failure this milestone exists to prevent.
-So the reviewer gate applies to the **first AWS job only** (provision =
-where spend begins); every downstream job — including destroy — uses a
-no-reviewer Environment and proceeds unattended once the run was admitted.
+**One Environment, no protection rules.** All AWS jobs in the pipeline
+declare `environment: aws-deploy` — an *unprotected* Environment whose sole
+remaining function is to namespace the OIDC subject: the deployer role
+trusts exactly `repo:…:environment:aws-deploy`, which only jobs of this
+repo's workflows declaring that Environment can present, on any branch
+(needed for PR-branch iteration) and for both triggers. It also gives a
+deployment-history trail in the repo UI for free.
 
-| Environment | Protection | Used by | The gate is |
-|---|---|---|---|
-| `aws-deploy` | required reviewer (dcltdw) | **provision** job of `workflow_dispatch` runs | **money** — no manual run starts spending without a human click |
-| `aws-deploy-scheduled` | no reviewer; deployment branch policy = `main` only | **provision** job of the monthly `schedule` run | **code** — unattended runs execute only reviewed, merged main |
-| `aws-deploy-auto` | no reviewer | all downstream AWS jobs (images/deploy/destroy) of every run | **entry** — reachable only after a run was admitted above |
+**Why no reviewer gate (the ADR-0010 decision):** `workflow_dispatch` and
+`schedule` cannot be triggered by forks, and dispatching requires write
+access — on this repo, the person clicking "Run workflow" is the same person
+who would click "Approve," so a required-reviewer rule is a second
+confirmation of a deliberate ~\$2 action, bought at the cost of friction on
+every run AND a structural risk: GitHub requests Environment approval per
+*job*, so any reviewer-gated Environment touching the destroy job could
+leave teardown hanging on a human click — the stranded-billing failure this
+milestone exists to prevent. The protected-Environment pattern is already
+demonstrated where it earns its keep (`infra-plan`, where genuinely
+untrusted fork PRs exist). Guardrails that remain: write-access-only
+dispatch, the `concurrency` group (no overlapping spend), the \$10 budget
+alarm, and the three-channel teardown alerting. If a reviewer gate is ever
+reinstated, it must sit at ENTRY only (the provision job), never on any
+downstream job.
 
-Why the no-reviewer surfaces are safe: `workflow_dispatch` and `schedule`
-events cannot be triggered by forks and require write access to dispatch —
-the threat model here is accidental/runaway spend and unreviewed code, not
-strangers (that's the `infra-plan`/PR story, unchanged). `aws-deploy-auto`
-grants nothing a maintainer doesn't already effectively hold via dispatch;
-its purpose is exclusively to keep teardown human-independent. The provision
-job selects its Environment dynamically:
-`environment: ${{ github.event_name == 'schedule' &&
-'aws-deploy-scheduled' || 'aws-deploy' }}`. (If implementation verifies that
-GitHub auto-approves later same-run jobs on an approved environment, the
-design still stands — gate-at-entry is correct under either behavior.)
-
-Cost posture: manual runs ≈ $1–2 each, approved individually; scheduled = 12
-runs/yr ≈ $15–25/yr; the $10/mo budget alarm already covers both.
+Cost posture: manual runs ≈ $1–2 each; scheduled = 12 runs/yr ≈ $15–25/yr;
+the $10/mo budget alarm already covers both.
 
 ### 3. The pipeline (`.github/workflows/demo-pipeline.yml`)
 
@@ -146,21 +148,24 @@ terraform outputs travel as job outputs):
 3. **deploy** — create Neon branch `ci-run-<run_id>` (Neon API; §4), then
    `make demo-app-deploy`: kubeconfig, ALB controller, helm install with
    `--set-file` secrets, wait for ALB, **smoke that hard-fails** (health 200
-   + doctype within the window or exit 1). Output: the ALB URL.
+   + doctype within the window or exit 1). Output: the ALB URL. On success,
+   publishes **`demo-ready`** (severity=info, the ALB URL) to the SNS topic.
 4. **e2e** — Playwright against `BASE_URL=http://<ALB>` (a small
    `playwright.alb.config.ts` reading `BASE_URL` from env; a smoke-scoped
    spec: app loads, personas render, API answers). **Screenshots uploaded
    `if: always()`** — evidence on green, diagnosis on red.
 5. **destroy** — **`if: always()`**, own OIDC auth: `make demo-down`
    (uninstall → wait-ALB-gone → terraform destroy → sweep), delete the Neon
-   branch (tolerate already-gone), print `make demo-cost`. This is the same
-   re-runnable-from-any-state script M3 proved.
+   branch (tolerate already-gone), print `make demo-cost`, and publish
+   **`run-summary`** (severity=info: overall run result + the cost line).
+   This is the same re-runnable-from-any-state script M3 proved.
 6. **alert-teardown-failure** — runs only if destroy failed: creates a
    GitHub issue titled "🔴 TEARDOWN FAILED — billable AWS resources may be
    running" (run URL + sweep output; via GITHUB_TOKEN, AWS-independent) AND
-   publishes the same message to the SNS topic → **email to
-   dcltdw@protonmail.com** (via the destroy job's role if AWS auth works; the
-   issue fires regardless). Backstop: the $10 budget alarm.
+   publishes **`teardown-failed`** (severity=**alert** — the one event the
+   email filter passes) to the SNS topic → email to dcltdw@protonmail.com
+   (via OIDC if AWS auth works; the issue fires regardless). Backstop: the
+   $10 budget alarm.
 
 ### 4. Per-run Neon branch
 
@@ -179,8 +184,11 @@ nonexistent branch is a warning, not a failure. Local flow (prompt /
 ### 5. Foundation additions
 
 - `foundation/sns.tf`: topic `annotated-maps-alerts` + email subscription
-  `dcltdw@protonmail.com` (one-time "Confirm subscription" click at the
-  checkpoint). Output: topic ARN. The budget alarm stays as-is.
+  `dcltdw@protonmail.com` with **`filter_policy = { severity = ["alert"] }`**
+  (one-time "Confirm subscription" click at the checkpoint; loosen the
+  filter to `["alert","info"]` anytime to also receive demo-ready/summary
+  events). Output: topic ARN. All publishes carry a `severity` message
+  attribute. The budget alarm stays as-is.
 - `foundation/iam-deployer.tf` (§1). Outputs: `deployer_role_arn`.
 - Applied once at the checkpoint (a `terraform apply` on foundation — tags
   already say persistent).
@@ -216,9 +224,9 @@ secrets). The one existing pending-deletion key from M3 expires on its own.
   `actionlint` on the workflows (new — added to the `infra` CI job),
   helm-checks/obs-checks unchanged and still green, workflow YAML parses.
 - **Live (budget-boxed, M3 rules):** iterate via `workflow_dispatch` from the
-  PR branch (each run individually approved through `aws-deploy`): expect
-  2–4 runs at ~$1–2; **ceiling $10**, never-leave-up (the destroy job is the
-  rule; manual sweep after any red run), per-run cost line in the ledger.
+  PR branch (runs start immediately): expect 2–4 runs at ~$1–2; **ceiling
+  $10**, never-leave-up (the destroy job is the rule; manual sweep after any
+  red run), per-run cost line in the ledger.
 - **The proof:** after merge, **one green run from `main`** — public in the
   Actions history with screenshots/Trivy/SBOM artifacts — is the roadmap's
   "done means." Then the monthly cron is live. Teardown-alerting is verified
@@ -227,15 +235,18 @@ secrets). The one existing pending-deletion key from M3 expires on its own.
 
 ### 9. ADR-0010 — an apply-capable role for the pipeline
 
-House style. Content: the two-Environment gate model (money-gate vs
-code-gate; why dispatch/schedule triggers change the threat model vs PRs);
-the deployer-role scoping stance (broad service powers, hard boundary at
-IAM-by-prefix + state-bucket + one SNS topic); KMS-off-by-default for the
-ephemeral cluster (cost vs a checkbox); per-run Neon branches (the one new
-secret is an API key, not a database credential). Alternatives considered:
-single reviewer-gated environment (blocks unattended monthly), no gate
-(dispatch-only, weaker money story), persistent KMS key in foundation
-(+$12/yr for a checkbox).
+House style. Content: the deliberately-omitted reviewer gate (dispatch =
+confirmation; why dispatch/schedule triggers change the threat model vs PRs;
+the per-job approval mechanic that would have made a gated destroy hangable;
+the entry-only rule if a gate is ever reinstated); the deployer-role scoping
+stance (broad service powers, hard boundary at IAM-by-prefix + state-bucket
++ one SNS topic); the SNS lifecycle-events-with-filter-policy pattern (inbox
+gets alerts, topic carries everything); KMS-off-by-default for the ephemeral
+cluster (cost vs a checkbox); per-run Neon branches (the one new secret is
+an API key, not a database credential). Alternatives considered:
+reviewer-gated dispatch (friction + the hangable-teardown risk for a second
+confirmation by the same human), alerts-only SNS, persistent KMS key in
+foundation (+$12/yr for a checkbox).
 
 ### 10. Docs
 
@@ -250,13 +261,12 @@ single reviewer-gated environment (blocks unattended monthly), no gate
 
 1. Create a **Neon API key** (Neon console → account settings → API keys) →
    `gh secret set NEON_API_KEY`; agent sets `NEON_PROJECT_ID` variable.
-2. Agent creates the three GitHub Environments (`aws-deploy` w/ required
-   reviewer; `aws-deploy-scheduled` w/ main-only branch policy;
-   `aws-deploy-auto` unprotected) and applies the foundation additions
-   (deployer role + SNS topic).
+2. Agent creates the single unprotected `aws-deploy` GitHub Environment and
+   applies the foundation additions (deployer role + SNS topic + filtered
+   subscription).
 3. You click the SNS **"Confirm subscription"** email once.
-4. Live iteration begins: you approve each `aws-deploy` deployment as runs
-   are dispatched.
+4. Live iteration begins: runs are dispatched and proceed immediately (no
+   approval clicks).
 
 ### 12. PR slicing
 
@@ -282,10 +292,9 @@ single reviewer-gated environment (blocks unattended monthly), no gate
 - **Neon API drift/limits** — branch create/delete are core API calls;
   deletion tolerance + the branch is free-tier and empty-cost if orphaned
   (a leftover branch costs storage pennies, not compute).
-- **Environment-selection bug routing scheduled runs to the reviewer-gated
-  env** — worst case is a hung (not billing) run: the gate sits at entry,
-  before any spend exists; the expression is unit-visible in the workflow
-  and exercised in the first month's run.
+- **Accidental dispatch** — accepted: dispatch requires write access and a
+  deliberate click; cost of a mistake is one ~$1–2 fully-self-cleaning run
+  (accepted in ADR-0010).
 
 ## Testing summary
 
