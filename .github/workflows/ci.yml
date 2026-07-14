@@ -160,8 +160,9 @@ jobs:
         run: |
           terraform -chdir=deploy/terraform/demo init \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-          terraform -chdir=deploy/terraform/demo plan -input=false -lock=false \
-            -var budget_alert_email=ci-plan-placeholder@example.com
+          # budget_alert_email moved to the foundation stack in the split; the
+          # demo stack declares no such variable, so no -var is needed.
+          terraform -chdir=deploy/terraform/demo plan -input=false -lock=false
 
   helm-install:
     runs-on: ubuntu-latest
