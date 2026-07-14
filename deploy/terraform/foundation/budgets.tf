@@ -1,6 +1,7 @@
-# deploy/terraform/demo/budgets.tf
-# The guardrail. Applied FIRST in PR-2 (before any EKS spend exists):
-#   terraform apply -target=aws_budgets_budget.demo
+# deploy/terraform/foundation/budgets.tf
+# The guardrail. Applied FIRST, before any EKS spend exists — it must always
+# guard the account, so it lives here in the persistent foundation stack, not
+# in the ephemeral demo/ stack that gets torn down every run.
 resource "aws_budgets_budget" "demo" {
   name         = "annotated-maps-demo"
   budget_type  = "COST"

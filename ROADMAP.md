@@ -14,7 +14,7 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 | [Architecture as a written practice](#phase-0-already-shipped) | **ADRs**, design specs, production-concern triage | ✅ Shipped | [ADRs](docs/adr/) · [production lenses](docs/architecture/production-lenses.md) · [specs](docs/superpowers/specs/) |
 | [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | ✅ Shipped | [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) · [primer](docs/kubernetes-primer.md) · [CI runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
 | [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | ✅ Shipped | [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) · [dashboards-as-code](deploy/observability/dashboards/) · [SLOs](docs/slos.md) · [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) |
-| [3 — AWS infrastructure as code](#milestone-3--aws-infrastructure-as-code) | **Terraform**, **AWS EKS**, **IAM**/IRSA, **VPC** networking, ECR | 📋 Planned | — |
+| [3 — AWS infrastructure as code](#milestone-3--aws-infrastructure-as-code) | **Terraform**, **AWS EKS**, **IAM**/IRSA, **VPC** networking, ECR | ✅ Shipped | [demo run](docs/m3-demo-run.md) · [terraform](deploy/terraform/) · [ADR-0009](docs/adr/0009-eks-over-ecs.md) · [primer](docs/aws-primer.md) |
 | [4 — One-button ephemeral environment](#milestone-4--one-button-ephemeral-environment) | Automated deployments, infrastructure pipelines, testing gates | 📋 Planned | — |
 
 Statuses: ✅ shipped · 🚧 in progress · 📋 planned.
@@ -70,7 +70,7 @@ Nothing merges red.
 
 **Trade-off considerations:** EKS versus ECS (an ADR will record the reasoning), and the economics of an ephemeral environment versus an always-on one at this project's scale.
 
-**Done means:** `terraform apply` to a working, load-balanced deployment on EKS; `terraform destroy` back to zero; plan/validate/lint running in CI on every infra PR; the ADR published.
+**Done:** `make demo-up` provisioned a working, load-balanced deployment on EKS — the app served real traffic through an ALB ([evidence, with a screenshot of it running](docs/m3-demo-run.md)) — and `make demo-down` destroyed all 61 resources back to zero (swept clean). Static checks (fmt/validate/tflint) run on every infra PR; the authenticated `terraform plan` runs fork-safely on PRs via a protected GitHub Environment (OIDC, required-reviewer gated); [ADR-0009](docs/adr/0009-eks-over-ecs.md) published. The live run also caught two real bugs the tests had missed ([lessons-learned](docs/lessons-learned.md)). Not left running by design — the durable artifact is the evidence, not an always-on service.
 
 ## Milestone 4 — One-button ephemeral environment
 

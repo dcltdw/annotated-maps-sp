@@ -52,7 +52,18 @@ docker push "$ECR_API:$TAG"
 docker push "$ECR_WEB:$TAG"
 
 echo "==> app secrets (never stored; Neon demo-branch URL + generated key)"
-read -r -s -p "Neon demo-branch DATABASE_URL (postgis://...): " DATABASE_URL; echo
+# The Neon URL is a secret. Provide it either interactively (prompt) or, for
+# non-interactive/automated runs, via a file whose PATH is passed as
+# DB_URL_FILE — so it isn't typed into the terminal or captured in shell
+# history. (It is still handed to helm below via --set, so it is briefly
+# visible in the process table; tightening that to --set-file is tracked as a
+# follow-up.)
+if [ -n "${DB_URL_FILE:-}" ] && [ -f "$DB_URL_FILE" ]; then
+  DATABASE_URL=$(tr -d '[:space:]' < "$DB_URL_FILE")
+  echo "    (DATABASE_URL read from \$DB_URL_FILE)"
+else
+  read -r -s -p "Neon demo-branch DATABASE_URL (postgis://...): " DATABASE_URL; echo
+fi
 DJANGO_SECRET_KEY=$(openssl rand -hex 32)
 
 echo "==> deploy the chart"

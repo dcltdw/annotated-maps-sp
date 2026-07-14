@@ -1,4 +1,4 @@
-# deploy/terraform/demo/iam-ci.tf
+# deploy/terraform/foundation/iam-ci.tf
 # GitHub Actions -> AWS via OIDC federation. No access keys exist for CI.
 # The role can PLAN (read-only), never APPLY: the apply pipeline is
 # Milestone 4's story and will get its own, separately-scoped role.
@@ -27,17 +27,14 @@ data "aws_iam_policy_document" "ci_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Only THIS repo's own main branch, on push. A push to main produces the
-    # sub `repo:dcltdw/annotated-maps-sp:ref:refs/heads/main`; a fork's push
-    # carries the fork's repo prefix, so it can't match. We deliberately do
-    # NOT trust the `:pull_request` sub: GitHub sets it to the BASE repo for
-    # fork PRs too, so trusting it on a public repo would let any fork assume
-    # this role. (Plan-on-PR, if ever wanted, needs a protected GitHub
-    # Environment sub — `...:environment:NAME` — not bare pull_request.)
+    # Only a job that declares `environment: aws-plan` gets this sub, and
+    # that Environment has a required-reviewer rule, so fork PRs pause for
+    # human approval before any token is issued — fork-safe while allowing
+    # plan-on-PR.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:dcltdw/annotated-maps-sp:ref:refs/heads/main"]
+      values   = ["repo:dcltdw/annotated-maps-sp:environment:aws-plan"]
     }
   }
 }

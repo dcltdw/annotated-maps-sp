@@ -91,10 +91,10 @@ jobs:
           terraform_version: "1.15.8"
       - name: terraform fmt
         run: terraform fmt -check -recursive deploy/terraform
-      - name: terraform validate (bootstrap)
+      - name: terraform validate (foundation)
         run: |
-          terraform -chdir=deploy/terraform/bootstrap init -backend=false
-          terraform -chdir=deploy/terraform/bootstrap validate
+          terraform -chdir=deploy/terraform/foundation init -backend=false
+          terraform -chdir=deploy/terraform/foundation validate
       - name: terraform validate (demo)
         run: |
           terraform -chdir=deploy/terraform/demo init -backend=false
@@ -103,10 +103,66 @@ jobs:
         run: |
           curl -fsSL https://github.com/terraform-linters/tflint/releases/download/v0.63.1/tflint_linux_amd64.zip -o /tmp/tflint.zip
           (cd /tmp && unzip -o tflint.zip && sudo mv tflint /usr/local/bin/)
-          tflint --chdir=deploy/terraform/bootstrap
+          tflint --chdir=deploy/terraform/foundation
           tflint --chdir=deploy/terraform/demo
       - name: shellcheck demo scripts
         run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
+
+  # Detects whether a PR touches the Terraform. infra-plan (which pauses for a
+  # human approval before it can touch AWS) then only runs — and only asks for
+  # approval — on PRs that actually change infrastructure, not on every PR.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.f.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: f
+        name: Did this PR change deploy/terraform/?
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              | grep -q '^deploy/terraform/'; then
+            echo "terraform=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "terraform=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  infra-plan:
+    # Fork-safe `terraform plan`, only on PRs that change the Terraform. It runs
+    # in the protected `aws-plan` Environment (required reviewer), so a PR —
+    # including one from a fork — PAUSES for human approval before any OIDC token
+    # is issued. The CI role's trust policy only accepts the
+    # `...:environment:aws-plan` sub, so nothing outside this Environment can
+    # assume it. The role is read-only: it can plan, never apply.
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    environment: aws-plan
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+      - name: OIDC auth (read-only CI role; no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: terraform plan (read-only)
+        # -lock=false: the CI role can't write the native S3 state lock
+        # (GetObject/ListBucket only), and a read-only plan doesn't need it.
+        run: |
+          terraform -chdir=deploy/terraform/demo init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          # budget_alert_email moved to the foundation stack in the split; the
+          # demo stack declares no such variable, so no -var is needed.
+          terraform -chdir=deploy/terraform/demo plan -input=false -lock=false
 
   helm-install:
     runs-on: ubuntu-latest
