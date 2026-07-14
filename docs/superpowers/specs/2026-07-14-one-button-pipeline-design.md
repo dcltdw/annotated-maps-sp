@@ -268,16 +268,28 @@ foundation (+$12/yr for a checkbox).
 4. Live iteration begins: runs are dispatched and proceed immediately (no
    approval clicks).
 
-### 12. PR slicing
+### 12. PR slicing (revised at user review: small, single-purpose PRs)
 
-- **PR-1 (static):** foundation deployer-role + SNS TF, the workflow, the
-  make/script refactor + hardening, Neon script, eks.tf KMS change,
-  Playwright ALB config, actionlint in CI, ADR-0010, primer section. All
-  CI-green with zero live runs.
-- **Checkpoint** (§11), then budget-boxed live iteration to a green
-  branch-dispatched run.
-- **PR-2 (evidence):** m4-pipeline.md + README/ROADMAP flip; after merge, the
-  canonical green run from main + board card → Done. **Roadmap complete.**
+Eight focused PRs, decomposed by dependency rather than phase. A/B/C/E/F are
+mutually independent (any order, parallelizable); D follows C; G integrates
+B–F; H follows the green run.
+
+| PR | Content | Depends on |
+|---|---|---|
+| **A** | KMS off: `create_kms_key = false` in `demo/eks.tf` | — |
+| **B** | Script refactor (three phase targets) + the 3 hardening fixes | — |
+| **C** | Foundation: SNS topic + filtered email subscription | — |
+| **D** | Foundation: deployer role (trust = `aws-deploy` env sub; `sns:Publish` scoped to C's topic) | C |
+| **E** | `neon-branch.sh` (create/delete) + `demo-down` delete-if-named hook | — |
+| **F** | Playwright `BASE_URL` config + ALB smoke spec | — |
+| **G** | `demo-pipeline.yml` + actionlint in CI + **ADR-0010** (the decisions this PR embodies); the live budget-boxed iteration happens on this branch | B, C, D, E, F |
+| **H** | Evidence page + primer §pipeline + README/ROADMAP flip + board → Done | the green run from `main` |
+
+The user checkpoint (§11) attaches to the PRs that need it rather than being
+one gate: the SNS confirm-click and foundation apply at C/D's merges; the
+`NEON_API_KEY` secret before E is exercised; the `aws-deploy` Environment
+before G's first dispatch. One plan document covers all eight — each task =
+one PR (implement → verify → open) — rather than eight ceremony-heavy plans.
 
 ## Risks & mitigations
 
