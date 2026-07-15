@@ -42,6 +42,12 @@ module "eks" {
       min_size       = 2
       max_size       = 2
       desired_size   = 2
+
+      # The deployer role's IAM boundary is the annotated-maps-* prefix; the
+      # module's default node-role name ("default-eks-node-group-...") falls
+      # outside it. Name it inside.
+      iam_role_name            = "annotated-maps-node"
+      iam_role_use_name_prefix = true
     }
   }
 }
