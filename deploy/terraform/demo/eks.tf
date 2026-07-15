@@ -19,6 +19,14 @@ module "eks" {
   # policies (iam-irsa.tf) consume it.
   enable_irsa = true
 
+  # No customer-managed KMS key for cluster-secrets envelope encryption. The
+  # demo holds zero sensitive data and lives for hours; the CMK's only real
+  # effect here was a ~$1/mo pending-deletion charge accruing PER RUN, since
+  # terraform destroy can only SCHEDULE key deletion (7-30 day window).
+  # Control-plane storage is AWS-encrypted regardless. See ADR-0010.
+  create_kms_key            = false
+  cluster_encryption_config = {}
+
   cluster_addons = {
     coredns    = {}
     kube-proxy = {}
