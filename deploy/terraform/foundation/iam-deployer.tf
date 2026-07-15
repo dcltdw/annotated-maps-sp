@@ -60,7 +60,10 @@ data "aws_iam_policy_document" "deployer_permissions" {
     resources = ["*"]
   }
 
-  # The hard boundary: IAM only within this project's namespace.
+  # Blast-radius guard: IAM actions are confined to this project's resource
+  # namespace, so a bug or a typo in the demo stack cannot touch unrelated
+  # identities. This is NOT a security boundary against a malicious principal
+  # holding this role — see the Deny below and ADR-0010's disclosure.
   statement {
     sid     = "IamWithinPrefix"
     effect  = "Allow"
@@ -69,6 +72,13 @@ data "aws_iam_policy_document" "deployer_permissions" {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/annotated-maps-*",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/annotated-maps-*",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/annotated-maps-*",
+      # The EKS module creates the cluster's IRSA OIDC provider (enable_irsa =
+      # true). Its ARN is oidc-provider/oidc.eks.<region>.amazonaws.com/id/<hash>
+      # — it cannot carry the annotated-maps-* prefix, so scope it by issuer
+      # host instead. This deliberately does NOT match the foundation's GitHub
+      # provider (oidc-provider/token.actions.githubusercontent.com), so the
+      # deployer cannot delete CI's trust anchor.
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/oidc.eks.*",
     ]
   }
 
@@ -113,6 +123,18 @@ data "aws_iam_policy_document" "deployer_permissions" {
     effect    = "Allow"
     actions   = ["ce:GetCostAndUsage"]
     resources = ["*"]
+  }
+
+  # Closes the one-call self-escalation path: iam:* on role/annotated-maps-*
+  # would otherwise match this role itself, letting it attach
+  # AdministratorAccess to its own identity. The foundation stack that owns
+  # this role is applied locally with operator credentials — the deployer
+  # never needs to touch it. A Deny is unconditional; it beats any Allow.
+  statement {
+    sid       = "NoSelfEscalation"
+    effect    = "Deny"
+    actions   = ["iam:*"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/annotated-maps-deployer"]
   }
 }
 
