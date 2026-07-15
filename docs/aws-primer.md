@@ -120,6 +120,14 @@ deploy/terraform/
     make demo-cost     # month-to-date spend by service, printed as a table
     make demo-down     # tear everything back to zero — safe to re-run from any state
 
+`demo-up` is a chain of three phases, each runnable on its own — and the CI
+pipeline (§7) runs these exact targets, so laptop and CI share one code path
+rather than drifting apart:
+
+    make demo-infra-up    # 1/3 terraform apply
+    make demo-images      # 2/3 build + push to ECR (IMAGE_TAG env optional)
+    make demo-app-deploy  # 3/3 ALB controller + helm + a smoke test that GATES
+
 - `demo-up` leaves the meter running at roughly **$0.20/hr** (EKS control
   plane + 2 nodes + one NAT gateway). A full up → exercise → down cycle costs
   on the order of **$1–2**; leaving it running for a month would run
@@ -160,7 +168,51 @@ deploy/terraform/
 | A pod briefly shows `Terminating` and rollouts look stuck | Normal pod-replacement flake during a rolling update, not a real failure | Give it a few seconds and re-check; it resolves on its own. Only worth investigating if it persists past a minute or two. |
 | `make demo-down`'s wait loop seems to be watching load balancers that aren't ours | It isn't a bug: the ALB sweep in `demo-down.sh` counts **every** load balancer in the region | This is correct *because* the demo runs in a fresh, dedicated AWS account — any ELB in the region is guaranteed to be this project's. **Do not run these scripts against a shared/multi-project AWS account** without narrowing that check first. |
 
-## 6. Going deeper
+## 6. The one-button pipeline
+
+Everything above, automated: [`demo-pipeline.yml`](../.github/workflows/demo-pipeline.yml)
+does the whole up → exercise → down cycle unattended. See
+[the run record](m4-pipeline.md) for evidence and
+[ADR-0010](adr/0010-pipeline-apply-role.md) for the security model.
+
+    gh workflow run demo-pipeline.yml --ref main    # ~35 min, ~$0.25
+    gh run watch
+
+It also runs monthly (3rd, 14:00 UTC) so drift surfaces on a schedule.
+
+**The jobs mirror the make targets 1:1:** `provision` (`demo-infra-up`) →
+`images` (build → **Trivy gate** → SBOMs → push) → `deploy`
+(`demo-app-deploy`, with a per-run Neon branch) → `e2e` (Playwright vs the
+live ALB) → `destroy` (`demo-down`).
+
+**No approval prompt, by design.** Dispatching already requires repo write
+access and forks cannot trigger it, so a reviewer gate would only re-confirm
+the same human — and because GitHub requests Environment approval *per job*, a
+gate touching `destroy` could leave teardown waiting on a click, which is the
+stranded-billing failure the pipeline exists to prevent. The `aws-deploy`
+Environment is deliberately unprotected; its only job is to namespace the OIDC
+subject. (Contrast `infra-plan` in `ci.yml`, which *is* reviewer-gated —
+there, fork PRs are genuinely untrusted input.)
+
+**Safety rails:** `destroy` runs `if: always()`; a `concurrency` group forbids
+overlapping runs and never cancels one mid-teardown; every job has a
+`timeout-minutes`; the $10 budget alarm is the backstop.
+
+**If teardown fails,** two independent alarms fire — an auto-created GitHub
+issue (which does not depend on AWS auth working) and an SNS email. Then:
+
+1. Re-run the `destroy` job from the Actions UI. It is safe to re-run from any
+   half-destroyed state.
+2. If that fails, run `make demo-down` locally against the same state.
+3. Check the sweep at the end of `demo-down` — every line must be empty.
+
+**Known sharp edge:** a `terraform` PR opened *while a pipeline run is in
+flight* can fail its `infra-plan` job. That job plans with the read-only CI
+role and `-lock=false`, so it refreshes state the pipeline is actively
+writing. Re-run it after the pipeline's teardown finishes — the demo state is
+empty again and the plan passes.
+
+## 7. Going deeper
 
 - [ADR-0009 — EKS over ECS](adr/0009-eks-over-ecs.md) — why EKS, why
   Terraform, the economics, and the IAM decisions this stack makes.

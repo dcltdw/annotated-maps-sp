@@ -4,6 +4,8 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 
 **How to read this:** the table below is the summary; each milestone has a section with the reasoning and trade-offs. Every completed milestone links to verifiable evidence — a merged PR, a public CI run, a dashboard, an architecture decision record — not just a claim.
 
+**All four milestones are shipped.** The capstone is a [one-button pipeline](docs/m4-pipeline.md) that builds the whole AWS environment from nothing, proves the app works against its live URL, and destroys it again — in 35 minutes, for about $0.25, with the teardown guaranteed. Everything below is done and evidenced; what follows the roadmap is [what I deliberately didn't build](#what-i-deliberately-didnt-build) and why.
+
 ## Status
 
 | Milestone | Technologies & practices | Status | Proof |
@@ -15,7 +17,7 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 | [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | ✅ Shipped | [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) · [primer](docs/kubernetes-primer.md) · [CI runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
 | [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | ✅ Shipped | [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) · [dashboards-as-code](deploy/observability/dashboards/) · [SLOs](docs/slos.md) · [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) |
 | [3 — AWS infrastructure as code](#milestone-3--aws-infrastructure-as-code) | **Terraform**, **AWS EKS**, **IAM**/IRSA, **VPC** networking, ECR | ✅ Shipped | [demo run](docs/m3-demo-run.md) · [terraform](deploy/terraform/) · [ADR-0009](docs/adr/0009-eks-over-ecs.md) · [primer](docs/aws-primer.md) |
-| [4 — One-button ephemeral environment](#milestone-4--one-button-ephemeral-environment) | Automated deployments, infrastructure pipelines, testing gates | 📋 Planned | — |
+| [4 — One-button ephemeral environment](#milestone-4--one-button-ephemeral-environment) | Automated deployments, infrastructure pipelines, testing gates | ✅ Shipped | [pipeline run](docs/m4-pipeline.md) · [workflow](.github/workflows/demo-pipeline.yml) · [ADR-0010](docs/adr/0010-pipeline-apply-role.md) |
 
 Statuses: ✅ shipped · 🚧 in progress · 📋 planned.
 
@@ -80,7 +82,7 @@ Nothing merges red.
 
 **Trade-off considerations:** making infrastructure pipelines safe to fail — ensuring a red run can't strand billable resources.
 
-**Done means:** a green public run visible in the [Actions history](https://github.com/dcltdw/annotated-maps-sp/actions), with test screenshots attached as artifacts.
+**Done:** one dispatch builds the environment from nothing, deploys, tests against the live URL, and destroys everything — [a green public run](https://github.com/dcltdw/annotated-maps-sp/actions/runs/29447574490) in 35 minutes, with the Playwright screenshot of the app running on EKS attached as an artifact ([evidence](docs/m4-pipeline.md)). Teardown is guaranteed by `if: always()` and was proven the hard way: **four of the five live runs went red, and every one tore itself down to zero** unattended. The Trivy gate earned its place by failing a real CRITICAL CVE and blocking the push. The live runs caught four bugs that static analysis and code review had missed ([lessons-learned](docs/lessons-learned.md)); [ADR-0010](docs/adr/0010-pipeline-apply-role.md) records the apply-role security model, including an honest disclosure of what that role can do in the demo account. Runs monthly on a schedule to surface drift. Cost: ~$0.20–0.30 per run, under a $10/month budget alarm.
 
 ---
 

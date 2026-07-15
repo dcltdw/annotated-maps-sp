@@ -6,7 +6,7 @@ A multi-tenant, permissioned map-annotation platform. Teams can create and share
 
 **▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
 
-**▶ [Production-engineering roadmap](ROADMAP.md)** — what this project demonstrates today (CI gates, Docker, declarative deploys) and what's next (Kubernetes/Helm, Terraform + EKS, OpenTelemetry), with proof links for every shipped milestone.
+**▶ [Production-engineering roadmap](ROADMAP.md)** — Kubernetes/Helm, OpenTelemetry, Terraform + EKS, and a one-button ephemeral pipeline: all four milestones shipped, with proof links for each.
 
 **▶ [Live telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** — request rate, latency, and error ratio from the demo above, instrumented with OpenTelemetry and exported to Grafana Cloud (public, no login).
 
@@ -80,6 +80,8 @@ Design rationale: [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) and the
 [milestone spec](docs/superpowers/specs/2026-07-08-helm-kind-milestone-design.md).
 
 Milestone 3 takes the same chart to AWS (Terraform + EKS) — provisioned, [verified serving through an ALB](docs/m3-demo-run.md), and destroyed to zero on demand. See the [AWS primer](docs/aws-primer.md) for how it works.
+
+Milestone 4 wraps that whole lifecycle in one button: a [GitHub Actions pipeline](.github/workflows/demo-pipeline.yml) that provisions the environment, gates the images on a Trivy scan, deploys, runs Playwright against the live URL, and destroys everything — with teardown guaranteed even when a step fails. [The run record](docs/m4-pipeline.md) has the screenshot the pipeline took of the app running on EKS, and what four red runs taught us.
 
 ## Tests
 
