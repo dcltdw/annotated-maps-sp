@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up demo-up demo-down demo-cost
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up demo-up demo-down demo-cost demo-infra-up demo-images demo-app-deploy
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -28,6 +28,15 @@ kind-down: ## Delete the local cluster (removes everything)
 
 demo-up: ## AWS demo env: terraform apply + ALB controller + ECR push + deploy (~$$0.20/hr!)
 	./scripts/demo-up.sh
+
+demo-infra-up: ## Phase 1/3: terraform apply the demo infra
+	./scripts/demo-infra-up.sh
+
+demo-images: ## Phase 2/3: build + push images to ECR (IMAGE_TAG env optional)
+	./scripts/demo-images.sh
+
+demo-app-deploy: ## Phase 3/3: ALB controller + deploy + gating smoke
+	./scripts/demo-app-deploy.sh
 
 demo-down: ## Tear the AWS demo down to zero (safe to re-run from any state)
 	./scripts/demo-down.sh
