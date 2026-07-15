@@ -97,11 +97,23 @@ data "aws_iam_policy_document" "deployer_permissions" {
     resources = ["*"]
   }
 
-  # EKS/ELB/Autoscaling create service-linked roles on first use.
+  # EKS/ELB/Autoscaling create service-linked roles on first use — and READ
+  # them before creating. The first live node-group create failed with:
+  #   InvalidRequestException: Failed to validate if SLR:
+  #   AWSServiceRoleForAmazonEKSNodegroup already exists due to missing
+  #   permissions for 'iam:GetRole'
+  # EKS checks whether the SLR exists before deciding to create it, so
+  # create-without-read is a broken half-grant. iam:GetRole here is scoped to
+  # the aws-service-role/ path only; roles this stack owns are already readable
+  # via IamWithinPrefix, so between the two every role terraform must read is
+  # covered — and nothing outside those two paths is.
   statement {
-    sid       = "ServiceLinkedRoles"
-    effect    = "Allow"
-    actions   = ["iam:CreateServiceLinkedRole"]
+    sid    = "ServiceLinkedRoles"
+    effect = "Allow"
+    actions = [
+      "iam:CreateServiceLinkedRole",
+      "iam:GetRole",
+    ]
     resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/*"]
   }
 
