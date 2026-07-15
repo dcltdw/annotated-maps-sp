@@ -136,8 +136,18 @@ data "aws_iam_policy_document" "deployer_permissions" {
   # would otherwise match this role itself, letting it attach
   # AdministratorAccess to its own identity. The foundation stack that owns
   # this role is applied locally with operator credentials — the deployer
-  # never needs to touch it. A Deny is unconditional; it beats any Allow, and
+  # never needs to MUTATE it. A Deny is unconditional; it beats any Allow, and
   # it is self-protecting (the role cannot PutRolePolicy away its own Deny).
+  #
+  # MUTATING ACTIONS ONLY — deliberately not iam:*. The first live run proved
+  # why: the EKS module's `data "aws_iam_session_context" "current"` resolves
+  # the CALLER's own STS source role (for cluster_creator_admin_permissions),
+  # which needs iam:GetRole on THIS role. A blanket iam:* Deny failed the apply
+  # with "AccessDenied ... with an explicit deny in an identity-based policy"
+  # before a single resource was created. Reads don't escalate; mutations do.
+  # An Allow cannot carve an exception out of a Deny, so the action list itself
+  # has to be precise. Every action below is one that either grants this role
+  # more power or removes this very Deny.
   #
   # This does NOT close escalation — it raises its cost. Path B (create a role,
   # attach AdministratorAccess, pass it to EC2, read creds off IMDS) still
@@ -146,9 +156,26 @@ data "aws_iam_policy_document" "deployer_permissions" {
   # any scanner flags first — but see ADR-0010; the permissions boundary that
   # actually closes Path B is ticketed.
   statement {
-    sid     = "NoSelfEscalation"
-    effect  = "Deny"
-    actions = ["iam:*"]
+    sid    = "NoSelfEscalation"
+    effect = "Deny"
+    actions = [
+      # Grant itself more permissions
+      "iam:AttachRolePolicy",
+      "iam:PutRolePolicy",
+      # Remove this Deny
+      "iam:DetachRolePolicy",
+      "iam:DeleteRolePolicy",
+      # Widen its own trust to admit new principals
+      "iam:UpdateAssumeRolePolicy",
+      # Escape a permissions boundary (the ticketed Path-B fix) once one exists
+      "iam:PutRolePermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+      # Delete-and-recreate itself with a fresh policy
+      "iam:DeleteRole",
+      "iam:CreateRole",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
+    ]
     # Resource reference, not a literal: a literal silently stops matching if
     # the role is ever renamed, reopening the path with no error. (An earlier
     # revision used a literal to "avoid a dependency cycle" — there is none;
