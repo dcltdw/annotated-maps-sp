@@ -22,8 +22,22 @@ test("the app renders the seeded map", async ({ page }) => {
   await expect(page).toHaveTitle(/Annotated Maps/i);
   // The persona switcher only renders once the app has data from the API.
   await expect(page.getByText("Viewing as")).toBeVisible({ timeout: 30_000 });
-  // The map canvas is up (maplibre creates a canvas element).
-  await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
+
+  // Wait for a MARKER, not the canvas. The canvas exists the instant maplibre
+  // initialises, so asserting on it passes against a completely blank map —
+  // the first pipeline run screenshotted exactly that and still went green.
+  // A marker only appears after the basemap style has loaded AND the API's
+  // seeded notes arrived, so it is the assertion that actually proves the
+  // chain (ALB → web → API → database → render) end to end.
+  //
+  // Unlike the local suite (which stubs the style to avoid OpenFreeMap), this
+  // runs against a real deployment and fetches the real style, so allow for a
+  // cold external fetch.
+  const markers = page.locator(".maplibregl-marker");
+  await expect(markers.first()).toBeVisible({ timeout: 60_000 });
+  expect(await markers.count()).toBeGreaterThan(0);
+
+  // Only now is the screenshot worth keeping as evidence.
   await page.screenshot({ path: "test-results/alb-smoke-app.png", fullPage: true });
 });
 
