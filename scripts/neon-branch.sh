@@ -41,7 +41,10 @@ case "${1:-}" in
     # The connection URI for the new branch's endpoint.
     URI=$(req GET "/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID&database_name=$DB_NAME&role_name=$ROLE_NAME&pooled=false" \
       | jq -r '.uri')
-    [ -n "$URI" ] && [ "$URI" != "null" ] || { echo "FAIL: no connection URI returned" >&2; exit 1; }
+    if [ -z "$URI" ] || [ "$URI" = "null" ]; then
+      echo "FAIL: no connection URI returned" >&2
+      exit 1
+    fi
     # Django needs the PostGIS scheme.
     printf '%s' "${URI/postgresql:\/\//postgis://}" > "$OUT"
     echo "==> connection string written to $OUT (postgis://, not logged)"

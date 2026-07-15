@@ -106,7 +106,23 @@ jobs:
           tflint --chdir=deploy/terraform/foundation
           tflint --chdir=deploy/terraform/demo
       - name: shellcheck demo scripts
-        run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
+        # Glob, not a hand-maintained list: the list had silently drifted to
+        # cover 3 of 7 scripts (the phase scripts and neon-branch.sh landed
+        # ungated). A glob cannot rot when the next script is added.
+        #
+        # Pinned, like every other linter here (terraform/tflint/kubeconform/
+        # promtool/actionlint): the runner image's shellcheck floats, and its
+        # version decides which checks are on by default — 0.11.0 dropped
+        # SC2015 from the defaults, so "green locally" did not mean "green in
+        # CI" until this was pinned.
+        run: |
+          curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz | tar -xJ
+          shellcheck-v0.11.0/shellcheck --version | grep version:
+          shellcheck-v0.11.0/shellcheck scripts/*.sh
+      - name: actionlint (workflow lint)
+        run: |
+          curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz | tar xz actionlint
+          ./actionlint .github/workflows/ci.yml .github/workflows/demo-pipeline.yml
 
   # Detects whether a PR touches the Terraform. infra-plan (which pauses for a
   # human approval before it can touch AWS) then only runs — and only asks for
