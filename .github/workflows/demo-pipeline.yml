@@ -17,12 +17,10 @@ permissions:
   contents: read
   issues: write
 
-env:
-  AWS_REGION: us-east-1
-
 jobs:
   provision:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: aws-deploy
     outputs:
       image_tag: ${{ steps.tag.outputs.tag }}
@@ -47,6 +45,7 @@ jobs:
   images:
     needs: provision
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: aws-deploy
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +65,7 @@ jobs:
           docker build --platform linux/amd64 -f frontend/Dockerfile \
             -t web-candidate:${{ needs.provision.outputs.image_tag }} frontend
       - name: Trivy gate (CRITICAL, fixable) — api
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: api-candidate:${{ needs.provision.outputs.image_tag }}
           severity: CRITICAL
@@ -75,7 +74,7 @@ jobs:
           format: json
           output: trivy-api.json
       - name: Trivy gate (CRITICAL, fixable) — web
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: web-candidate:${{ needs.provision.outputs.image_tag }}
           severity: CRITICAL
@@ -84,13 +83,15 @@ jobs:
           format: json
           output: trivy-web.json
       - name: SBOMs (CycloneDX)
-        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: api-candidate:${{ needs.provision.outputs.image_tag }}
           format: cyclonedx
           output: sbom-api.cdx.json
       - name: SBOM — web
-        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: web-candidate:${{ needs.provision.outputs.image_tag }}
           format: cyclonedx
@@ -118,6 +119,7 @@ jobs:
   deploy:
     needs: [provision, images]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: aws-deploy
     outputs:
       alb_url: ${{ steps.appdeploy.outputs.alb_url }}
@@ -132,6 +134,7 @@ jobs:
       - name: terraform init (read outputs)
         run: terraform -chdir=deploy/terraform/demo init -input=false
           -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - uses: azure/setup-helm@v4
       - name: create per-run Neon branch
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
@@ -153,6 +156,7 @@ jobs:
   e2e:
     needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -178,6 +182,7 @@ jobs:
     needs: [provision, images, deploy, e2e]
     if: always() && needs.provision.result != 'skipped'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: aws-deploy
     steps:
       - uses: actions/checkout@v4
@@ -190,7 +195,7 @@ jobs:
       - name: terraform init (state bucket)
         run: terraform -chdir=deploy/terraform/demo init -input=false
           -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      - name: install helm + kubectl
+      - name: install helm
         uses: azure/setup-helm@v4
       - name: destroy (make demo-down; re-runnable from any state)
         env:
@@ -208,11 +213,11 @@ jobs:
             --message "Pipeline run finished. provision=${{ needs.provision.result }} images=${{ needs.images.result }} deploy=${{ needs.deploy.result }} e2e=${{ needs.e2e.result }}. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --message-attributes '{"severity":{"DataType":"String","StringValue":"info"}}'
 
-  alert-teardown-failure:
+  alert-teardown-issue:
     needs: destroy
-    if: always() && needs.destroy.result == 'failure'
+    if: always() && needs.destroy.result != 'success'
     runs-on: ubuntu-latest
-    environment: aws-deploy
+    timeout-minutes: 10
     steps:
       - name: open an alarm issue (AWS-independent)
         env:
@@ -221,6 +226,14 @@ jobs:
           gh issue create --repo "${{ github.repository }}" \
             --title "🔴 TEARDOWN FAILED — billable AWS resources may be running" \
             --body "The demo-pipeline destroy job failed. Billable resources (EKS ~\$0.26/hr) may still be up. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} — re-run \`make demo-down\` locally or re-run the destroy job. See docs/aws-primer.md troubleshooting."
+
+  alert-teardown-sns:
+    needs: destroy
+    if: always() && needs.destroy.result != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: aws-deploy
+    steps:
       - uses: aws-actions/configure-aws-credentials@v4
         continue-on-error: true
         with:

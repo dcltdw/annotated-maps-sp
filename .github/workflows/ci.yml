@@ -112,7 +112,7 @@ jobs:
         run: shellcheck scripts/*.sh
       - name: actionlint (workflow lint)
         run: |
-          curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz | tar xz actionlint
+          curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz | tar xz actionlint
           ./actionlint .github/workflows/ci.yml .github/workflows/demo-pipeline.yml
 
   # Detects whether a PR touches the Terraform. infra-plan (which pauses for a

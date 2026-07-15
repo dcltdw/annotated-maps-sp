@@ -81,7 +81,8 @@ it an attacker with account-admin could ransom that isn't already
 recreatable from this repository's Terraform. The only door into the account
 is GitHub OIDC federation scoped to exactly one subject,
 `repo:dcltdw/annotated-maps-sp:environment:aws-deploy` (see the trust policy
-below), reachable only by triggering `demo-pipeline.yml`'s
+in `deploy/terraform/foundation/iam-deployer.tf`), reachable only by
+triggering `demo-pipeline.yml`'s
 `workflow_dispatch` or its `schedule`. Forks cannot trigger either — a
 scheduled workflow only runs on the default branch of the repository that
 owns it, and `workflow_dispatch` requires the caller to already have write
@@ -94,10 +95,13 @@ careless deployer run could `RunInstances` at will without ever touching IAM
 — and the real control on that axis is the account's $10 AWS Budgets alarm
 (`deploy/terraform/foundation/budgets.tf`), not an IAM boundary. What
 escalation genuinely buys past that baseline is **guardrail removal and
-persistence**: deleting the budget/SNS alarm, deleting the read-only
-`annotated-maps-ci` role so `infra-plan` can no longer even observe the
-account, or creating a role that trusts an external AWS account and so
-survives revoking this repo's GitHub OIDC trust entirely.
+persistence**: deleting the budget/SNS alarm, or creating a role that trusts
+an external AWS account and so survives revoking this repo's GitHub OIDC
+trust entirely. (Deleting the read-only `annotated-maps-ci` role is *not* on
+this list — `IamWithinPrefix` already permits `iam:DeleteRole` on it
+directly, no escalation needed, since its ARN sits inside the
+`annotated-maps-*` prefix like everything else the deployer can already
+touch.)
 
 **The real fix is a permissions boundary on `annotated-maps-*`-prefixed
 principals**, which would cap what any role or policy created *by* the
@@ -171,12 +175,15 @@ The demo cluster holds no sensitive data — the application's actual secret,
 the Neon connection string, never touches a Kubernetes Secret's envelope
 encryption path in a way that needs a customer key beyond what AWS provides
 by default for control-plane storage — and it lives for on the order of an
-hour per run. A customer-managed key costs nothing to create, but
-`terraform destroy` cannot delete a KMS key outright; it can only schedule
-deletion, with a minimum seven-day pending-deletion window. On a stack
-destroyed and recreated on a schedule, that is a new key accruing pending-
-deletion charges (roughly $1/month each) that never fully clears — a slow
-accumulating cost for a checkbox that buys nothing this workload needs.
+hour per run. A customer-managed key costs roughly $1/month from the moment
+it is created — it is not free, and the meter does not wait for pending
+deletion to start running — and on top of that, `terraform destroy` cannot
+delete a KMS key outright; it can only schedule deletion, with a minimum
+seven-day pending-deletion window. On a stack destroyed and recreated on a
+schedule, that is a new key created (and billed) every run, then continuing
+to accrue through each run's seven-day pending-deletion window after
+destroy — a slow accumulating cost for a checkbox that buys nothing this
+workload needs.
 
 **Neon connection strings are minted per run, not stored.** `deploy job`
 calls `scripts/neon-branch.sh create ci-run-<run_id>` to open a fresh Neon
