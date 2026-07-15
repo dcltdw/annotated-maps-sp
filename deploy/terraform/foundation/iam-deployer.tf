@@ -2,9 +2,16 @@
 # The pipeline's apply-capable role (ADR-0010). Contrast with annotated-maps-ci
 # (iam-ci.tf), which is read-only plan: this role CAN create and destroy the
 # demo stack. Honest scoping: terraform apply of VPC+EKS+ECR legitimately
-# needs broad service powers, so those are granted per-service — and the
-# boundary is enforced where it matters: IAM is restricted to the
-# annotated-maps-* prefix, S3 to the state bucket, SNS to the alerts topic.
+# needs broad service powers, so those are granted per-service, and the
+# resource lists are narrowed where they can be: IAM to the annotated-maps-*
+# prefix, S3 to the state bucket, SNS to the alerts topic.
+#
+# Read that as blast-radius control, NOT as a containment boundary: this role
+# remains AdministratorAccess-EQUIVALENT within this account (it can create a
+# role, attach AdministratorAccess, pass it to EC2, and read admin credentials
+# off instance metadata). That is an accepted risk — the account is dedicated
+# and disposable and the only trigger is maintainer-only — and ADR-0010
+# discloses it in full. A permissions boundary is the real fix and is ticketed.
 #
 # Trust: exactly one OIDC subject — the unprotected `aws-deploy` GitHub
 # Environment. workflow_dispatch/schedule can't be triggered by forks and
@@ -129,12 +136,25 @@ data "aws_iam_policy_document" "deployer_permissions" {
   # would otherwise match this role itself, letting it attach
   # AdministratorAccess to its own identity. The foundation stack that owns
   # this role is applied locally with operator credentials — the deployer
-  # never needs to touch it. A Deny is unconditional; it beats any Allow.
+  # never needs to touch it. A Deny is unconditional; it beats any Allow, and
+  # it is self-protecting (the role cannot PutRolePolicy away its own Deny).
+  #
+  # This does NOT close escalation — it raises its cost. Path B (create a role,
+  # attach AdministratorAccess, pass it to EC2, read creds off IMDS) still
+  # yields admin as a DIFFERENT principal, which can then strip this Deny.
+  # One API call becomes ~4 plus an instance boot. Worth having — it is what
+  # any scanner flags first — but see ADR-0010; the permissions boundary that
+  # actually closes Path B is ticketed.
   statement {
-    sid       = "NoSelfEscalation"
-    effect    = "Deny"
-    actions   = ["iam:*"]
-    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/annotated-maps-deployer"]
+    sid     = "NoSelfEscalation"
+    effect  = "Deny"
+    actions = ["iam:*"]
+    # Resource reference, not a literal: a literal silently stops matching if
+    # the role is ever renamed, reopening the path with no error. (An earlier
+    # revision used a literal to "avoid a dependency cycle" — there is none;
+    # assume_role_policy sources from a separate document, so role →
+    # permissions doc → role policy is a DAG.)
+    resources = [aws_iam_role.deployer.arn]
   }
 }
 
