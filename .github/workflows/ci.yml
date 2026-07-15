@@ -106,7 +106,10 @@ jobs:
           tflint --chdir=deploy/terraform/foundation
           tflint --chdir=deploy/terraform/demo
       - name: shellcheck demo scripts
-        run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
+        # Glob, not a hand-maintained list: the list had silently drifted to
+        # cover 3 of 7 scripts (the phase scripts and neon-branch.sh landed
+        # ungated). A glob cannot rot when the next script is added.
+        run: shellcheck scripts/*.sh
       - name: actionlint (workflow lint)
         run: |
           curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz | tar xz actionlint
