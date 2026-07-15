@@ -10,3 +10,7 @@ output "ci_role_arn" {
 output "alerts_topic_arn" {
   value = aws_sns_topic.alerts.arn
 }
+
+output "deployer_role_arn" {
+  value = aws_iam_role.deployer.arn
+}
