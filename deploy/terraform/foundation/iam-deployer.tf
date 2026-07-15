@@ -97,11 +97,23 @@ data "aws_iam_policy_document" "deployer_permissions" {
     resources = ["*"]
   }
 
-  # EKS/ELB/Autoscaling create service-linked roles on first use.
+  # EKS/ELB/Autoscaling create service-linked roles on first use — and READ
+  # them before creating. The first live node-group create failed with:
+  #   InvalidRequestException: Failed to validate if SLR:
+  #   AWSServiceRoleForAmazonEKSNodegroup already exists due to missing
+  #   permissions for 'iam:GetRole'
+  # EKS checks whether the SLR exists before deciding to create it, so
+  # create-without-read is a broken half-grant. iam:GetRole here is scoped to
+  # the aws-service-role/ path only; roles this stack owns are already readable
+  # via IamWithinPrefix, so between the two every role terraform must read is
+  # covered — and nothing outside those two paths is.
   statement {
-    sid       = "ServiceLinkedRoles"
-    effect    = "Allow"
-    actions   = ["iam:CreateServiceLinkedRole"]
+    sid    = "ServiceLinkedRoles"
+    effect = "Allow"
+    actions = [
+      "iam:CreateServiceLinkedRole",
+      "iam:GetRole",
+    ]
     resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/*"]
   }
 
@@ -136,8 +148,18 @@ data "aws_iam_policy_document" "deployer_permissions" {
   # would otherwise match this role itself, letting it attach
   # AdministratorAccess to its own identity. The foundation stack that owns
   # this role is applied locally with operator credentials — the deployer
-  # never needs to touch it. A Deny is unconditional; it beats any Allow, and
+  # never needs to MUTATE it. A Deny is unconditional; it beats any Allow, and
   # it is self-protecting (the role cannot PutRolePolicy away its own Deny).
+  #
+  # MUTATING ACTIONS ONLY — deliberately not iam:*. The first live run proved
+  # why: the EKS module's `data "aws_iam_session_context" "current"` resolves
+  # the CALLER's own STS source role (for cluster_creator_admin_permissions),
+  # which needs iam:GetRole on THIS role. A blanket iam:* Deny failed the apply
+  # with "AccessDenied ... with an explicit deny in an identity-based policy"
+  # before a single resource was created. Reads don't escalate; mutations do.
+  # An Allow cannot carve an exception out of a Deny, so the action list itself
+  # has to be precise. Every action below is one that either grants this role
+  # more power or removes this very Deny.
   #
   # This does NOT close escalation — it raises its cost. Path B (create a role,
   # attach AdministratorAccess, pass it to EC2, read creds off IMDS) still
@@ -146,9 +168,26 @@ data "aws_iam_policy_document" "deployer_permissions" {
   # any scanner flags first — but see ADR-0010; the permissions boundary that
   # actually closes Path B is ticketed.
   statement {
-    sid     = "NoSelfEscalation"
-    effect  = "Deny"
-    actions = ["iam:*"]
+    sid    = "NoSelfEscalation"
+    effect = "Deny"
+    actions = [
+      # Grant itself more permissions
+      "iam:AttachRolePolicy",
+      "iam:PutRolePolicy",
+      # Remove this Deny
+      "iam:DetachRolePolicy",
+      "iam:DeleteRolePolicy",
+      # Widen its own trust to admit new principals
+      "iam:UpdateAssumeRolePolicy",
+      # Escape a permissions boundary (the ticketed Path-B fix) once one exists
+      "iam:PutRolePermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+      # Delete-and-recreate itself with a fresh policy
+      "iam:DeleteRole",
+      "iam:CreateRole",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
+    ]
     # Resource reference, not a literal: a literal silently stops matching if
     # the role is ever renamed, reopening the path with no error. (An earlier
     # revision used a literal to "avoid a dependency cycle" — there is none;

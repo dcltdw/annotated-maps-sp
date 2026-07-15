@@ -48,8 +48,22 @@ enumerated honestly rather than papered over with the prefix guard's name.
   unconditional `NoSelfEscalation` Deny statement targeting exactly this
   role's ARN. A Deny always wins over an Allow in IAM policy evaluation, and
   the statement is self-protecting: the role cannot use `iam:PutRolePolicy`
-  or any other `iam:*` call to remove the Deny from its own policy, because
-  the Deny itself blocks that call.
+  or `iam:DetachRolePolicy` to remove the Deny from its own policy, because
+  the Deny itself blocks those calls.
+
+  The Deny lists **mutating actions explicitly rather than `iam:*`**, and the
+  reason is worth recording because it was found the expensive way. A blanket
+  `iam:*` self-Deny is what this ADR originally shipped, and it **broke the
+  first live run**: the EKS module's `data "aws_iam_session_context" "current"`
+  resolves the *caller's own* STS source role (to populate
+  `cluster_creator_admin_permissions`), which requires `iam:GetRole` on this
+  very role. The apply died at data-source evaluation — before creating any
+  resource — with *"AccessDenied … with an explicit deny in an identity-based
+  policy"*. Reads do not escalate; mutations do. Since an Allow cannot carve an
+  exception out of a Deny, the action list has to be precise: every action in
+  it either grants this role more power or removes this Deny. The security
+  property is unchanged — Path A stays closed — while the legitimate read the
+  module needs is permitted.
 - **Path B — OPEN, accepted.** `iam:CreateRole` (any name matching
   `annotated-maps-*`) → `iam:AttachRolePolicy AdministratorAccess` on that new
   role → `iam:CreateInstanceProfile` + `iam:AddRoleToInstanceProfile` →
