@@ -107,6 +107,10 @@ jobs:
           tflint --chdir=deploy/terraform/demo
       - name: shellcheck demo scripts
         run: shellcheck scripts/demo-up.sh scripts/demo-down.sh scripts/demo-cost.sh
+      - name: actionlint (workflow lint)
+        run: |
+          curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz | tar xz actionlint
+          ./actionlint .github/workflows/ci.yml .github/workflows/demo-pipeline.yml
 
   # Detects whether a PR touches the Terraform. infra-plan (which pauses for a
   # human approval before it can touch AWS) then only runs — and only asks for
