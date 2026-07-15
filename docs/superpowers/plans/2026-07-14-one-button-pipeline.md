@@ -598,7 +598,7 @@ fi
 
 **Files:**
 - Create: `frontend/playwright.alb.config.ts`, `frontend/e2e-alb/smoke.spec.ts`
-- Modify: `frontend/package.json` (+1 script)
+- Modify: `frontend/package.json` (+1 script), `frontend/vite.config.ts` (vitest exclude)
 
 **Interfaces:**
 - Produces: `BASE_URL=<url> npm run e2e:alb` (from `frontend/`) — a smoke suite against any live deployment of the app. Task 7's e2e job runs exactly this.
@@ -659,7 +659,18 @@ test("personas are present", async ({ page }) => {
 (Selector guard: `Viewing as` text and the `Run-club Member` persona button exist in the current UI — verify against `frontend/e2e/` specs' existing selectors and reuse their idioms if these differ; the INTENT — app title, data-driven UI rendered, a persona visible, a full-page screenshot — must hold.)
 
 - [ ] **Step 3: `frontend/package.json`** — add to `scripts`: `"e2e:alb": "playwright test --config playwright.alb.config.ts"`.
-- [ ] **Step 4:** Verify: `cd frontend && npx tsc --noEmit -p .` (or the repo's lint config) passes on the new files; `npx playwright test --config playwright.alb.config.ts --list` shows the 3 tests; the suite is genuinely runnable locally against the Render demo: `BASE_URL=https://annotated-maps-web.onrender.com npm run e2e:alb` — run it; all 3 should pass (this is the task's REAL verification and needs no AWS). Existing `npm run test -- --run` and `npm run e2e` untouched — confirm `npm run lint` green.
+
+- [ ] **Step 3b: `frontend/vite.config.ts`** — REQUIRED, or CI fails. vitest's default include glob is `**/*.spec.ts`, so it will collect the new Playwright spec and die with "Playwright Test did not expect test() to be called here." Every Playwright suite dir in this repo is listed in vitest's exclude — follow the convention and add the new one:
+
+```ts
+  test: { ..., exclude: ["**/node_modules/**", "e2e/**", "e2e-prod/**", "e2e-alb/**"], ... }
+```
+- [ ] **Step 4:** Verify. Run **every gate the CI `frontend` job runs** — do NOT assume the existing suites are untouched, PROVE it (a previous run of this plan shipped a red PR by skipping the vitest gate):
+  - `cd frontend && npm run lint` → clean
+  - `cd frontend && npm run test -- --run` → all files pass, **zero** collected from `e2e-alb/` (this is the gate Step 3b protects)
+  - `cd frontend && npm run build` → clean
+  - `npx playwright test --config playwright.alb.config.ts --list` → shows the 3 tests
+  - REAL verification, needs no AWS: `cd frontend && BASE_URL=https://annotated-maps-web.onrender.com npm run e2e:alb` → all 3 pass.
 - [ ] **Step 5:** Commit `feat(e2e): live-deployment smoke suite (BASE_URL-driven) for the pipeline`; push `m4-playwright-alb`; open PR-F.
 
 ---
