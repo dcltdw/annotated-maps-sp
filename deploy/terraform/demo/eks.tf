@@ -3,8 +3,16 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name    = var.cluster_name
-  cluster_version = "1.31" # newest supported at pin time; bump if the module rejects it
+  cluster_name = var.cluster_name
+  # Bumped 2026-07-16: AWS notified that EKS extended support for 1.31 ends
+  # 2026-11-26. The clusters here are ephemeral (recreated every pipeline run,
+  # never upgraded in place), so this is just "which version each fresh run
+  # creates" — no live-cluster migration. Kept inside the current module major
+  # (~> 20.0), which handles 1.33; going to the latest (1.35) would likely
+  # need the module's next major, out of scope for a version bump. The addons
+  # below are `{}`, so the module auto-resolves versions compatible with this
+  # one. Final apply-time compatibility is proven by the next live run.
+  cluster_version = "1.33"
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
