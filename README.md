@@ -6,6 +6,8 @@ A multi-tenant, permissioned map-annotation platform. Teams can create and share
 
 **▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
 
+**▶ [Evaluating this repo?](docs/for-reviewers.md)** — a three-minute map to the strongest evidence, what each milestone proves, and the honest parts (what broke, what my own review missed, what I chose not to build).
+
 **▶ [Production-engineering roadmap](ROADMAP.md)** — Kubernetes/Helm, OpenTelemetry, Terraform + EKS, and a one-button ephemeral pipeline: all four milestones shipped, with proof links for each.
 
 **▶ [Live telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** — request rate, latency, and error ratio from the demo above, instrumented with OpenTelemetry and exported to Grafana Cloud (public, no login).
