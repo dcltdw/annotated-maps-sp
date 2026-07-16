@@ -1,8 +1,10 @@
 # Production Lenses & Architectural Concerns
 
 - **Date:** 2026-06-09
-- **Status:** Living document
+- **Status:** Historical snapshot — the day-one production-concern triage (2026-06-09), preserved as written and **not** updated as milestones ship. For current status, see [ROADMAP.md](../../ROADMAP.md).
 - **Purpose:** Capture, from day one, the big-picture lenses a production version of Annotated Maps must address — so cross-cutting concerns are *designed-for (seamed)* rather than bolted on later. Most are **out of scope for Slice A**; the **Foundation-now** items are baked into Slice A's groundwork.
+
+> **Note (2026-07-16).** This is a snapshot of the original day-one triage, kept as a record of what was foreseen and *seamed* before any code shipped — not a live tracker. Several 🟡 *"seam now, build later"* items have since been built: observability (Milestone 2), liveness/readiness probes and SLOs (Milestones 1–2), and dependency scanning + SBOM (Milestone 4). The 🟡 markers below are deliberately left as the original decision; the point of the artifact is that these were seamed *here first* and built later. Current milestone status lives in [ROADMAP.md](../../ROADMAP.md).
 
 ## Triage legend
 
@@ -19,7 +21,7 @@ A **stateless app tier** behind a load balancer + **per-tenant database scaling*
 ### 1. Scalability & performance
 - 🟢 Stateless app tier (no local state → scale out); DB connection pooling (serverless Postgres needs it).
 - 🟢 **PostGIS** for geometry + spatial queries; geometry stored as **GeoJSON/WKB**. Already implied by Slice A's regions + point-in-region.
-- 🟡 Read replicas; **partition/shard by tenant** (`tenant_id` is the seam); app cache (Redis) — kept viable by keeping the visibility engine **pure/deterministic** so results are cacheable; CDN for tiles/assets (R2 already).
+- 🟡 Read replicas; **partition/shard by tenant** (`tenant_id` is the seam); app cache (Redis) — kept viable by keeping the visibility engine **pure/deterministic** so results are cacheable; CDN for tiles/assets (planned: Cloudflare R2 — never built; see the design spec).
 - 🟡 Background-job scaling (Postgres queue → dedicated broker) behind the existing job interface.
 
 ### 2. Security & privacy

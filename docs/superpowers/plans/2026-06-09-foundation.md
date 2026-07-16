@@ -6,7 +6,7 @@
 
 **Architecture:** API-first monorepo. A Django + Django Ninja backend exposes a versioned `/api/v1` with an OpenAPI schema; a Vite + React + TypeScript PWA consumes it. PostgreSQL + PostGIS is the database. Cross-cutting concerns — tenant-scoped base models, structured logging with request/tenant/user correlation, an append-only audit log, security headers, expand-contract migrations — are established before any feature code. App servers are stateless (DB-backed sessions, no local files) so the system scales out.
 
-**Tech Stack:** Python 3.12, Django 5.x, django-ninja, psycopg 3, PostGIS, django-environ, structlog, pytest + pytest-django, ruff, mypy + django-stubs, uv (Python tooling). Node 20, Vite, React 18, TypeScript, vite-plugin-pwa, react-i18next, Vitest + Testing Library, ESLint + eslint-plugin-jsx-a11y, openapi-typescript. GitHub Actions (CI). Docker + render.yaml (deploy). Spec: `docs/superpowers/specs/2026-06-08-annotated-maps-design.md` (§15 + `docs/architecture/production-lenses.md` define the foundation seams).
+**Tech Stack:** Python 3.12, Django 5.x, django-ninja, psycopg 3, PostGIS, django-environ, structlog, pytest + pytest-django, ruff, mypy + django-stubs, uv (Python tooling). Node 20, Vite, React 18, TypeScript, vite-plugin-pwa, react-i18next, Vitest + Testing Library, ESLint + eslint-plugin-jsx-a11y, openapi-typescript. GitHub Actions (CI). Docker + render.yaml (deploy). Spec: `docs/superpowers/specs/2026-06-08-annotated-maps-design.md` (§15 + `docs/architecture/2026-06-09-production-lenses.md` define the foundation seams).
 
 ---
 
@@ -1055,7 +1055,7 @@ services:
 ```markdown
 # Annotated Maps
 
-A multi-tenant, permissioned map-annotation app. See `docs/superpowers/specs/` for the design and `docs/architecture/production-lenses.md` for the architectural backlog.
+A multi-tenant, permissioned map-annotation app. See `docs/superpowers/specs/` for the design and `docs/architecture/2026-06-09-production-lenses.md` for the architectural backlog.
 
 ## Local development
 1. `cd backend && docker compose up -d db && cp .env.example .env`

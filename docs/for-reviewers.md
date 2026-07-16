@@ -41,7 +41,7 @@ CI run.
 
 Supporting: [10 ADRs](adr/) (decisions, with alternatives and consequences),
 [13 design specs](superpowers/specs/), and an
-[architectural backlog](architecture/production-lenses.md) recording what would
+[day-one architectural triage](architecture/2026-06-09-production-lenses.md) recording what would
 earn its place as the system grows.
 
 ## The honest parts

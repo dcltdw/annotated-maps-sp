@@ -2,7 +2,7 @@
 
 [![Annotated Maps — section-level map annotations, live Boston demo](docs/img/hero.png)](https://annotated-maps-web.onrender.com/)
 
-A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See `docs/superpowers/specs/` for design documents and `docs/architecture/production-lenses.md` for the architectural backlog.
+A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See `docs/superpowers/specs/` for design documents and `docs/architecture/2026-06-09-production-lenses.md` for the day-one production-concern triage (a historical snapshot).
 
 **▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
 
