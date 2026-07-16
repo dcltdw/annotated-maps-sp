@@ -184,7 +184,7 @@ Production-grade authentication (email verification, 2FA, reset, lockout), admin
 
 ## 15. Production lenses & foundation seams
 
-The full catalogue of big-picture lenses a production version must address — security, scalability (scale **out**, not up), reliability, observability, data governance/compliance, i18n/a11y, interoperability, mobile/offline, and business/legal — lives in **`docs/architecture/production-lenses.md`**, triaged into *foundation-now / seam-and-defer / note-and-revisit*. Most are out of Slice A by design.
+The full catalogue of big-picture lenses a production version must address — security, scalability (scale **out**, not up), reliability, observability, data governance/compliance, i18n/a11y, interoperability, mobile/offline, and business/legal — lives in **`docs/architecture/2026-06-09-production-lenses.md`**, triaged into *foundation-now / seam-and-defer / note-and-revisit*. Most are out of Slice A by design.
 
 The following **foundation-now seams** are cheap structural choices that are painful to retrofit, so Slice A's groundwork **builds them in** (only PostGIS is a genuine scope addition; the rest are disciplines/structure):
 
