@@ -26,8 +26,9 @@ above. OpenTelemetry instrumentation, exported to Grafana Cloud, with
 [SLOs](slos.md) and [dashboards as code](../deploy/observability/dashboards/).
 
 **3. [Lessons learned](lessons-learned.md)** — 21 real bugs, each naming **how
-it was found**. **Zero were caught by unit tests.** This is the most honest
-document in the repo and the one I'd read first if I were you.
+it was found**. **Zero were caught by unit tests.** Several are my own
+mistakes, including one that survived an adversarial code review and a green
+CI run.
 
 ## What each milestone proves
 
