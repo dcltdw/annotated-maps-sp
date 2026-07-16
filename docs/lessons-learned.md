@@ -1,22 +1,36 @@
 # Lessons learned — bugs the verification loop caught
 
 A running log of the non-obvious bugs found while building the
-production-engineering milestones (Kubernetes/Helm → Observability → AWS), and
-the lesson each one carries. It complements the [ADRs](adr/), which record
-*decisions*; this file records *gotchas* — the things that were wrong and how
-they surfaced.
+production-engineering milestones (Kubernetes/Helm → Observability → AWS →
+the ephemeral pipeline), and the lesson each one carries. It complements the
+[ADRs](adr/), which record *decisions*; this file records *gotchas* — the
+things that were wrong and how they surfaced.
 
 Each entry names **how it was found** — because that's the interesting part.
-Of the thirteen below: **seven surfaced only when the real thing ran** (a live
-deploy or an end-to-end verification), **five were caught by an adversarial
-code review** before they could bite, and **one was anticipated in design**.
-**Zero were caught by unit tests** — they all lived at **integration seams** (a
-Helm hook boundary, an HTTP `Host` header, a log-export path, a cloud IAM trust
-policy, an ephemeral-runtime behavior) where unit tests are blind. Several are
-the same underlying mistake recurring at a new layer (the `ALLOWED_HOSTS`
-host-header footgun appears three times, at three scales). The discipline that
-paid off: *verify the running system, and have a fresh reviewer try to break
-every claim before trusting it.*
+Of the twenty-one below:
+
+| Found via | Count |
+|---|---|
+| Only when the real thing ran (a live deploy or end-to-end verification) | 9 |
+| An adversarial code review, before it could bite | 7 |
+| CI, after passing locally | 2 |
+| A security gate doing its job | 1 |
+| **Reading a green run's own artifact** | 1 |
+| Anticipated in design | 1 |
+| **Unit tests** | **0** |
+
+They all lived at **integration seams** (a Helm hook boundary, an HTTP `Host`
+header, a log-export path, a cloud IAM trust policy, an ephemeral-runtime
+behavior) where unit tests are blind. Several are the same underlying mistake
+recurring at a new layer: the `ALLOWED_HOSTS` host-header footgun appears three
+times at three scales, and "a new file silently falls outside a hand-maintained
+gate list" appears twice in one milestone.
+
+The discipline that paid off: *verify the running system, and have a fresh
+reviewer try to break every claim before trusting it.* Milestone 4 added two
+uncomfortable corollaries — **an adversarial review can confirm a control is
+correct and still miss what it costs** (#15), and **a green run is not evidence;
+the artifact is** (#19).
 
 ---
 
@@ -123,6 +137,65 @@ every claim before trusting it.*
 
 ---
 
+## Milestone 4 — The one-button ephemeral pipeline
+
+### 14. The IAM boundary would have broken the destroy it existed to protect
+- **Found via:** code review — an adversarial reviewer traced the resolved EKS module source rather than reading the policy alone.
+- **Symptom:** none yet — it would have failed the first live `terraform apply`, and then the `destroy`.
+- **Root cause:** the deployer role scoped `iam:*` to `role/`, `policy/` and `instance-profile/` ARNs matching `annotated-maps-*`. But `enable_irsa = true` makes the module create an OIDC provider whose ARN is `oidc-provider/oidc.eks.<region>.amazonaws.com/id/<hash>` — matching none of them. Create *and delete* would have hit `AccessDenied`.
+- **Fix:** scope by issuer host (`oidc-provider/oidc.eks.*`), which deliberately does **not** match the foundation's GitHub provider, so the deployer cannot delete CI's trust anchor.
+- **Takeaway:** a resource-prefix boundary only covers ARNs shaped like the ones you thought of. Enumerate what the *module* creates, not what your own code names. The expensive half here was the destroy: a permission gap that strands billable infrastructure is worse than one that blocks a build.
+
+### 15. A security control that broke the apply — and the review that blessed it
+- **Found via:** **the first live run.** Static gates, and the adversarial review that *recommended the control*, both passed it.
+- **Symptom:** `terraform apply` died at data-source evaluation, before creating a single resource: `AccessDenied … with an explicit deny in an identity-based policy`.
+- **Root cause:** to close a one-call self-escalation path, the deployer role carried a blanket `iam:*` **Deny** on its own ARN. But the EKS module's `data "aws_iam_session_context" "current"` resolves the *caller's own* STS source role — needing `iam:GetRole` on that very role.
+- **Fix:** deny only the **mutating** actions (`AttachRolePolicy`, `PutRolePolicy`, `UpdateAssumeRolePolicy`, `Delete`/`Create`/`UpdateRole`, permissions-boundary writes). Reads don't escalate; mutations do. An `Allow` cannot carve an exception out of a `Deny`, so the action list itself has to be precise.
+- **Takeaway:** the reviewer explicitly checked "nothing legitimate breaks" and still missed it, because the dependency was *indirect, module-internal, and caller-relative* — not a hardcoded reference anyone could grep for. **An adversarial review can verify that a control is correct and still miss what it costs.** Deny-by-default controls need a live exercise, not just an argument.
+
+### 16. A half-granted permission: create without read
+- **Found via:** **live run** — after building a real 67-resource cluster.
+- **Symptom:** `CreateNodegroup` failed: *"Failed to validate if SLR: AWSServiceRoleForAmazonEKSNodegroup already exists due to missing permissions for `iam:GetRole`"*.
+- **Root cause:** the role granted `iam:CreateServiceLinkedRole` on `role/aws-service-role/*` but not `iam:GetRole`. EKS *reads* the service-linked role to decide whether to create it.
+- **Fix:** add `iam:GetRole` on the same path.
+- **Takeaway:** "create" permissions usually imply a read the API performs first. A grant that lets you create a thing but not look at it is a half-grant, and the error surfaces at the *caller* (EKS), not at IAM, so it reads like a service bug.
+
+### 17. A teardown alarm blind to cancellation
+- **Found via:** code review — the reviewer reasoned about the states a job can end in, not just the happy and sad paths.
+- **Symptom:** none yet — it would have gone silent in exactly the case it existed for.
+- **Root cause:** the alarm fired on `needs.destroy.result == 'failure'`. A human cancelling a run mid-`terraform destroy` yields `cancelled`, not `failure` — so infrastructure could be left half-up with **no GitHub issue and no email**.
+- **Fix:** `needs.destroy.result != 'success'`.
+- **Takeaway:** when an alarm's job is "tell me if the safety net didn't work," enumerate the *non-success* states rather than the failure state. `!= 'success'` is the safe default; `== 'failure'` silently excludes `cancelled` and `timed_out`.
+
+### 18. The scan gate caught a real CVE — and the temptation was to suppress it
+- **Found via:** **the Trivy gate itself**, on its first live run.
+- **Symptom:** the `images` job failed and refused to push: `CVE-2026-31789`, openssl heap overflow via large X.509 certs — `libcrypto3`/`libssl3` at `3.3.3-r0`, fixed in `3.3.7-r0`.
+- **Root cause:** `nginx:1.27-alpine` is rebuilt on upstream's own cadence, so its Alpine packages lag the security repo. The base image was simply behind.
+- **Fix:** `RUN apk --no-cache upgrade` in the Dockerfile — which also fixes the *next* such CVE, unlike pinning a version that goes stale.
+- **Takeaway:** the CVE was 32-bit-only and these images run on amd64, so a `.trivyignore` was defensible and tempting. It was still the wrong call: the gate's stated policy is "CRITICAL **and** fixable", this was both, and reaching for an ignore the first time a control ever fires is how controls become decoration. Also note what made the finding *usable*: the SBOM steps carried `if: always()` (added in review), so the software inventory was captured even though the gate had tripped.
+
+### 19. A test that could not fail — on a green run
+- **Found via:** **reading a green run's own artifact.** Static gates, an adversarial code review, and a fully green live pipeline all passed it.
+- **Symptom:** the pipeline went green and uploaded its evidence screenshot. The screenshot was a **blank grey rectangle**. The map had rendered nothing.
+- **Root cause:** the smoke asserted `expect(page.locator("canvas")).toBeVisible()`. maplibre creates its canvas the instant it initialises, so the assertion is satisfied by a map that has drawn nothing at all. The test could not fail on the one thing it existed to prove.
+- **Fix:** wait for a rendered `.maplibregl-marker` — the idiom the existing suite already used. A marker appears only once the basemap style has loaded *and* the API's seeded notes arrived, so it genuinely proves ALB → web → API → database → render.
+- **Takeaway:** **a green run is not evidence; the artifact is.** Ask of every assertion: *what state of the world would make this fail?* If the answer is "almost none," it is decoration. This one survived every gate we had, and the only thing that caught it was a human looking at the picture the pipeline produced.
+
+### 20. Gate lists rot — the same bug twice in one milestone
+- **Found via:** CI (once), and reading a diff (once).
+- **Symptom:** (a) vitest tried to run a Playwright spec: *"Playwright Test did not expect test() to be called here"*; (b) four of seven shell scripts had merged with no `shellcheck` coverage at all.
+- **Root cause:** both were hand-maintained lists that a new file silently fell outside of. vitest's `exclude` named every Playwright directory except the new one; CI's `shellcheck` step named three scripts by hand while the repo had grown to seven.
+- **Fix:** add the directory to the exclude; replace the script list with a glob (`shellcheck scripts/*.sh`), which cannot drift.
+- **Takeaway:** any gate configured as an enumerated list is a gate that will quietly stop covering things. Prefer a glob or a deny-by-default pattern. Where a list is unavoidable, the thing that adds a file must also update the list — and the plan that told an implementer to add the file should say so, which is precisely what ours forgot.
+
+### 21. "Green locally" did not mean "green in CI"
+- **Found via:** CI — after a local run of the same command passed.
+- **Symptom:** `shellcheck scripts/*.sh` passed on the laptop and failed in CI on `SC2015`.
+- **Root cause:** shellcheck was the only linter in the repo that wasn't pinned — it rode the runner image. Local `0.11.0` had dropped `SC2015` from its defaults; the runner's older build still had it on.
+- **Fix:** rewrite the flagged line as a plain `if` (correct under every version, rather than suppressed), and pin CI to `shellcheck v0.11.0` like every other linter here (terraform, tflint, kubeconform, promtool, actionlint).
+- **Takeaway:** an unpinned linter is a gate whose rules change without a commit. If local and CI can disagree about what passes, local verification is advisory — and one unpinned tool in an otherwise-pinned toolchain is the one that will bite.
+
+
 ## The meta-lesson
 
 Green unit tests are necessary and not sufficient. The bugs that would have
@@ -137,3 +210,20 @@ host header from a real scraper, an anonymous public render, a counter reset).
 Every milestone here shipped only after a live end-to-end verification, and
 every milestone's live verification caught at least one real bug the tests had
 missed.
+
+Milestone 4 sharpened that into two rules worth stating plainly, because both
+were learned by being wrong:
+
+**A review can bless a control and still miss its cost.** The `iam:*` self-Deny
+(#15) was *recommended* by an adversarial reviewer who explicitly checked that
+nothing legitimate would break. It broke the very first apply, because the
+dependency was indirect, module-internal and caller-relative — invisible to
+anyone reading the diff. Reasoning about a deny-by-default control is not the
+same as exercising it.
+
+**A green run is not evidence; the artifact is.** The pipeline went green while
+uploading a screenshot of a blank map (#19), because the assertion behind it
+could not fail. It had passed static gates, a code review, and a full live
+run. What caught it was a person opening the PNG. Every automated gate in this
+repo is a claim about reality that is itself worth checking — which is the whole
+argument for the pipeline existing, applied to the pipeline itself.
