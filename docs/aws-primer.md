@@ -36,7 +36,8 @@ access key." Three identities, three different short-lived mechanisms:
 
 ```
  laptop (you)  ──SSO──▶  IAM Identity Center  ──▶  short-lived console/CLI creds
- CI (GitHub Actions) ──OIDC──▶  annotated-maps-ci role   (Environment-gated plan-on-PR)
+ CI (GitHub Actions) ──OIDC──▶  annotated-maps-ci role        (read-only, plan-on-PR)
+ CI (GitHub Actions) ──OIDC──▶  annotated-maps-deployer role  (apply — the pipeline)
  pods (in-cluster) ──IRSA──▶  annotated-maps-alb-controller role  (one pod, one role)
 ```
 
@@ -66,9 +67,11 @@ No long-lived AWS keys exist anywhere in this system.
 deploy/terraform/
 ├── foundation/                persistent — applied once, never destroyed
 │   ├── state.tf               S3 state bucket (+ versioning, encryption)
-│   ├── iam-ci.tf              GitHub OIDC provider + CI role
+│   ├── iam-ci.tf              GitHub OIDC provider + read-only CI role
+│   ├── iam-deployer.tf        apply-capable deploy role (ADR-0010)
 │   ├── budgets.tf             cost guardrail
-│   ├── outputs.tf             state_bucket, ci_role_arn
+│   ├── sns.tf                 teardown-failure alert topic
+│   ├── outputs.tf             state_bucket, ci_role_arn, deployer_role_arn, alerts_topic_arn
 │   ├── providers.tf           AWS provider + default tags
 │   ├── variables.tf           region / alert email
 │   └── versions.tf            Terraform + provider version pins
@@ -90,8 +93,10 @@ deploy/terraform/
 |---|---|
 | [`foundation/state.tf`](../deploy/terraform/foundation/state.tf) | Creates the S3 bucket that holds `demo/`'s remote state — applied once, with *local* state (the bucket can't store the state that creates it), gitignored. |
 | [`foundation/iam-ci.tf`](../deploy/terraform/foundation/iam-ci.tf) | Hand-written: the GitHub OIDC provider and the `annotated-maps-ci` role — read-only `plan` permissions, trust restricted to a job running under the protected `aws-plan` GitHub Environment (see §1 and [ADR-0009](adr/0009-eks-over-ecs.md)). |
+| [`foundation/iam-deployer.tf`](../deploy/terraform/foundation/iam-deployer.tf) | Hand-written: the apply-capable `annotated-maps-deployer` role the pipeline assumes — broad service powers, but IAM scoped to the `annotated-maps-*` prefix, S3 to the state bucket, SNS to the alerts topic, plus a self-escalation `Deny`. The milestone's security centerpiece; see [ADR-0010](adr/0010-pipeline-apply-role.md). |
 | [`foundation/budgets.tf`](../deploy/terraform/foundation/budgets.tf) | A $10/month AWS Budget with actual alerts at 50/80/100% and a forecast alert, emailed to the account owner — applied before any EKS spend exists, and never torn down, so the guardrail always covers the account. |
-| [`foundation/outputs.tf`](../deploy/terraform/foundation/outputs.tf) | The state bucket name and the CI role ARN — the latter is what `demo/backend.tf` and CI's `terraform plan` job consume. |
+| [`foundation/sns.tf`](../deploy/terraform/foundation/sns.tf) | The `annotated-maps-alerts` SNS topic and a `severity=alert`-filtered email subscription — the pipeline's teardown-failure alarm channel (its second, AWS-independent channel is a GitHub issue). |
+| [`foundation/outputs.tf`](../deploy/terraform/foundation/outputs.tf) | The state bucket name, the CI role ARN, and (Milestone 4) the deployer role ARN + alerts topic ARN — consumed by `demo/backend.tf`, CI's `terraform plan` job, and the pipeline's repo variables. |
 | [`foundation/providers.tf`](../deploy/terraform/foundation/providers.tf), [`foundation/variables.tf`](../deploy/terraform/foundation/variables.tf), [`foundation/versions.tf`](../deploy/terraform/foundation/versions.tf) | Provider config + default tags, input variables (region, budget alert email — no default, never committed), and version pins. Plumbing, not exhibits. |
 | [`demo/network.tf`](../deploy/terraform/demo/network.tf) | Community VPC module: 2 AZs, public + private subnets, **one** shared NAT gateway (not one per AZ) — an ephemeral demo doesn't need AZ-fault-tolerant egress, and a second NAT is another ~$0.045/hr for redundancy nobody's paying to keep up. |
 | [`demo/eks.tf`](../deploy/terraform/demo/eks.tf) | Community EKS module: the cluster, a public API endpoint (no bastion for a throwaway demo), IRSA/OIDC enabled, one managed node group of 2× `t3.medium` on-demand (spot rejected — reclaims mid-debug-cycle cost more than they save at this scale). |
@@ -190,8 +195,9 @@ access and forks cannot trigger it, so a reviewer gate would only re-confirm
 the same human — and because GitHub requests Environment approval *per job*, a
 gate touching `destroy` could leave teardown waiting on a click, which is the
 stranded-billing failure the pipeline exists to prevent. The `aws-deploy`
-Environment is deliberately unprotected; its only job is to namespace the OIDC
-subject. (Contrast `infra-plan` in `ci.yml`, which *is* reviewer-gated —
+Environment carries a main-only deployment-branch policy but no reviewer rule,
+so dispatching still prompts no one — it only restricts deploys to `main`; its
+name also namespaces the deploy role's OIDC subject. (Contrast `infra-plan` in `ci.yml`, which *is* reviewer-gated —
 there, fork PRs are genuinely untrusted input.)
 
 **Safety rails:** `destroy` runs `if: always()`; a `concurrency` group forbids
