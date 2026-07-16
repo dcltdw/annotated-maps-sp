@@ -40,8 +40,8 @@ Artifacts on the run: **`alb-smoke-screenshots`** (the image above) and
 ## Guaranteed teardown, demonstrated rather than asserted
 
 `destroy` carries `if: always()`, so it runs no matter how the run got there.
-That was not a theory — **four of the five runs went red**, and every one of
-them tore itself down to zero without a human:
+That was not a theory — **three of the five runs went red, and all five tore
+themselves down to zero without a human**:
 
 | Run | Died at | Left behind |
 |---|---|---|
