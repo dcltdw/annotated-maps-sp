@@ -46,8 +46,8 @@ earn its place as the system grows.
 
 ## The honest parts
 
-This is the section I'd want a reviewer to weigh most, because it's the part
-that's hard to fake.
+Everything below links to the evidence behind it, including the parts where
+that evidence is a record of something going wrong.
 
 **Teardown was proven by failure, not argued.** The pipeline's central claim is
 that a red run can't strand billable infrastructure. **Three of the five live
