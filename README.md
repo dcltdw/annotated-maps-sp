@@ -83,7 +83,7 @@ Design rationale: [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) and the
 
 Milestone 3 takes the same chart to AWS (Terraform + EKS) — provisioned, [verified serving through an ALB](docs/m3-demo-run.md), and destroyed to zero on demand. See the [AWS primer](docs/aws-primer.md) for how it works.
 
-Milestone 4 wraps that whole lifecycle in one button: a [GitHub Actions pipeline](.github/workflows/demo-pipeline.yml) that provisions the environment, gates the images on a Trivy scan, deploys, runs Playwright against the live URL, and destroys everything — with teardown guaranteed even when a step fails. [The run record](docs/m4-pipeline.md) has the screenshot the pipeline took of the app running on EKS, and what four red runs taught us.
+Milestone 4 wraps that whole lifecycle in one button: a [GitHub Actions pipeline](.github/workflows/demo-pipeline.yml) that provisions the environment, gates the images on a Trivy scan, deploys, runs Playwright against the live URL, and destroys everything — with teardown guaranteed even when a step fails. [The run record](docs/m4-pipeline.md) has the screenshot the pipeline took of the app running on EKS, and what three red runs taught us.
 
 ## Tests
 

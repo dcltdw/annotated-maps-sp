@@ -112,10 +112,10 @@ Each was rejected for cause rather than skipped out of unfamiliarity.
 
 ## Cost discipline
 
-The AWS demo is **ephemeral by design**: roughly **$0.20–0.30 per full
-lifecycle run**, versus **~$180/month** to leave an equivalent EKS environment
+The AWS demo is **ephemeral by design**: an estimated **~$0.20–0.30 per full
+lifecycle run** (resource-hours; not yet confirmed via Cost Explorer), versus **~$180/month** to leave an equivalent EKS environment
 running ([ADR-0009](adr/0009-eks-over-ecs.md)). The entire Milestone 4 live
-verification — five runs, three of which failed — cost **about $1.50**.
+verification — five runs, three of which failed — cost an estimated **~$1.50**.
 
 Nothing is left running. What persists is free: a Terraform state bucket, an
 OIDC provider, two IAM roles, an SNS topic, and a **$10/month budget alarm**.

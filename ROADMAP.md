@@ -4,7 +4,7 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 
 **How to read this:** the table below is the summary; each milestone has a section with the reasoning and trade-offs. Every completed milestone links to verifiable evidence — a merged PR, a public CI run, a dashboard, an architecture decision record — not just a claim.
 
-**All four milestones are shipped.** The capstone is a [one-button pipeline](docs/m4-pipeline.md) that builds the whole AWS environment from nothing, proves the app works against its live URL, and destroys it again — in 35 minutes, for about $0.25, with the teardown guaranteed. Everything below is done and evidenced; what follows the roadmap is [what I deliberately didn't build](#what-i-deliberately-didnt-build) and why.
+**All four milestones are shipped.** The capstone is a [one-button pipeline](docs/m4-pipeline.md) that builds the whole AWS environment from nothing, proves the app works against its live URL, and destroys it again — in 35 minutes, for an estimated ~$0.25 (from resource-hours; not yet confirmed via Cost Explorer), with the teardown guaranteed. Everything below is done and evidenced; what follows the roadmap is [what I deliberately didn't build](#what-i-deliberately-didnt-build) and why.
 
 ## Status
 
@@ -27,14 +27,15 @@ Statuses: ✅ shipped · 🚧 in progress · 📋 planned.
 
 The foundation the roadmap builds on. All of it is live in this repo today.
 
-**CI quality gates.** Every push and pull request runs four jobs in [GitHub Actions](.github/workflows/ci.yml):
+**CI quality gates.** Every push and pull request runs the CI quality-gate suite in [GitHub Actions](.github/workflows/ci.yml):
 
 1. Backend lint, format, type-checking, and tests (`ruff`, `mypy`, `pytest`) against a real PostGIS service container
 2. Frontend lint, unit tests, and build
 3. Playwright end-to-end tests, including production-build guards
-4. A PR-rigor check on the pull-request description
+4. Helm chart lint + template unit tests, plus a full chart install on `kind` (added in Milestone 1)
+5. Terraform `fmt`/`validate`/`tflint` and workflow lint (added in Milestones 3–4)
 
-Nothing merges red.
+On pull requests, a PR-rigor check on the description runs too. Nothing merges red.
 
 **Containerized backend.** The Django/Gunicorn backend builds from a [Dockerfile](backend/Dockerfile) that is the same image used in production; local development runs PostGIS via [docker-compose](backend/docker-compose.yml).
 
@@ -82,7 +83,7 @@ Nothing merges red.
 
 **Trade-off considerations:** making infrastructure pipelines safe to fail — ensuring a red run can't strand billable resources.
 
-**Done:** one dispatch builds the environment from nothing, deploys, tests against the live URL, and destroys everything — [a green public run](https://github.com/dcltdw/annotated-maps-sp/actions/runs/29447574490) in 35 minutes, with the Playwright screenshot of the app running on EKS attached as an artifact ([evidence](docs/m4-pipeline.md)). Teardown is guaranteed by `if: always()` and was proven the hard way: **three of the five live runs went red, and all five tore themselves down to zero** unattended — including one that failed with a cluster and two nodes already up. The Trivy gate earned its place by failing a real CRITICAL CVE and blocking the push. The live runs caught four bugs that static analysis and code review had missed ([lessons-learned](docs/lessons-learned.md)); [ADR-0010](docs/adr/0010-pipeline-apply-role.md) records the apply-role security model, including an honest disclosure of what that role can do in the demo account. Runs monthly on a schedule to surface drift. Cost: ~$0.20–0.30 per run, under a $10/month budget alarm.
+**Done:** one dispatch builds the environment from nothing, deploys, tests against the live URL, and destroys everything — [a green public run](https://github.com/dcltdw/annotated-maps-sp/actions/runs/29447574490) in 35 minutes, with the Playwright screenshot of the app running on EKS attached as an artifact ([evidence](docs/m4-pipeline.md)). Teardown is guaranteed by `if: always()` and was proven the hard way: **three of the five live runs went red, and all five tore themselves down to zero** unattended — including one that failed with a cluster and two nodes already up. The Trivy gate earned its place by failing a real CRITICAL CVE and blocking the push. The live runs caught four bugs that static analysis and code review had missed ([lessons-learned](docs/lessons-learned.md)); [ADR-0010](docs/adr/0010-pipeline-apply-role.md) records the apply-role security model, including an honest disclosure of what that role can do in the demo account. Runs monthly on a schedule to surface drift. Cost: an estimated ~$0.20–0.30 per run (from resource-hours; not yet confirmed via Cost Explorer), under a $10/month budget alarm.
 
 ---
 
