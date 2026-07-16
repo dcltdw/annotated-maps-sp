@@ -42,13 +42,45 @@ Everything else in `universal.md` applies as written.
 
 ## Project board
 
-- Board: https://github.com/users/dcltdw/projects/6 (`PVT_kwHOAAdfes4Bcevp`)
+- Board: https://github.com/users/dcltdw/projects/6 (`PVT_kwHOAAdfes4Bcevp`) — **public**.
 - Status field `PVTSSF_lAHOAAdfes4BcevpzhXHOIs`:
-  Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`
+  Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`, Won't Do `fa5df384`
 
-Re-derive if these drift:
+Two terminal states, matching the GitHub/Jira/Linear convention: **Done** (work
+happened) and **Won't Do** (reviewed, deliberately closed without action —
+always append a one-line reason to the body). Say *refinement* or *triage*,
+never "grooming".
+
+Items are currently **draft issues**, so no `Closes #N` and no auto-close —
+every close is manual, which is why tickets go stale here. Converting them to
+real issues is ticketed.
+
+Re-derive the IDs if they drift:
 
 ```sh
 gh api graphql -f query='{ user(login:"dcltdw"){ projectV2(number:6){ id
   field(name:"Status"){ ... on ProjectV2SingleSelectField { id options { id name } } } } } }'
 ```
+
+## After a PR merges
+
+Steps 3 and 5 are the ones that have actually failed here; the rest are cheap.
+
+1. `git checkout main && git pull --ff-only`.
+2. **Verify `main` contains the change** — grep for it. "The PR says merged" is
+   a different claim: M3's #47 was squash-merged from a state *before* a fix
+   commit, so `main` silently lacked it and it had to be cherry-picked back.
+3. **Move the board card** → Done, or Won't Do + reason. Skipping this is why
+   "M3 PR-2 hardening" sat in Todo for a whole milestone after PR #52 had
+   shipped all three of its fixes.
+4. **What did this unblock?** Dependent tickets and PRs.
+5. **What did this make stale?** Docs describing the old behaviour, tickets the
+   merge silently resolved, open PRs needing a rebase, and live config that now
+   differs from `main`. Config changes almost always orphan a doc claim.
+6. Update durable state: the session ledger, and memory if milestone-level.
+7. If it touched infra: verify the live AWS state matches `main`.
+8. If it ends a chain: confirm nothing billable is running (`aws eks
+   list-clusters`, and the sweep at the end of `scripts/demo-down.sh`).
+9. Delete the merged branch, local and remote. **`git branch --merged` will not
+   list it** — a squash-merged branch shares no commits with `main`, so the
+   obvious command silently misses exactly the branches this repo creates.
