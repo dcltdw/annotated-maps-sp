@@ -141,13 +141,49 @@ producing a base-repo-scoped OIDC subject a fork could still trigger) —
 recorded here again because the fix that time was scoping to a protected
 Environment, and this time the mitigation is a discipline about *which
 trigger types* are allowed to name this particular Environment, which the
-platform does not enforce for you. The `aws-deploy` Environment is
-deliberately left **without** a deployment-branch policy or a required
-reviewer for now — see the reviewer-gate discussion below for why — so this
-constraint is a human invariant on the workflow files, not a GitHub setting,
-until the deployment-branch policy work (also ticketed) lands after the live
-iteration in this milestone is done and the pipeline no longer needs to be
-dispatchable from a non-`main` branch.
+platform does not enforce for you.
+
+**Correction (2026-07-15).** An earlier revision of this ADR said the
+constraint was a human invariant only *"until the deployment-branch policy
+work lands"*, implying a branch policy would convert it into a GitHub-enforced
+setting. **That is false, and the error was caught while trying to act on
+it.** `pull_request_target` runs in the context of the base repository's
+default branch — GitHub's docs give its `GITHUB_REF` as the default branch —
+so its ref *is* `main`, and a `main`-only deployment-branch policy admits it.
+No OIDC subject scoping helps either, for the same reason: the event is
+designed to look like `main`. **The trigger-type invariant is permanent.**
+
+Two things follow, and both are now in place:
+
+1. **The invariant is enforced by a gate, not by discipline.**
+   `.github/scripts/check_workflow_triggers.py` runs in CI and fails the build
+   if any workflow combines `pull_request_target` with `environment:
+   aws-deploy`/`aws-plan` or with `id-token: write`. A human invariant nobody
+   checks is a wish; this repo has learned that twice already (lessons-learned
+   #20, #21). The gate was verified by deliberately introducing the forbidden
+   shape and watching it fail, then confirming it stays quiet on a legitimate
+   `pull_request_target` job that touches no AWS.
+
+2. **A deployment-branch policy (`main` only) was added anyway — for a
+   different, real reason.** It does not address `pull_request_target`. What it
+   does address: `workflow_dispatch` from an unreviewed branch. Without it,
+   anyone holding repo write access (or a stolen token) could push a branch
+   containing a modified `demo-pipeline.yml` and dispatch it, assuming the
+   admin-equivalent role with no review. With it, pipeline changes must reach
+   `main` — and therefore pass review — before they can assume the role. The
+   cost is that the pipeline can no longer be exercised from a PR branch; the
+   Milestone 4 live iteration needed exactly that, so the policy was applied
+   only once that iteration was complete. To iterate on the pipeline again,
+   lift the policy deliberately and restore it afterwards.
+
+For completeness, the sibling trigger is safe for a reason worth stating:
+a `pull_request` from a fork has every `write` permission downgraded to
+`read` (verified: this repo's default workflow permissions are `read` and
+"Send write tokens to workflows from pull requests" is not enabled), so it
+cannot obtain `id-token: write` and therefore cannot mint any OIDC token at
+all — whichever Environment it names. `pull_request_target` is dangerous
+precisely because it is the one PR-derived trigger exempt from that
+downgrade.
 
 **The reviewer gate is deliberately omitted**, and that omission is a
 decision, not an oversight. `demo-pipeline.yml`'s only triggers are

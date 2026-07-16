@@ -123,6 +123,11 @@ jobs:
         run: |
           curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz | tar xz actionlint
           ./actionlint .github/workflows/ci.yml .github/workflows/demo-pipeline.yml
+      - name: forbid pull_request_target + the AWS deploy role (ADR-0010 invariant)
+        # actionlint cannot know that `pull_request_target` + `environment:
+        # aws-deploy` would hand a fork an AdministratorAccess-equivalent role.
+        # ADR-0010 recorded that as a human invariant; this makes it a gate.
+        run: python .github/scripts/check_workflow_triggers.py
 
   # Detects whether a PR touches the Terraform. infra-plan (which pauses for a
   # human approval before it can touch AWS) then only runs — and only asks for
