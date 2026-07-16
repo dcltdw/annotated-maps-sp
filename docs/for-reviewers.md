@@ -86,11 +86,24 @@ remains open and why that's accepted (a dedicated, disposable account reachable
 only by a maintainer). The real fix — a permissions boundary — is
 [ticketed, not pretended](https://github.com/users/dcltdw/projects/6).
 
+**A fix that turned out to be wrong, and what replaced it.** A ticket said a
+deployment-branch policy would close the risk that a future `pull_request_target`
+job hands a fork the deploy role. Acting on it revealed the premise was false:
+`pull_request_target` runs in the context of the **default branch**, so its ref
+*is* `main` and a `main`-only policy admits it — no OIDC scoping helps, because
+the event is designed to look like `main`. The invariant is therefore permanent,
+so it became a **CI gate** ([check_workflow_triggers.py](../.github/scripts/check_workflow_triggers.py))
+that fails the build if any workflow pairs that trigger with the AWS role — and
+the gate was proven by deliberately writing the forbidden workflow and watching
+it fail. The branch policy went in anyway, for the honest reason: it stops a
+modified pipeline being dispatched from an *unreviewed branch*.
+[ADR-0010](adr/0010-pipeline-apply-role.md) records the correction.
+
 **Known gaps, tracked openly:** a permissions boundary to close the IAM path
-above; a deployment-branch policy on the deploy Environment; and read-permission
-gaps in the plan-only CI role that only surface while a pipeline run is in
-flight. All on the [board](https://github.com/users/dcltdw/projects/6), with the
-diagnosis written down.
+above, and read-permission gaps in the plan-only CI role that only surface while
+a pipeline run is in flight. Both on the
+[board](https://github.com/users/dcltdw/projects/6), with the diagnosis written
+down.
 
 **What I deliberately didn't build** — service mesh, multi-region, a parallel
 ECS implementation, a microservice split, Datadog — and *why*, is
