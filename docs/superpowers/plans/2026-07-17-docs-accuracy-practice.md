@@ -1421,3 +1421,12 @@ Open PR D (repo headings). After approval + merge: post-merge ritual, move the b
   `docs/superpowers/**` from Layer 1 (`SKIP_PREFIXES` + `in_scope()` in
   `check_doc_links.py`), matching the taxonomy exemption; spec amended in
   place. Frozen work orders link files that don't exist until implemented.
+- **Tasks 2 & 7 (step-order bug):** the plan's watched-fail sequence (push
+  branch → break → watch runs → revert → open PR) produces no CI runs at
+  all: `ci.yml` triggers only on `pull_request` and push-to-main, and the
+  repo has no `workflow_dispatch` on CI. Fix in execution: open the PR as a
+  **draft** first (full pr-rigor-compliant body, run URLs appended after),
+  run the break/revert demo inside it, then mark ready. Task 7 must do the
+  same.
+- **Task 2:** ROADMAP's CI-gate list already numbered 1–5, so the new bullet
+  is **6**, not 5.
