@@ -1,5 +1,8 @@
 """Tests for the Layer-2 doc facts checker (ADR-0011)."""
+import contextlib
+import io
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -220,6 +223,34 @@ class OverrideTests(unittest.TestCase):
     def test_empty_reason_is_not_a_valid_override(self):
         from docs_common import override_reason
         self.assertIsNone(override_reason("Docs-Checks-Override:   \n"))
+
+
+class MainOverrideTests(unittest.TestCase):
+    def run_main(self, argv, env_body=""):
+        with mock.patch.object(sys, "argv", ["check_doc_facts.py", *argv]), \
+                mock.patch.dict(os.environ, {"PR_BODY": env_body}), \
+                mock.patch.object(mod, "taxonomy_errors",
+                                  return_value=["x.md: synthetic failure"]), \
+                mock.patch.object(mod, "LIVING", set()), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            try:
+                mod.main()
+            except SystemExit as e:
+                return e.code
+            return 0
+
+    def test_valid_override_exits_zero(self):
+        self.assertEqual(
+            self.run_main(["--allow-override"], "Docs-Checks-Override: mid-restructure\n"), 0)
+
+    def test_override_line_ignored_without_flag(self):
+        self.assertEqual(
+            self.run_main([], "Docs-Checks-Override: mid-restructure\n"), 1)
+
+    def test_reasonless_override_still_fails(self):
+        self.assertEqual(
+            self.run_main(["--allow-override"], "Docs-Checks-Override:   \n"), 1)
 
 
 if __name__ == "__main__":
