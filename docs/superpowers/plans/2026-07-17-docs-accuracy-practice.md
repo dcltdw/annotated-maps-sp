@@ -1430,3 +1430,13 @@ Open PR D (repo headings). After approval + merge: post-merge ritual, move the b
   same.
 - **Task 2:** ROADMAP's CI-gate list already numbered 1–5, so the new bullet
   is **6**, not 5.
+- **Task 4 (plan-authored guard defects, found by adversarial review):** the
+  plan's `validate_cmd` (a) crashed on quoted pipes — including the canonical
+  `yq '.services | length'` fact — via naive `cmd.split("|")`; (b) allowed
+  `git -c core.fsmonitor=…` config-injection; (c) allowed `python3
+  .github/scripts/../../evil.py` traversal; and the first fix regressed `||`
+  into an allowlist bypass. Shipped guard: `shlex.shlex(punctuation_chars="|")`
+  tokenize-then-split (lone `|` splits, `||`-runs rejected), `git` restricted
+  to read-only subcommands {diff, describe, log, ls-files, rev-parse, show}
+  with no global flags, a `..`-parts check on python3 paths, and empty
+  `expect` rejected. Six + one new tests cover each.
