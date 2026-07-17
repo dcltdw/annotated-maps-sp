@@ -1409,3 +1409,15 @@ git push -u origin docs-accuracy-policy
 ```
 
 Open PR D (repo headings). After approval + merge: post-merge ritual, move the board card "Durable documentation-verification practice (PARENT…)" to **Done** (option `98236657`), and ticket any deferred follow-ups (per the board convention: deferred work gets a ticket, not a PR note) — known candidates: the measured-cost annotation once Cost Explorer data lands, and `aws`-tier facts if live-infra claims ever get registered (needs a creds story in the scheduled workflow).
+
+---
+
+## Deviations discovered in execution
+
+- **Task 1:** the checker's first real-repo run found 26 pre-existing breaks:
+  4 genuinely broken `#phase-0-already-shipped` anchors in ROADMAP.md (the
+  em-dash heading slugs to a double hyphen — fixed), and 22 broken links in
+  `docs/superpowers/` plans/specs. Maintainer decision: exempt
+  `docs/superpowers/**` from Layer 1 (`SKIP_PREFIXES` + `in_scope()` in
+  `check_doc_links.py`), matching the taxonomy exemption; spec amended in
+  place. Frozen work orders link files that don't exist until implemented.

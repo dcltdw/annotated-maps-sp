@@ -52,9 +52,13 @@ the same commands CI runs.
 
 `.github/scripts/check_doc_links.py`. Every internal link and `#anchor` in
 every Markdown doc — living *and* dated; internal accuracy applies to all —
-must resolve. The file set is derived by glob at runtime, never hand-maintained
-(a hand-kept list already rotted once in this repo). External URLs are excluded
-here; they belong to the scheduled job.
+must resolve. **Exception (amended during implementation):** the
+`docs/superpowers/` plan/spec archive is out of scope, matching its taxonomy
+exemption — frozen work orders routinely link files that do not exist until
+implemented, so gating them would redden every future plan PR. The file set
+is derived by glob at runtime, never hand-maintained (a hand-kept list
+already rotted once in this repo). External URLs are excluded here; they
+belong to the scheduled job.
 
 ### Layer 2 — registered facts (split by determinism)
 
