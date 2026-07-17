@@ -63,8 +63,9 @@ annotations and executes them. Two tiers:
 
 - **`pr` tier** — the command reads only files in the repo (quoted config
   values, file inventories, CI job counts, cross-doc consistency). Runs as a
-  PR-blocking CI step. Deterministic: it cannot fail for reasons unrelated to
-  the repo's own state.
+  PR-blocking CI step, and again on every push to `main` (see "Concurrency"
+  below). Deterministic: it cannot fail for reasons unrelated to the repo's
+  own state.
 - **`scheduled` tier** — the command needs network or live state (GitHub API
   run counts, environment settings). Runs in the scheduled workflow; on
   failure it opens/updates a tracking issue. Never gates a PR, because this
@@ -148,9 +149,53 @@ ballooning past ~15, that's a signal to re-triage, not to register more.
 `.github/workflows/docs-accuracy.yml`, two crons:
 
 - **Weekly:** run scheduled-tier facts + external-URL liveness (retry with a
-  generous timeout — the Render demo sleeps and takes ~30 s to wake). On
-  failure, open or update a single tracking issue; never fail a PR.
+  generous timeout — the Render demo sleeps and takes ~30 s to wake), plus
+  the full pr-tier suite against `main` — so drift that slipped past the gate
+  (override, merge race, missed red run) lands in a tracked issue rather than
+  only a transient red build. On failure, open or update a single tracking
+  issue; never fail a PR.
 - **Monthly:** open the Layer-3 review reminder issue.
+
+## Concurrency and merge races
+
+Within one PR there is no race by construction: pr-tier commands read only
+files in the same checkout as the docs, so claim and source are compared at
+the same commit.
+
+The real exposure is **cross-PR merge ordering**: PR A changes a source file
+and its annotation (green); concurrent PR B, branched before A merged, is
+green against the old base; branches are not required to be up to date, so a
+merge combination can land on `main` that no PR ever tested. The net:
+**Layers 1 and 2 (pr tier) also run on every push to `main`.** A red main run
+means merge ordering — not any single PR — introduced drift; the response is a
+small fix-forward PR. (A merge queue would prevent this outright but is
+machinery out of proportion for a solo repo — noted and rejected.)
+
+Scheduled-tier lag — live state drifting for up to a week before the cron
+notices — is a design property, not a race; that is exactly why those checks
+file issues instead of gating.
+
+## Override escape hatch
+
+For when the checks are right in principle but blocking necessary work — e.g.
+a multi-PR doc restructure that is transiently inconsistent mid-flight — a PR
+body line (mirroring the `check_pr_body.py` pattern):
+
+```
+Docs-Checks-Override: <mandatory reason>
+```
+
+When present, the Layer 1 and Layer 2 PR steps report their failures as
+warnings and exit green **for that PR only**, echoing the reason in the CI
+log. Two properties keep it honest:
+
+- **Defer, never erase.** Main-push and scheduled runs ignore overrides, so
+  anything overridden past the gate surfaces immediately on `main`'s run and
+  in the weekly tracking issue. The debt is tracked until a follow-up PR
+  clears it.
+- **Outcomes only.** The override downgrades check failures. It cannot expand
+  the command allowlist and cannot authorize edits to dated or historical
+  docs — those rules hold unconditionally.
 
 ## Error-taxonomy coverage
 
