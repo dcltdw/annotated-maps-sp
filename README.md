@@ -6,7 +6,7 @@ A multi-tenant, permissioned map-annotation platform. Teams can create and share
 
 **▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
 
-**▶ [Evaluating this repo?](docs/for-reviewersXX.md)** — a three-minute map to the strongest evidence, what each milestone proves, and the honest parts (what broke, what my own review missed, what I chose not to build).
+**▶ [Evaluating this repo?](docs/for-reviewers.md)** — a three-minute map to the strongest evidence, what each milestone proves, and the honest parts (what broke, what my own review missed, what I chose not to build).
 
 **▶ [Production-engineering roadmap](ROADMAP.md)** — Kubernetes/Helm, OpenTelemetry, Terraform + EKS, and a one-button ephemeral pipeline: all four milestones shipped, with proof links for each.
 
