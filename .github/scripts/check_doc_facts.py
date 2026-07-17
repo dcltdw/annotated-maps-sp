@@ -23,6 +23,8 @@ Doc-status markers classify every doc in scope:
 Exits 1 on failure, 0 on success (or on overridden failure — see Task 5).
 """
 import re
+import shlex
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,6 +57,12 @@ FACT_RE = re.compile(
     r"(?:\s+prose=\"(?P<prose>[^\"]*)\")?\s*-->"
 )
 ADJACENT_LINES = 3
+ALLOWLIST = {
+    "pr": {"grep", "ls", "wc", "cat", "yq", "jq", "git", "python3"},
+    "scheduled": {"grep", "ls", "wc", "cat", "yq", "jq", "git", "python3", "gh", "aws"},
+}
+FORBIDDEN_RE = re.compile(r"[;&<>`]|\$\(")
+COMMAND_TIMEOUT_S = 30
 
 
 @dataclass
@@ -119,3 +127,45 @@ def taxonomy_errors() -> list[str]:
                     "facts belong only in living docs"
                 )
     return errors
+
+
+def validate_cmd(cmd: str, tier: str) -> str | None:
+    if FORBIDDEN_RE.search(cmd):
+        return f"forbidden shell metacharacter in cmd: {cmd!r}"
+    for segment in cmd.split("|"):
+        words = shlex.split(segment)
+        if not words:
+            return f"empty pipe segment in cmd: {cmd!r}"
+        if words[0] not in ALLOWLIST[tier]:
+            return f"'{words[0]}' is not allowlisted for tier={tier}"
+        if words[0] == "python3" and (
+            len(words) < 2 or not words[1].startswith(".github/scripts/")
+        ):
+            return "python3 facts may only run scripts under .github/scripts/"
+    return None
+
+
+def check_fact(fact: Fact) -> str | None:
+    """Return an error string, or None if the fact holds."""
+    where = f"{fact.path}:{fact.lineno}"
+    err = validate_cmd(fact.cmd, fact.tier)
+    if err:
+        return f"{where}: {err}"
+    try:
+        p = subprocess.run(fact.cmd, shell=True, capture_output=True,
+                           text=True, timeout=COMMAND_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        return f"{where}: command timed out after {COMMAND_TIMEOUT_S}s: {fact.cmd!r}"
+    if p.returncode != 0:
+        return (f"{where}: command exited {p.returncode}: {fact.cmd!r} "
+                f"stderr: {p.stderr.strip()[:200]}")
+    actual = p.stdout.strip()
+    if actual != fact.expect:
+        return (f"{where}: expected '{fact.expect}' got '{actual}' — update the "
+                "prose AND the annotation, or re-run the command to re-derive")
+    needle = fact.prose if fact.prose is not None else fact.expect
+    if not any(needle in line for line in fact.following):
+        return (f"{where}: adjacency rule — '{needle}' not found in the "
+                f"{ADJACENT_LINES} lines after the annotation; the prose and "
+                "the annotation have drifted apart")
+    return None

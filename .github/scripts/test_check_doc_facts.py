@@ -120,5 +120,62 @@ class TaxonomyTests(unittest.TestCase):
         self.assertEqual(mod.taxonomy_errors(), [])
 
 
+class AllowlistTests(unittest.TestCase):
+    def test_pr_tier_allows_repo_readers(self):
+        self.assertIsNone(mod.validate_cmd("yq '.a' f.yml", "pr"))
+        self.assertIsNone(mod.validate_cmd("grep -c x f.md | wc -l", "pr"))
+
+    def test_gh_rejected_in_pr_tier_allowed_in_scheduled(self):
+        self.assertIsNotNone(mod.validate_cmd("gh run list", "pr"))
+        self.assertIsNone(mod.validate_cmd("gh run list", "scheduled"))
+
+    def test_every_pipe_segment_validated(self):
+        self.assertIsNotNone(mod.validate_cmd("ls | curl http://x", "pr"))
+
+    def test_forbidden_metacharacters(self):
+        for cmd in ("ls; rm -rf /", "ls && ls", "ls > f", "ls `x`", "ls $(x)"):
+            self.assertIsNotNone(mod.validate_cmd(cmd, "pr"), cmd)
+
+    def test_python3_restricted_to_repo_scripts(self):
+        self.assertIsNone(mod.validate_cmd("python3 .github/scripts/fact_demo_runs.py", "pr"))
+        self.assertIsNotNone(mod.validate_cmd("python3 evil.py", "pr"))
+
+
+class ExecutionTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def fact(self, cmd, expect, prose=None, following=None):
+        return mod.Fact(path=Path("x.md"), lineno=1, tier="pr", cmd=cmd,
+                        expect=expect, prose=prose,
+                        following=following if following is not None else [expect])
+
+    def test_matching_fact_passes(self):
+        f = (self.dir / "v.txt"); f.write_text("42\n")
+        self.assertIsNone(mod.check_fact(self.fact(f"cat {f}", "42", following=["The value is 42."])))
+
+    def test_value_mismatch_fails_with_expected_vs_actual(self):
+        f = (self.dir / "v.txt"); f.write_text("41\n")
+        err = mod.check_fact(self.fact(f"cat {f}", "42", following=["The value is 42."]))
+        self.assertIn("expected '42'", err)
+        self.assertIn("got '41'", err)
+
+    def test_adjacency_rule_expect_must_appear_in_prose(self):
+        f = (self.dir / "v.txt"); f.write_text("42\n")
+        err = mod.check_fact(self.fact(f"cat {f}", "42", following=["No number here."]))
+        self.assertIn("adjacency", err)
+
+    def test_adjacency_rule_uses_prose_attr_when_present(self):
+        f = (self.dir / "v.txt"); f.write_text("3\n")
+        fact = self.fact(f"cat {f}", "3", prose="three", following=["It shows three services."])
+        self.assertIsNone(mod.check_fact(fact))
+
+    def test_command_failure_reported(self):
+        err = mod.check_fact(self.fact("cat /nonexistent-x", "1", following=["1"]))
+        self.assertIn("exited", err)
+
+
 if __name__ == "__main__":
     unittest.main()
