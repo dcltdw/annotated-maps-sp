@@ -74,6 +74,10 @@ class LinkCheckTests(unittest.TestCase):
         doc = self.write("doc.md", "![shot](img/missing.png)\n")
         self.assertEqual(len(mod.check_file(doc)), 1)
 
+    def test_superpowers_archive_out_of_scope(self):
+        self.assertFalse(mod.in_scope(Path("docs/superpowers/plans/x.md")))
+        self.assertTrue(mod.in_scope(Path("docs/aws-primer.md")))
+
 
 if __name__ == "__main__":
     unittest.main()

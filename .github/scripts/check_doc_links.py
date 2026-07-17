@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Layer 1 of the documentation-accuracy practice (ADR-0011): every internal
-link and #anchor in every tracked Markdown file must resolve. External URLs
+link and #anchor in every tracked Markdown file outside the docs/superpowers/
+archive must resolve. External URLs
 are NOT checked here — they belong to the scheduled workflow, which cannot
 gate a PR. `--list-external` prints them for that workflow to consume.
 
@@ -17,6 +18,12 @@ from docs_common import tracked_md_files
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 HEADING_RE = re.compile(r"^#{1,6}\s+(.*)$")
+
+SKIP_PREFIXES = ("docs/superpowers/",)  # frozen workflow artifacts (plans/specs) — they may link files that do not exist yet
+
+
+def in_scope(path: Path) -> bool:
+    return not str(path).startswith(SKIP_PREFIXES)
 
 _anchor_cache: dict[Path, set[str]] = {}
 
@@ -86,7 +93,7 @@ def check_file(path: Path) -> list[str]:
 
 def external_urls() -> list[str]:
     urls = set()
-    for path in tracked_md_files():
+    for path in (p for p in tracked_md_files() if in_scope(p)):
         for _, target in links_in(path):
             if target.startswith(("http://", "https://")):
                 urls.add(target)
@@ -103,7 +110,7 @@ def main() -> None:
         print("\n".join(external_urls()))
         return
 
-    files = tracked_md_files()
+    files = [p for p in tracked_md_files() if in_scope(p)]
     errors: list[str] = []
     for path in files:
         errors += check_file(path)
