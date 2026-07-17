@@ -129,25 +129,58 @@ def taxonomy_errors() -> list[str]:
     return errors
 
 
+GIT_READONLY_SUBCOMMANDS = {"diff", "describe", "log", "ls-files", "rev-parse", "show"}
+
+
+def _pipe_segments(cmd: str) -> list[list[str]]:
+    """Tokenize first, then split on bare `|` tokens — a pipe inside a
+    quoted argument (yq '.a | b') is data, not a pipeline."""
+    words = shlex.split(cmd)
+    segments: list[list[str]] = []
+    current: list[str] = []
+    for w in words:
+        if w == "|":
+            segments.append(current)
+            current = []
+        else:
+            current.append(w)
+    segments.append(current)
+    return segments
+
+
 def validate_cmd(cmd: str, tier: str) -> str | None:
     if FORBIDDEN_RE.search(cmd):
         return f"forbidden shell metacharacter in cmd: {cmd!r}"
-    for segment in cmd.split("|"):
-        words = shlex.split(segment)
+    try:
+        segments = _pipe_segments(cmd)
+    except ValueError as e:
+        return f"unparseable cmd ({e}): {cmd!r}"
+    for words in segments:
         if not words:
             return f"empty pipe segment in cmd: {cmd!r}"
         if words[0] not in ALLOWLIST[tier]:
             return f"'{words[0]}' is not allowlisted for tier={tier}"
         if words[0] == "python3" and (
-            len(words) < 2 or not words[1].startswith(".github/scripts/")
+            len(words) < 2
+            or not words[1].startswith(".github/scripts/")
+            or ".." in Path(words[1]).parts
         ):
             return "python3 facts may only run scripts under .github/scripts/"
+        if words[0] == "git" and (
+            len(words) < 2 or words[1] not in GIT_READONLY_SUBCOMMANDS
+        ):
+            return (
+                "git facts may only use read-only subcommands "
+                f"({', '.join(sorted(GIT_READONLY_SUBCOMMANDS))}) with no global flags"
+            )
     return None
 
 
 def check_fact(fact: Fact) -> str | None:
     """Return an error string, or None if the fact holds."""
     where = f"{fact.path}:{fact.lineno}"
+    if not fact.expect:
+        return f"{where}: expect must be non-empty"
     err = validate_cmd(fact.cmd, fact.tier)
     if err:
         return f"{where}: {err}"

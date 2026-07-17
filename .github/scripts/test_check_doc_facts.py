@@ -140,6 +140,27 @@ class AllowlistTests(unittest.TestCase):
         self.assertIsNone(mod.validate_cmd("python3 .github/scripts/fact_demo_runs.py", "pr"))
         self.assertIsNotNone(mod.validate_cmd("python3 evil.py", "pr"))
 
+    def test_quoted_pipe_is_data_not_pipeline(self):
+        self.assertIsNone(mod.validate_cmd("yq '.services | length' render.yaml", "pr"))
+
+    def test_unparseable_cmd_reports_cleanly(self):
+        err = mod.validate_cmd("yq '.unclosed", "pr")
+        self.assertIsNotNone(err)
+        self.assertIn("unparseable", err)
+
+    def test_git_readonly_subcommand_allowed(self):
+        self.assertIsNone(mod.validate_cmd("git ls-files '*.md'", "pr"))
+
+    def test_git_global_flags_rejected(self):
+        err = mod.validate_cmd(
+            "git -c core.fsmonitor='sh -c \"touch pwned\"' status", "pr")
+        self.assertIsNotNone(err)
+        self.assertIn("read-only subcommands", err)
+
+    def test_python3_path_traversal_rejected(self):
+        self.assertIsNotNone(
+            mod.validate_cmd("python3 .github/scripts/../../evil.py", "pr"))
+
 
 class ExecutionTests(unittest.TestCase):
     def setUp(self):
@@ -175,6 +196,10 @@ class ExecutionTests(unittest.TestCase):
     def test_command_failure_reported(self):
         err = mod.check_fact(self.fact("cat /nonexistent-x", "1", following=["1"]))
         self.assertIn("exited", err)
+
+    def test_empty_expect_rejected(self):
+        err = mod.check_fact(self.fact("ls", "", following=["x"]))
+        self.assertIn("expect must be non-empty", err)
 
 
 if __name__ == "__main__":
