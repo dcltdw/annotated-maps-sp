@@ -133,15 +133,20 @@ GIT_READONLY_SUBCOMMANDS = {"diff", "describe", "log", "ls-files", "rev-parse", 
 
 
 def _pipe_segments(cmd: str) -> list[list[str]]:
-    """Tokenize first, then split on bare `|` tokens — a pipe inside a
-    quoted argument (yq '.a | b') is data, not a pipeline."""
-    words = shlex.split(cmd)
+    """Tokenize with shell-like quoting, treating `|` as punctuation — a
+    pipe inside a quoted argument (yq '.a | b') is data, not a pipeline.
+    Operator runs other than a lone `|` (e.g. `||`) are rejected."""
+    lex = shlex.shlex(cmd, posix=True, punctuation_chars="|")
+    lex.whitespace_split = True
+    words = list(lex)
     segments: list[list[str]] = []
     current: list[str] = []
     for w in words:
         if w == "|":
             segments.append(current)
             current = []
+        elif set(w) == {"|"}:
+            raise ValueError(f"forbidden shell operator {w!r}")
         else:
             current.append(w)
     segments.append(current)

