@@ -22,6 +22,8 @@ Doc-status markers classify every doc in scope:
 
 Exits 1 on failure, 0 on success (or on overridden failure — see Task 5).
 """
+import argparse
+import os
 import re
 import shlex
 import subprocess
@@ -29,7 +31,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from docs_common import tracked_md_files
+from docs_common import tracked_md_files, override_reason
 
 LIVING = {
     "README.md",
@@ -207,3 +209,45 @@ def check_fact(fact: Fact) -> str | None:
                 f"{ADJACENT_LINES} lines after the annotation; the prose and "
                 "the annotation have drifted apart")
     return None
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--tier", choices=["pr", "scheduled", "all"], default="pr")
+    ap.add_argument("--allow-override", action="store_true",
+                    help="honor a Docs-Checks-Override line in $PR_BODY (PR runs only)")
+    args = ap.parse_args()
+
+    errors = taxonomy_errors()
+    n_facts = 0
+    for name in sorted(LIVING):
+        path = Path(name)
+        for fact in facts_in(path):
+            if args.tier != "all" and fact.tier != args.tier:
+                continue
+            n_facts += 1
+            err = check_fact(fact)
+            if err:
+                errors.append(err)
+
+    if not errors:
+        print(f"Doc facts check passed ({n_facts} facts, tier={args.tier}).")
+        return
+
+    if args.allow_override:
+        reason = override_reason(os.environ.get("PR_BODY", ""))
+        if reason:
+            print(f"OVERRIDDEN ({len(errors)} failure(s)) — reason: {reason}")
+            print("Deferred, not erased: the main-push and scheduled runs ignore overrides.")
+            for e in errors:
+                print(f"  warning: {e}")
+            return
+
+    print("Doc facts check failed:", file=sys.stderr)
+    for e in errors:
+        print(f"  {e}", file=sys.stderr)
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

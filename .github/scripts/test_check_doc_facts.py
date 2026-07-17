@@ -207,5 +207,20 @@ class ExecutionTests(unittest.TestCase):
         self.assertIn("expect must be non-empty", err)
 
 
+class OverrideTests(unittest.TestCase):
+    def test_reason_extracted(self):
+        from docs_common import override_reason
+        body = "## Summary\nstuff\nDocs-Checks-Override: mid-restructure, tracked in #99\n"
+        self.assertEqual(override_reason(body), "mid-restructure, tracked in #99")
+
+    def test_no_override_line(self):
+        from docs_common import override_reason
+        self.assertIsNone(override_reason("## Summary\nstuff\n"))
+
+    def test_empty_reason_is_not_a_valid_override(self):
+        from docs_common import override_reason
+        self.assertIsNone(override_reason("Docs-Checks-Override:   \n"))
+
+
 if __name__ == "__main__":
     unittest.main()
