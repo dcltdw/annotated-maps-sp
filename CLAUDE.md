@@ -16,9 +16,9 @@ Universal collaboration rules — branch → PR → wait for approval, many smal
 single-purpose PRs, the `Co-Authored-By` model stamp on commits, secret-scan
 before push, project-board flow, and verify-before-done — come from the
 machine-global import in `~/.claude/CLAUDE.md`
-(`@~/Github/dcltdw/claude/universal.md`), so they are not duplicated here. Edits
-to `universal.md` propagate automatically; this file only adds repo-specific
-deltas on top.
+(`@~/.claude/dcltdw/AGENTS.md`), so they are not duplicated here. Edits to that
+shared file propagate automatically; this file only adds repo-specific deltas on
+top.
 
 ### PR bodies (repo-specific — section headings only)
 
