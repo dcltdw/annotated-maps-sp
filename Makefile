@@ -6,7 +6,7 @@ INGRESS_NGINX_VERSION := controller-v1.11.2
 METRICS_SERVER_VERSION := v0.7.2
 PROD_PLACEHOLDER_DB := postgis://placeholder:pw@example.com:5432/placeholder
 
-.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up demo-up demo-down demo-cost demo-infra-up demo-images demo-app-deploy
+.PHONY: kind-up deploy kind-down helm-checks obs-up obs-down obs-checks monitoring-up demo-up demo-down demo-cost demo-infra-up demo-images demo-app-deploy docs-checks
 
 kind-up: ## Create the local cluster + ingress-nginx + metrics-server
 	kind create cluster --name $(CLUSTER) --config deploy/kind/cluster.yaml
@@ -72,3 +72,7 @@ obs-checks: ## Static observability checks — same commands CI runs
 	promtool test rules deploy/observability/alert-tests/rules_test.yaml
 	python3 -m json.tool deploy/helm/annotated-maps/files/dashboards/api-overview.json > /dev/null
 	python3 -m json.tool deploy/observability/dashboards/api-overview-cloud.json > /dev/null
+
+docs-checks: ## Documentation accuracy — same commands CI runs (ADR-0011)
+	python3 -m unittest discover -s .github/scripts
+	python3 .github/scripts/check_doc_links.py

@@ -66,6 +66,15 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: python .github/scripts/check_pr_body.py
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checker unit tests
+        run: python3 -m unittest discover -s .github/scripts -v
+      - name: Doc link check (Layer 1 — internal links/anchors only)
+        run: python3 .github/scripts/check_doc_links.py
+
   helm:
     runs-on: ubuntu-latest
     steps:
