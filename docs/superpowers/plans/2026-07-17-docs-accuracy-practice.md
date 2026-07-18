@@ -1440,3 +1440,8 @@ Open PR D (repo headings). After approval + merge: post-merge ritual, move the b
   to read-only subcommands {diff, describe, log, ls-files, rev-parse, show}
   with no global flags, a `..`-parts check on python3 paths, and empty
   `expect` rejected. Six + one new tests cover each.
+- **Task 6:** the status-marker scope was 23 tracked docs, not the plan's 21 —
+  `frontend/README.md` and `scripts/README.md` were missed by the plan's count.
+  Resolution: added to `STATUS_EXEMPT` (component READMEs ride with their
+  code; `dated` would wrongly freeze them). Also: local `make docs-checks`
+  needs `yq` installed (CI installs it pinned in Task 7); noted for ADR-0011.
