@@ -149,7 +149,7 @@ jobs:
       - name: actionlint (workflow lint)
         run: |
           curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz | tar xz actionlint
-          ./actionlint .github/workflows/ci.yml .github/workflows/demo-pipeline.yml
+          ./actionlint .github/workflows/ci.yml .github/workflows/demo-pipeline.yml .github/workflows/docs-accuracy.yml
       - name: forbid pull_request_target + the AWS deploy role (ADR-0010 invariant)
         # actionlint cannot know that `pull_request_target` + `environment:
         # aws-deploy` would hand a fork an AdministratorAccess-equivalent role.
