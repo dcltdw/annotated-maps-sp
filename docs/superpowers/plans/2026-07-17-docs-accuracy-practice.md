@@ -1449,3 +1449,12 @@ Open PR D (repo headings). After approval + merge: post-merge ritual, move the b
   itself a tracked `.md`, so the taxonomy checker demanded a marker of it.
   Resolution: `.claude/` added to `STATUS_EXEMPT_PREFIXES` (agent tooling is
   outside the doc taxonomy, like the PR template and the superpowers archive).
+- **Final whole-branch review:** two Importants, both plan-authored
+  doc-vs-behavior contradictions: (a) Task 7 wired the override only into the
+  Layer-2 CI steps while spec/ADR/CLAUDE.md promise Layer 1+2 — fixed by
+  splitting the link-check step into PR-with-override / main-without variants
+  (PR B); (b) ADR-0011 overclaimed Layer-1 scope ("every tracked doc") —
+  amended to state the docs/superpowers exemption (PR D). Also fixed: the
+  false `--list-external` docstring claim and a wrong spec-heading citation
+  in the command file. Remaining Minors triaged into two board tickets
+  ("docs-checkers hardening", "override dedup + missing tests").
