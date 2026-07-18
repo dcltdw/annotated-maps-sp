@@ -19,7 +19,7 @@ before sharing the repo with a reader.
    are trying to prove the doc WRONG. Report each finding with the claim,
    the source checked, and the evidence." Include the error taxonomy from
    the spec (`docs/superpowers/specs/2026-07-17-docs-accuracy-practice-design.md`
-   § "The error taxonomy") so agents know the drift classes.
+   § "Error-taxonomy coverage") so agents know the drift classes.
 4. **Verify findings before acting:** re-check every reported finding against
    the source yourself. Agents produce false positives; the pilot's rule is
    controller-verified corrections only.

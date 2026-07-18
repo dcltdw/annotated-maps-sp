@@ -18,8 +18,10 @@ source of truth is tested, not when authors are careful. Full design:
 
 Four layers (details and error taxonomy in the spec):
 
-1. **Link integrity** (`check_doc_links.py`) — every internal link/anchor in
-   every tracked doc resolves; PR-blocking; file list derived by glob.
+1. **Link integrity** (`check_doc_links.py`) — every internal link and
+   #anchor in every tracked doc outside the frozen `docs/superpowers/` archive
+   resolves; the archive is exempt because frozen work orders link files that
+   do not exist until implemented. PR-blocking; file list derived by glob.
 2. **Registered facts** (`check_doc_facts.py`) — load-bearing claims carry an
    in-place annotation (command + expected value + tier). `tier=pr` reads only
    repo files and blocks PRs (and re-runs on every main push — the merge-race
