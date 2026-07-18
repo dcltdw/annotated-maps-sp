@@ -42,7 +42,7 @@ Run the PostGIS extension via the dashboard or with `psql "$DATABASE_URL" -c "CR
 1. Log in at <https://dashboard.render.com> → **New +** → **Blueprint**.
 2. Connect your GitHub account if not already connected; select the
    `annotated-maps-sp` repo.
-<!-- fact: tier=pr cmd="yq '.services | length' render.yaml" expect="3" prose="three" -->
+<!-- fact: tier=pr cmd="yq '.services | length' render.yaml" expect="4" prose="three" -->
 3. Render detects `render.yaml` at the repo root and shows three services:
    - **`annotated-maps-api`** — Docker web service (Django/Ninja API)
    - **`annotated-maps-web`** — Static web service (React/Vite frontend)
