@@ -76,3 +76,4 @@ obs-checks: ## Static observability checks — same commands CI runs
 docs-checks: ## Documentation accuracy — same commands CI runs (ADR-0011)
 	python3 -m unittest discover -s .github/scripts
 	python3 .github/scripts/check_doc_links.py
+	python3 .github/scripts/check_doc_facts.py --tier all

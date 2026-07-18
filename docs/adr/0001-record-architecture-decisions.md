@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0001: Record architecture decisions
 - Status: accepted
 - Date: 2026-06-09

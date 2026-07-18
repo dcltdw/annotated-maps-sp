@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0003: PostGIS for geometry, stored as GeoJSON/WKB
 - Status: accepted
 - Date: 2026-06-09

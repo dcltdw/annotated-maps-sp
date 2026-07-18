@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # SLOs
 
 Service-level objectives for the Annotated Maps API, the recording rules and

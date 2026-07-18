@@ -4,16 +4,18 @@ Layer 1 of the documentation-accuracy practice (ADR-0011): every internal
 link and #anchor in every tracked Markdown file outside the docs/superpowers/
 archive must resolve. External URLs
 are NOT checked here — they belong to the scheduled workflow, which cannot
-gate a PR. `--list-external` prints them for that workflow to consume.
+gate a PR. `--list-external` prints them (diagnostic only; the scheduled
+workflow derives its own living-docs URL set).
 
 Exits 1 on failure, 0 on success.
 """
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
 
-from docs_common import tracked_md_files
+from docs_common import tracked_md_files, override_reason
 
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
@@ -104,6 +106,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--list-external", action="store_true",
                     help="print external URLs instead of checking internal links")
+    ap.add_argument("--allow-override", action="store_true",
+                    help="honor a Docs-Checks-Override line in $PR_BODY (PR runs only)")
     args = ap.parse_args()
 
     if args.list_external:
@@ -115,6 +119,15 @@ def main() -> None:
     for path in files:
         errors += check_file(path)
     if errors:
+        if args.allow_override:
+            reason = override_reason(os.environ.get("PR_BODY", ""))
+            if reason:
+                print(f"OVERRIDDEN ({len(errors)} failure(s)) — reason: {reason}")
+                print("Deferred, not erased: the main-push and scheduled runs ignore overrides.")
+                for e in errors:
+                    print(f"  warning: {e}")
+                return
+
         print("Doc link check failed:", file=sys.stderr)
         for e in errors:
             print(f"  {e}", file=sys.stderr)

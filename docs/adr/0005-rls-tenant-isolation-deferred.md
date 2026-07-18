@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0005: Tenant isolation via RLS, enforced when auth lands
 - Status: accepted
 - Date: 2026-06-09

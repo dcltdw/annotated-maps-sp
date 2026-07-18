@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # Kubernetes & Helm primer (this repo)
 
 ## 1. The mental model

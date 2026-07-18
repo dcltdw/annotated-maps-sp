@@ -72,3 +72,19 @@ delete the branch — with the squash-merge caveats). Repo-specific additions:
 - If it touched infra: verify the live AWS state matches `main`.
 - If it ends a demo cycle: confirm nothing billable is running (`aws eks
   list-clusters`, and the sweep at the end of `scripts/demo-down.sh`).
+
+## Documentation accuracy (ADR-0011)
+
+- Before any docs-touching PR: `make docs-checks` (links + registered facts —
+  the same commands CI runs).
+- Editing a number guarded by a `<!-- fact: ... -->` annotation? Update the
+  prose AND the annotation together; CI enforces both.
+- New load-bearing claim? Triage first — delete → soften → detie to a
+  CI-tested source → register — in that order (see
+  [ADR-0011](docs/adr/0011-documentation-accuracy-practice.md)).
+- Never edit dated/historical docs (`<!-- doc-status: dated -->`) to match
+  current code.
+- After milestone-sized merges, run `/docs-fact-check` (the monthly reminder
+  issue covers the calendar cadence).
+- Escape hatch when legitimately blocked mid-restructure:
+  `Docs-Checks-Override: <reason>` in the PR body — it defers, never erases.

@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0009: EKS over ECS (and Terraform over OpenTofu)
 - Status: accepted
 - Date: 2026-07-09

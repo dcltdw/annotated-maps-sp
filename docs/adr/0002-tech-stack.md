@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0002: Tech stack — Django + Ninja backend, React PWA frontend
 - Status: accepted
 - Date: 2026-06-09

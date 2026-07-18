@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0007: Database migrations run as Helm pre-upgrade hook Jobs
 - Status: accepted
 - Date: 2026-07-08

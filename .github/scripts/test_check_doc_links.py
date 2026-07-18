@@ -1,7 +1,12 @@
 """Tests for the Layer-1 doc link checker (ADR-0011)."""
+import contextlib
+import io
+import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import check_doc_links as mod
 
@@ -77,6 +82,30 @@ class LinkCheckTests(unittest.TestCase):
     def test_superpowers_archive_out_of_scope(self):
         self.assertFalse(mod.in_scope(Path("docs/superpowers/plans/x.md")))
         self.assertTrue(mod.in_scope(Path("docs/aws-primer.md")))
+
+
+class MainOverrideTests(unittest.TestCase):
+    def run_main(self, argv, env_body=""):
+        with mock.patch.object(sys, "argv", ["check_doc_links.py", *argv]), \
+                mock.patch.dict(os.environ, {"PR_BODY": env_body}), \
+                mock.patch.object(mod, "tracked_md_files",
+                                  return_value=[Path("fake.md")]), \
+                mock.patch.object(mod, "check_file",
+                                  return_value=["fake.md:1: broken link -> x"]), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            try:
+                mod.main()
+            except SystemExit as e:
+                return e.code
+            return 0
+
+    def test_valid_override_exits_zero(self):
+        self.assertEqual(
+            self.run_main(["--allow-override"], "Docs-Checks-Override: mid-restructure\n"), 0)
+
+    def test_failure_without_override_exits_one(self):
+        self.assertEqual(self.run_main([]), 1)
 
 
 if __name__ == "__main__":

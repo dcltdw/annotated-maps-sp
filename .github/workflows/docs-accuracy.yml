@@ -1,0 +1,59 @@
+name: docs-accuracy
+# ADR-0011: scheduled drift detection. Failures file an issue, never a red PR.
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # weekly — full mechanical suite vs main + external URLs
+    - cron: "0 9 1 * *"   # monthly — Layer-3 human review reminder
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift-checks:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 9 * * 1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq (pinned, like every other tool here)
+        run: |
+          sudo curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+      - name: Full mechanical suite vs main (links + all fact tiers)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 .github/scripts/check_doc_links.py
+          python3 .github/scripts/check_doc_facts.py --tier all
+      - name: External URL liveness (tolerant — the demo sleeps ~30 s)
+        run: python3 .github/scripts/check_external_urls.py
+      - name: File or update the tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create docs-accuracy --color D93F0B \
+            --description "docs drifted from reality (ADR-0011)" --force
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          EXISTING=$(gh issue list --label docs-accuracy --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "docs-accuracy: scheduled drift check failed" \
+              --label docs-accuracy \
+              --body "The scheduled documentation-accuracy run failed: $RUN_URL. Includes anything deferred past the PR gate via Docs-Checks-Override. See ADR-0011."
+          fi
+
+  review-reminder:
+    if: github.event.schedule == '0 9 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open the monthly Layer-3 review reminder
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" \
+            --title "Monthly docs fact-check review ($(date -u +%Y-%m))" \
+            --body "Run the Layer-3 review (/docs-fact-check — see ADR-0011). Close when the review lands."

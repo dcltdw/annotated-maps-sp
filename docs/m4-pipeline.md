@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # Milestone 4 — the one-button pipeline (evidence)
 
 A record of the capstone running for real: one dispatch that built the entire

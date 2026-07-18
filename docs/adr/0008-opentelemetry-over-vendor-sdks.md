@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0008: OpenTelemetry over vendor SDKs (direct OTLP export)
 - Status: accepted
 - Date: 2026-07-08

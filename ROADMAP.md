@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # Production-Engineering Roadmap
 
 Annotated Maps is a working, deployed product — a multi-tenant map-annotation platform ([Django](https://www.djangoproject.com/)/[PostGIS](https://postgis.net/) backend, Vite/TypeScript frontend) with a [live demo](https://annotated-maps-web.onrender.com/) you can use right now. This roadmap tracks the work of taking it from "solid deployed application" to **production-grade**: Kubernetes and Helm, AWS infrastructure as code, observability, and automated deployment pipelines.
@@ -34,7 +36,7 @@ The foundation the roadmap builds on. All of it is live in this repo today.
 3. Playwright end-to-end tests, including production-build guards
 4. Helm chart lint + template unit tests, plus a full chart install on `kind` (added in Milestone 1)
 5. Terraform `fmt`/`validate`/`tflint` and workflow lint (added in Milestones 3–4)
-6. Documentation accuracy — internal link/anchor integrity and registered doc-fact checks (ADR-0011)
+6. Documentation accuracy — internal link/anchor integrity and registered doc-fact checks ([ADR-0011](docs/adr/0011-documentation-accuracy-practice.md))
 
 On pull requests, a PR-rigor check on the description runs too. Nothing merges red.
 
