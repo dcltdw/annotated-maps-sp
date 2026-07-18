@@ -4,7 +4,8 @@ Layer 1 of the documentation-accuracy practice (ADR-0011): every internal
 link and #anchor in every tracked Markdown file outside the docs/superpowers/
 archive must resolve. External URLs
 are NOT checked here — they belong to the scheduled workflow, which cannot
-gate a PR. `--list-external` prints them for that workflow to consume.
+gate a PR. `--list-external` prints them (diagnostic only; the scheduled
+workflow derives its own living-docs URL set).
 
 Exits 1 on failure, 0 on success.
 """

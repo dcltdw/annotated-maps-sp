@@ -76,7 +76,13 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
       - name: Checker unit tests
         run: python3 -m unittest discover -s .github/scripts -v
-      - name: Doc link check (Layer 1 — internal links/anchors only)
+      - name: Doc link check (Layer 1)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 .github/scripts/check_doc_links.py --allow-override
+      - name: Doc link check (Layer 1 — main; overrides do not apply here)
+        if: github.event_name != 'pull_request'
         run: python3 .github/scripts/check_doc_links.py
       - name: Doc facts, pr tier (Layer 2)
         if: github.event_name == 'pull_request'
