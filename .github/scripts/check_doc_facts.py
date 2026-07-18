@@ -44,7 +44,7 @@ LIVING = {
 }
 
 # Workflow artifacts and templates: outside the taxonomy on purpose.
-STATUS_EXEMPT_PREFIXES = ("docs/superpowers/",)
+STATUS_EXEMPT_PREFIXES = ("docs/superpowers/", ".claude/")
 STATUS_EXEMPT = {
     "CLAUDE.md",
     ".github/pull_request_template.md",

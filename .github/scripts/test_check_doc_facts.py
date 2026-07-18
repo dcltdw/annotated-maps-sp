@@ -113,7 +113,10 @@ class TaxonomyTests(unittest.TestCase):
     def test_exempt_paths_skipped(self):
         self.write("docs/superpowers/plans/p.md", "no marker here\n")
         self.write("CLAUDE.md", "no marker here\n")
-        self.patch_tracked(["docs/superpowers/plans/p.md", "CLAUDE.md"])
+        self.write(".claude/commands/x.md", "no marker here\n")
+        self.patch_tracked(
+            ["docs/superpowers/plans/p.md", "CLAUDE.md", ".claude/commands/x.md"]
+        )
         self.assertEqual(mod.taxonomy_errors(), [])
 
     def test_clean_taxonomy_no_errors(self):
