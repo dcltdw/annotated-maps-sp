@@ -36,7 +36,7 @@ The foundation the roadmap builds on. All of it is live in this repo today.
 3. Playwright end-to-end tests, including production-build guards
 4. Helm chart lint + template unit tests, plus a full chart install on `kind` (added in Milestone 1)
 5. Terraform `fmt`/`validate`/`tflint` and workflow lint (added in Milestones 3–4)
-6. Documentation accuracy — internal link/anchor integrity and registered doc-fact checks (ADR-0011)
+6. Documentation accuracy — internal link/anchor integrity and registered doc-fact checks ([ADR-0011](docs/adr/0011-documentation-accuracy-practice.md))
 
 On pull requests, a PR-rigor check on the description runs too. Nothing merges red.
 
