@@ -10,10 +10,10 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 
 | Milestone | Technologies & practices | Status | Proof |
 |---|---|---|---|
-| [CI quality gates](#phase-0-already-shipped) | **GitHub Actions**, lint/type/test/e2e gates, **Playwright** | ✅ Shipped | [ci.yml](.github/workflows/ci.yml) · [runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
-| [Containerized backend](#phase-0-already-shipped) | **Docker**, **docker-compose**, **PostGIS** | ✅ Shipped | [Dockerfile](backend/Dockerfile) · [docker-compose.yml](backend/docker-compose.yml) |
-| [Declarative cloud deployment](#phase-0-already-shipped) | Blueprint-as-code, zero-downtime migrations, cron jobs | ✅ Shipped | [render.yaml](render.yaml) · [live demo](https://annotated-maps-web.onrender.com/) |
-| [Architecture as a written practice](#phase-0-already-shipped) | **ADRs**, design specs, production-concern triage | ✅ Shipped | [ADRs](docs/adr/) · [production lenses](docs/architecture/2026-06-09-production-lenses.md) · [specs](docs/superpowers/specs/) |
+| [CI quality gates](#phase-0--already-shipped) | **GitHub Actions**, lint/type/test/e2e gates, **Playwright** | ✅ Shipped | [ci.yml](.github/workflows/ci.yml) · [runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
+| [Containerized backend](#phase-0--already-shipped) | **Docker**, **docker-compose**, **PostGIS** | ✅ Shipped | [Dockerfile](backend/Dockerfile) · [docker-compose.yml](backend/docker-compose.yml) |
+| [Declarative cloud deployment](#phase-0--already-shipped) | Blueprint-as-code, zero-downtime migrations, cron jobs | ✅ Shipped | [render.yaml](render.yaml) · [live demo](https://annotated-maps-web.onrender.com/) |
+| [Architecture as a written practice](#phase-0--already-shipped) | **ADRs**, design specs, production-concern triage | ✅ Shipped | [ADRs](docs/adr/) · [production lenses](docs/architecture/2026-06-09-production-lenses.md) · [specs](docs/superpowers/specs/) |
 | [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | ✅ Shipped | [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) · [primer](docs/kubernetes-primer.md) · [CI runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
 | [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | ✅ Shipped | [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) · [dashboards-as-code](deploy/observability/dashboards/) · [SLOs](docs/slos.md) · [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) |
 | [3 — AWS infrastructure as code](#milestone-3--aws-infrastructure-as-code) | **Terraform**, **AWS EKS**, **IAM**/IRSA, **VPC** networking, ECR | ✅ Shipped | [demo run](docs/m3-demo-run.md) · [terraform](deploy/terraform/) · [ADR-0009](docs/adr/0009-eks-over-ecs.md) · [primer](docs/aws-primer.md) |
@@ -34,6 +34,7 @@ The foundation the roadmap builds on. All of it is live in this repo today.
 3. Playwright end-to-end tests, including production-build guards
 4. Helm chart lint + template unit tests, plus a full chart install on `kind` (added in Milestone 1)
 5. Terraform `fmt`/`validate`/`tflint` and workflow lint (added in Milestones 3–4)
+6. Documentation accuracy — internal link/anchor integrity and registered doc-fact checks (ADR-0011)
 
 On pull requests, a PR-rigor check on the description runs too. Nothing merges red.
 
