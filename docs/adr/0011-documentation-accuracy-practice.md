@@ -1,4 +1,5 @@
 <!-- doc-status: dated -->
+
 # ADR-0011: The documentation-accuracy practice — docs have tests
 
 - Status: accepted
