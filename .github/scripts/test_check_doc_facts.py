@@ -125,6 +125,20 @@ class TaxonomyTests(unittest.TestCase):
         self.patch_tracked(["docs/DEPLOY.md", "docs/adr/0001-x.md"])
         self.assertEqual(mod.taxonomy_errors(), [])
 
+    def test_non_utf8_doc_reported_not_raised(self):
+        Path("docs").mkdir(parents=True, exist_ok=True)
+        Path("docs/DEPLOY.md").write_bytes(b"<!-- doc-status: living -->\n\xff\xfe\n")
+        self.patch_tracked(["docs/DEPLOY.md"])
+        errors = mod.taxonomy_errors()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("not valid UTF-8", errors[0])
+
+    def test_tracked_file_vanishing_reported_not_raised(self):
+        self.patch_tracked(["docs/DEPLOY.md"])  # never written
+        errors = mod.taxonomy_errors()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("file not found", errors[0])
+
 
 class AllowlistTests(unittest.TestCase):
     def test_pr_tier_allows_repo_readers(self):
@@ -228,7 +242,42 @@ class OverrideTests(unittest.TestCase):
         self.assertIsNone(override_reason("Docs-Checks-Override:   \n"))
 
 
+class MainMissingLivingDocTests(unittest.TestCase):
+    """A LIVING entry renamed or deleted must be a reported error, not a
+    FileNotFoundError traceback out of main()."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(os.chdir, os.getcwd())
+
+    def run_main(self):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "argv", ["check_doc_facts.py"]), \
+                mock.patch.object(mod, "repo_root", return_value=self.dir), \
+                mock.patch.object(mod, "taxonomy_errors", return_value=[]), \
+                mock.patch.object(mod, "LIVING", {"docs/renamed-away.md"}), \
+                contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(err):
+            try:
+                mod.main()
+                code = 0
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue() + err.getvalue()
+
+    def test_missing_living_doc_reported_cleanly(self):
+        code, output = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("docs/renamed-away.md", output)
+        self.assertIn("file not found", output)
+
+
 class MainOverrideTests(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(os.chdir, os.getcwd())
+
     def run_main(self, argv, env_body=""):
         with mock.patch.object(sys, "argv", ["check_doc_facts.py", *argv]), \
                 mock.patch.dict(os.environ, {"PR_BODY": env_body}), \

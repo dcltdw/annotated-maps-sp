@@ -83,8 +83,68 @@ class LinkCheckTests(unittest.TestCase):
         self.assertFalse(mod.in_scope(Path("docs/superpowers/plans/x.md")))
         self.assertTrue(mod.in_scope(Path("docs/aws-primer.md")))
 
+    def test_reference_style_link_reported(self):
+        doc = self.write("doc.md", "See [the spec][spec].\n\n[spec]: other.md\n")
+        errors = mod.check_file(doc)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("reference-style link", errors[0])
+        self.assertIn("[the spec][spec]", errors[0])
+        self.assertIn("doc.md:1", errors[0])
+
+    def test_collapsed_reference_style_link_reported(self):
+        doc = self.write("doc.md", "See [spec][].\n")
+        self.assertEqual(len(mod.check_file(doc)), 1)
+
+    def test_reference_style_link_with_code_span_text_reported(self):
+        doc = self.write("doc.md", "See [`render.yaml`][cfg].\n")
+        self.assertEqual(len(mod.check_file(doc)), 1)
+
+    def test_reference_style_image_reported(self):
+        doc = self.write("doc.md", "![shot][img]\n")
+        self.assertEqual(len(mod.check_file(doc)), 1)
+
+    def test_index_expressions_in_code_spans_are_not_reference_links(self):
+        # The false-positive shape: subscripting inside an inline code span.
+        doc = self.write("doc.md", "Read `calls[0][1]` and `d[\"a\"][\"b\"]`.\n")
+        self.assertEqual(mod.check_file(doc), [])
+
+    def test_reference_style_link_inside_code_fence_ignored(self):
+        doc = self.write("doc.md", "```\n[text][ref]\n```\n")
+        self.assertEqual(mod.check_file(doc), [])
+
+    def test_inline_link_with_code_span_text_still_checked(self):
+        # Code spans are stripped only for the reference-link scan: link text
+        # like [`state.tf`](path) is common and must stay verified.
+        doc = self.write("doc.md", "See [`nope.tf`](nope.tf).\n")
+        errors = mod.check_file(doc)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("broken link", errors[0])
+
+    def test_non_utf8_file_reported_not_raised(self):
+        doc = self.dir / "bad.md"
+        doc.write_bytes(b"# Title\n\n\xff\xfe not utf-8\n")
+        errors = mod.check_file(doc)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("not valid UTF-8", errors[0])
+        self.assertIn("bad.md", errors[0])
+
+    def test_missing_file_reported_not_raised(self):
+        errors = mod.check_file(self.dir / "gone.md")
+        self.assertEqual(len(errors), 1)
+        self.assertIn("file not found", errors[0])
+
+    def test_non_utf8_link_target_reported_not_raised(self):
+        (self.dir / "target.md").write_bytes(b"# T\n\xff\xfe\n")
+        doc = self.write("doc.md", "See [t](target.md#heading).\n")
+        errors = mod.check_file(doc)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("not valid UTF-8", errors[0])
+
 
 class MainOverrideTests(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(os.chdir, os.getcwd())
+
     def run_main(self, argv, env_body=""):
         with mock.patch.object(sys, "argv", ["check_doc_links.py", *argv]), \
                 mock.patch.dict(os.environ, {"PR_BODY": env_body}), \
