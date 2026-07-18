@@ -70,10 +70,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install yq (pinned, like every other tool here)
+        run: |
+          sudo curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
       - name: Checker unit tests
         run: python3 -m unittest discover -s .github/scripts -v
       - name: Doc link check (Layer 1 — internal links/anchors only)
         run: python3 .github/scripts/check_doc_links.py
+      - name: Doc facts, pr tier (Layer 2)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 .github/scripts/check_doc_facts.py --tier pr --allow-override
+      - name: Doc facts, pr tier (Layer 2 — main; overrides do not apply here)
+        if: github.event_name != 'pull_request'
+        run: python3 .github/scripts/check_doc_facts.py --tier pr
 
   helm:
     runs-on: ubuntu-latest
