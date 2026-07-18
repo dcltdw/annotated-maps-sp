@@ -1,4 +1,5 @@
 """Shared helpers for the documentation-accuracy checkers (ADR-0011)."""
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -55,3 +56,19 @@ def override_reason(body: str) -> str | None:
     and scheduled runs ignore them — and require a non-empty reason."""
     m = _OVERRIDE_RE.search(body or "")
     return m.group(1) if m else None
+
+
+def overridden(errors: list[str], allow: bool) -> bool:
+    """Whether an accepted PR-body override should downgrade `errors` to
+    warnings. Prints the deferral notice when it does. Shared by both
+    checkers so the wording and the accept/reject rule cannot drift apart."""
+    if not allow:
+        return False
+    reason = override_reason(os.environ.get("PR_BODY", ""))
+    if not reason:
+        return False
+    print(f"OVERRIDDEN ({len(errors)} failure(s)) — reason: {reason}")
+    print("Deferred, not erased: the main-push and scheduled runs ignore overrides.")
+    for e in errors:
+        print(f"  warning: {e}")
+    return True

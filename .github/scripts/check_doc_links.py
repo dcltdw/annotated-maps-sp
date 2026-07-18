@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 from docs_common import (
-    DocReadError, read_doc_text, repo_root, tracked_md_files, override_reason,
+    DocReadError, read_doc_text, repo_root, tracked_md_files, overridden,
 )
 
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
@@ -154,15 +154,8 @@ def main() -> None:
     for path in files:
         errors += check_file(path)
     if errors:
-        if args.allow_override:
-            reason = override_reason(os.environ.get("PR_BODY", ""))
-            if reason:
-                print(f"OVERRIDDEN ({len(errors)} failure(s)) — reason: {reason}")
-                print("Deferred, not erased: the main-push and scheduled runs ignore overrides.")
-                for e in errors:
-                    print(f"  warning: {e}")
-                return
-
+        if overridden(errors, args.allow_override):
+            return
         print("Doc link check failed:", file=sys.stderr)
         for e in errors:
             print(f"  {e}", file=sys.stderr)
