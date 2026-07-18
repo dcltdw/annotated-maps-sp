@@ -1445,3 +1445,7 @@ Open PR D (repo headings). After approval + merge: post-merge ritual, move the b
   Resolution: added to `STATUS_EXEMPT` (component READMEs ride with their
   code; `dated` would wrongly freeze them). Also: local `make docs-checks`
   needs `yq` installed (CI installs it pinned in Task 7); noted for ADR-0011.
+- **Task 9:** the plan missed that `.claude/commands/docs-fact-check.md` is
+  itself a tracked `.md`, so the taxonomy checker demanded a marker of it.
+  Resolution: `.claude/` added to `STATUS_EXEMPT_PREFIXES` (agent tooling is
+  outside the doc taxonomy, like the PR template and the superpowers archive).
