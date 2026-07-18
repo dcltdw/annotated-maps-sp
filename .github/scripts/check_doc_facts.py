@@ -49,6 +49,9 @@ STATUS_EXEMPT = {
     "CLAUDE.md",
     ".github/pull_request_template.md",
     "docs/adr/0000-template.md",
+    # Component READMEs ride with their code, outside the audited doc set.
+    "frontend/README.md",
+    "scripts/README.md",
 }
 
 STATUS_RE = re.compile(r"<!--\s*doc-status:\s*(living|dated|historical)\s*-->")

@@ -1,5 +1,3 @@
-<!-- doc-status: dated -->
-
 # Dev scripts
 
 Standalone helper scripts (stdlib-only Python). Run them from the repo root.

@@ -1,5 +1,3 @@
-<!-- doc-status: dated -->
-
 # Annotated Maps — Frontend
 
 React + TypeScript PWA (Vite) for Annotated Maps. See the [root README](../README.md) for full setup and the design docs under `docs/`.
