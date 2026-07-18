@@ -22,3 +22,5 @@ seed_preview.html
 *.tfstate
 *.tfstate.backup
 *.tfplan
+amazon-notes.txt
+neon-api-key.txt
