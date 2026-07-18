@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # Lessons learned — bugs the verification loop caught
 
 A running log of the non-obvious bugs found while building the

@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0006: Expand-contract (backward-compatible) migrations
 - Status: accepted
 - Date: 2026-06-09

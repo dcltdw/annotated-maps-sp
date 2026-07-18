@@ -1,3 +1,5 @@
+<!-- doc-status: historical -->
+
 # Production Lenses & Architectural Concerns
 
 - **Date:** 2026-06-09

@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # AWS & Terraform primer (this repo)
 
 Companion to the [Kubernetes & Helm primer](kubernetes-primer.md): that
@@ -88,6 +90,9 @@ deploy/terraform/
     └── policies/
         └── alb-controller-iam-policy.json   vendored controller IAM policy
 ```
+
+<!-- fact: tier=pr cmd="ls deploy/terraform/demo/*.tf | wc -l" expect="9" prose="nine" -->
+The demo stack is nine `.tf` files:
 
 | File | What it does |
 |---|---|

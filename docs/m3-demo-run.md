@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # Milestone 3 — live demo run (evidence)
 
 A record of standing the AWS environment up for real, verifying it end-to-end,

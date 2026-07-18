@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # Annotated Maps
 
 [![Annotated Maps — section-level map annotations, live Boston demo](docs/img/hero.png)](https://annotated-maps-web.onrender.com/)

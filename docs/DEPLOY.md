@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # Deploy Runbook — Annotated Maps Public Sandbox
 
 This runbook covers a first-time deploy of the Annotated Maps public sandbox to
@@ -40,6 +42,7 @@ Run the PostGIS extension via the dashboard or with `psql "$DATABASE_URL" -c "CR
 1. Log in at <https://dashboard.render.com> → **New +** → **Blueprint**.
 2. Connect your GitHub account if not already connected; select the
    `annotated-maps-sp` repo.
+<!-- fact: tier=pr cmd="yq '.services | length' render.yaml" expect="3" prose="three" -->
 3. Render detects `render.yaml` at the repo root and shows three services:
    - **`annotated-maps-api`** — Docker web service (Django/Ninja API)
    - **`annotated-maps-web`** — Static web service (React/Vite frontend)
@@ -121,6 +124,7 @@ wait for the next auto-deploy from a git push).
 
 The API service runs migrations and rebuilds the demo seed before every deploy.
 Render does not run `preDeployCommand` through a shell (so `&&` can't chain), so
+<!-- fact: tier=pr cmd="grep -c 'preDeployCommand: sh predeploy.sh' render.yaml" expect="1" prose="predeploy" -->
 `render.yaml` sets `preDeployCommand: sh predeploy.sh`, and `backend/predeploy.sh` runs:
 
 ```

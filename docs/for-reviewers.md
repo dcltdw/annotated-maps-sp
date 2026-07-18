@@ -1,3 +1,5 @@
+<!-- doc-status: living -->
+
 # Evaluating this repo
 
 A three-minute map for anyone assessing this as engineering work. Everything
@@ -50,6 +52,7 @@ Everything below links to the evidence behind it, including the parts where
 that evidence is a record of something going wrong.
 
 **Teardown was proven by failure, not argued.** The pipeline's central claim is
+<!-- fact: tier=scheduled cmd="python3 .github/scripts/fact_demo_runs.py" expect="runs=5 red=3" prose="Three of the five" -->
 that a red run can't strand billable infrastructure. **Three of the five live
 runs went red — and all five tore themselves down to zero, unattended**,
 including one that failed with a live cluster and two nodes already running.
@@ -136,6 +139,7 @@ gh workflow run demo-pipeline.yml --ref main   # ~35 min, ~$0.25
 gh run watch
 ```
 
+<!-- fact: tier=pr cmd="yq '.on.schedule[0].cron' .github/workflows/demo-pipeline.yml" expect="0 14 3 * *" prose="3rd of each month" -->
 It also runs unattended on the 3rd of each month, so drift surfaces on a
 schedule rather than the next time someone needs it to work — which means the
 [Actions history](https://github.com/dcltdw/annotated-maps-sp/actions) keeps

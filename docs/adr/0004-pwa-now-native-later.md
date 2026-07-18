@@ -1,3 +1,5 @@
+<!-- doc-status: dated -->
+
 # ADR-0004: Responsive PWA now, native client later
 - Status: accepted
 - Date: 2026-06-09
