@@ -59,9 +59,23 @@ Two axes, kept deliberately separate:
 
 ## Index
 
-This section lists explainers as they land, grouped Foundations-first within each
-domain. It is empty until the first content explainer merges (the directory
-scaffolding ships ahead of the writing it will hold).
+Explainers as they land, Foundations-first.
 
-<!-- Maintenance: when adding an explainer, add a linked entry here under its
-     domain — foundation-* items first, then walkthroughs. -->
+<!-- Maintenance: when adding an explainer, add a linked entry here — under
+     Foundations if its filename is foundation-*, otherwise under Walkthroughs
+     with its domain as the lead-in. -->
+
+### Foundations (read first)
+
+- [AWS IAM from zero](infra/foundation-aws-iam.md) *(infra)* — accounts, roles,
+  ARNs, the Allow/Deny model, assuming a role, instance profiles and instance
+  metadata, `PassRole`, service-linked roles, permissions boundaries, and OIDC
+  federation. The identity vocabulary the infra walkthroughs assume.
+
+### Walkthroughs
+
+- **infra** — [The deployer permissions boundary](infra/deployer-permissions-boundary.md):
+  the IAM privilege-escalation problem in the AWS demo pipeline (issue #109) and
+  the permissions-boundary design that closes it — what
+  "AdministratorAccess-equivalent" really means here, the "Path B" escalation
+  told as a story, and a guided reading of every piece of the fix.
