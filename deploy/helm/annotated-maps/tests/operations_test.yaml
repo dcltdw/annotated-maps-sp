@@ -13,6 +13,10 @@ tests:
       - contains:
           path: spec.jobTemplate.spec.template.spec.containers[0].envFrom
           content: { secretRef: { name: RELEASE-NAME-annotated-maps-secrets } }
+  - it: reaper job is bounded by activeDeadlineSeconds so a hang can't block Forbid-concurrency runs (#101)
+    template: templates/reaper-cronjob.yaml
+    asserts:
+      - equal: { path: spec.jobTemplate.spec.activeDeadlineSeconds, value: 300 }
   - it: hpa targets the api deployment between 2 and 4 replicas
     template: templates/hpa.yaml
     asserts:

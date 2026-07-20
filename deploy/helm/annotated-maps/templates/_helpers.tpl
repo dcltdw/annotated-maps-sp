@@ -34,3 +34,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- fail "secrets.databaseUrl is required when postgres.enabled=false" -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Django SECRET_KEY. Symmetric to databaseUrl above: fail fast rather than ship an
+empty SECRET_KEY, so a prod/demo install that forgets to supply one is rejected
+at render time instead of silently starting with no key (#102). The dev
+values.yaml carries an insecure default, so the in-cluster dev path renders.
+*/}}
+{{- define "annotated-maps.djangoSecretKey" -}}
+{{- if .Values.secrets.djangoSecretKey -}}
+{{- .Values.secrets.djangoSecretKey -}}
+{{- else -}}
+{{- fail "secrets.djangoSecretKey is required (set it via --set secrets.djangoSecretKey=... or a values file)" -}}
+{{- end -}}
+{{- end }}

@@ -13,6 +13,10 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 1
+      # Bound the job so a hung reap can't sit forever — with concurrencyPolicy:
+      # Forbid, a stuck job would block every future scheduled run (#101).
+      # Matches the migrate hook's 300s.
+      activeDeadlineSeconds: 300
       template:
         metadata:
           labels:
