@@ -29,8 +29,9 @@ data "aws_iam_policy_document" "alb_controller_trust" {
 }
 
 resource "aws_iam_role" "alb_controller" {
-  name               = "annotated-maps-alb-controller"
-  assume_role_policy = data.aws_iam_policy_document.alb_controller_trust.json
+  name                 = "annotated-maps-alb-controller"
+  assume_role_policy   = data.aws_iam_policy_document.alb_controller_trust.json
+  permissions_boundary = local.deployer_boundary_arn # issue #109
 }
 
 resource "aws_iam_role_policy" "alb_controller" {
