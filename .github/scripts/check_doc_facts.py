@@ -31,7 +31,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from docs_common import tracked_md_files, override_reason
+from docs_common import (
+    DocReadError, read_doc_text, repo_root, tracked_md_files, override_reason,
+)
 
 LIVING = {
     "README.md",
@@ -82,7 +84,7 @@ class Fact:
 
 
 def doc_status(path: Path) -> str | None:
-    head = "\n".join(path.read_text(encoding="utf-8").splitlines()[:10])
+    head = "\n".join(read_doc_text(path).splitlines()[:10])
     m = STATUS_RE.search(head)
     return m.group(1) if m else None
 
@@ -95,7 +97,7 @@ def in_status_scope(path: Path) -> bool:
 
 
 def facts_in(path: Path):
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = read_doc_text(path).splitlines()
     for i, line in enumerate(lines):
         m = FACT_RE.search(line)
         if m:
@@ -117,7 +119,12 @@ def taxonomy_errors() -> list[str]:
     for path in tracked_md_files():
         if not in_status_scope(path):
             continue
-        status = doc_status(path)
+        try:
+            status = doc_status(path)
+            statused_facts = [] if status == "living" else list(facts_in(path))
+        except DocReadError as e:
+            errors.append(str(e))
+            continue
         if status is None:
             errors.append(f"{path}: missing <!-- doc-status: ... --> marker in first 10 lines")
             continue
@@ -126,7 +133,7 @@ def taxonomy_errors() -> list[str]:
         if str(path) not in LIVING and status == "living":
             errors.append(f"{path}: marked living but not in the LIVING set")
         if status != "living":
-            for f in facts_in(path):
+            for f in statused_facts:
                 errors.append(
                     f"{path}:{f.lineno}: fact annotation in a {status} doc — "
                     "facts belong only in living docs"
@@ -221,11 +228,21 @@ def main() -> None:
                     help="honor a Docs-Checks-Override line in $PR_BODY (PR runs only)")
     args = ap.parse_args()
 
+    # Fact commands are written repo-relative (`yq '...' render.yaml`), so the
+    # checker anchors cwd to the repo root rather than trusting its caller's.
+    os.chdir(repo_root())
+
     errors = taxonomy_errors()
     n_facts = 0
     for name in sorted(LIVING):
         path = Path(name)
-        for fact in facts_in(path):
+        try:
+            facts = list(facts_in(path))
+        except DocReadError as e:
+            # A LIVING entry renamed or deleted without updating the set.
+            errors.append(str(e))
+            continue
+        for fact in facts:
             if args.tier != "all" and fact.tier != args.tier:
                 continue
             n_facts += 1

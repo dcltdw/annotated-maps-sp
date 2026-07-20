@@ -5,8 +5,14 @@ verification runs — later cron/dispatch runs must not shift this record."""
 import json
 import subprocess
 
+# The createdAt filter below is the freeze, but it only works on runs the
+# query actually returns: `gh run list` returns the N *most recent* runs, so a
+# limit smaller than the lifetime run count would eventually push the frozen
+# pre-2026-07-16 set off the end and silently shrink the record to runs=0.
+# The limit therefore has to stay comfortably above the total number of
+# demo-pipeline runs ever, which the monthly cron grows by ~1.
 out = subprocess.run(
-    ["gh", "run", "list", "--workflow", "demo-pipeline.yml", "--limit", "100",
+    ["gh", "run", "list", "--workflow", "demo-pipeline.yml", "--limit", "1000",
      "--json", "conclusion,createdAt"],
     capture_output=True, text=True, check=True,
 ).stdout

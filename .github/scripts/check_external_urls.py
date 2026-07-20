@@ -2,8 +2,10 @@
 """Scheduled-only (ADR-0011): external-URL liveness for the LIVING docs.
 Never a PR gate — the public demo sleeps and takes ~30 s to wake, so this
 retries patiently and only the scheduled workflow runs it."""
+import http.client
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -19,12 +21,13 @@ def alive(url: str) -> bool:
     req = urllib.request.Request(url, headers={"User-Agent": "docs-accuracy-check"})
     for attempt in range(ATTEMPTS):
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
-                if resp.status < 400:
-                    return True
-        except Exception as e:
+            # urlopen raises HTTPError for 4xx/5xx, so reaching here is a pass.
+            with urllib.request.urlopen(req, timeout=TIMEOUT_S):
+                return True
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
             print(f"  attempt {attempt + 1}/{ATTEMPTS} for {url}: {e}")
-        time.sleep(SLEEP_BETWEEN_S)
+        if attempt < ATTEMPTS - 1:  # nothing left to wait for after the last try
+            time.sleep(SLEEP_BETWEEN_S)
     return False
 
 
