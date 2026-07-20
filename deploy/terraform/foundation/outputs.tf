@@ -14,3 +14,7 @@ output "alerts_topic_arn" {
 output "deployer_role_arn" {
   value = aws_iam_role.deployer.arn
 }
+
+output "deployer_boundary_arn" {
+  value = aws_iam_policy.deployer_boundary.arn
+}
