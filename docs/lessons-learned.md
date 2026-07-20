@@ -9,16 +9,16 @@ the ephemeral pipeline), and the lesson each one carries. It complements the
 things that were wrong and how they surfaced.
 
 Each entry names **how it was found** — because that's the interesting part.
-Of the twenty-one below:
+Of the twenty-three below:
 
 | Found via | Count |
 |---|---|
-| Only when the real thing ran (a live deploy or end-to-end verification) | 9 |
+| Only when the real thing ran (a live deploy or end-to-end verification) | 10 |
 | An adversarial code review, before it could bite | 7 |
 | CI, after passing locally | 2 |
 | A security gate doing its job | 1 |
 | **Reading a green run's own artifact** | 1 |
-| Anticipated in design | 1 |
+| Anticipated in design | 2 |
 | **Unit tests** | **0** |
 
 They all lived at **integration seams** (a Helm hook boundary, an HTTP `Host`
@@ -197,6 +197,45 @@ the artifact is** (#19).
 - **Fix:** rewrite the flagged line as a plain `if` (correct under every version, rather than suppressed), and pin CI to `shellcheck v0.11.0` like every other linter here (terraform, tflint, kubeconform, promtool, actionlint).
 - **Takeaway:** an unpinned linter is a gate whose rules change without a commit. If local and CI can disagree about what passes, local verification is advisory — and one unpinned tool in an otherwise-pinned toolchain is the one that will bite.
 
+
+## Milestone 4 follow-up — the permissions boundary (#109)
+
+### 22. The obvious live test exercised the wrong principal
+- **Found via:** planning the live verification — the blind spot was reasoned out before the run, then confirmed by it.
+
+The fix for Path B (ADR-0012) is a set of `Deny` statements on the
+`annotated-maps-deployer` role. The natural way to verify it is `make demo-up`
+against the real account — but `demo-up` runs `terraform apply` as the
+**operator** (an `AdministratorAccess` SSO identity), not as the deployer, and
+the deployer's trust policy admits **only** GitHub OIDC, so an operator cannot
+`AssumeRole` into it. A local `demo-up` therefore proves the boundary *ceiling*
+doesn't break the cluster and exercises **none** of the Deny statements — the
+entire security change is invisible to it. Proving the Denys bite needed
+`aws iam simulate-principal-policy --policy-source-arn <deployer>` for the
+allow/deny matrix (create-without-boundary → `explicitDeny`,
+create-with-boundary → `allowed`, boundary-policy rewrite → `explicitDeny`),
+which evaluates the deployer's identity policy without assuming the role.
+**Takeaway:** the obvious end-to-end test can run as the *wrong principal* and
+silently skip the whole control under test. When you can't assume the identity
+you're securing, the IAM policy simulator is how you exercise it — two
+complementary proofs split by principal: `demo-up` (operator) for "the cap
+doesn't break the cluster," the simulator (deployer) for "the Denys bite."
+
+### 23. `demo-up` can't run headless — a secret read wants a TTY
+- **Found via:** the live run — a non-interactive `demo-up` died at the app-deploy step after the cluster was already up.
+
+`scripts/demo-app-deploy.sh`'s "app secrets" step reads the Neon `DATABASE_URL`
+from `$DB_URL_FILE` when set, and otherwise falls back to an interactive
+`read -r -s -p` prompt. Run headless with `DB_URL_FILE` unset, that `read` hits
+EOF and fails under `set -e` — and it fails **after** `terraform apply` has
+already stood up the whole cluster, so the meter is running when the run aborts.
+The infra came up clean; only the app deploy was blocked, by the environment,
+not the boundary (the run logged zero `AccessDenied`). **Takeaway:** a script
+that is "CI-ready" can still carry an interactive fallback that only bites when
+it's run headless *outside* CI — and this one fails past the expensive step. For
+an unattended `demo-up`, provide the Neon URL non-interactively via
+`DB_URL_FILE`; the prompt is a convenience for a human at a terminal, not a
+headless path.
 
 ## The meta-lesson
 
