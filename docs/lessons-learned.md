@@ -9,11 +9,11 @@ the ephemeral pipeline), and the lesson each one carries. It complements the
 things that were wrong and how they surfaced.
 
 Each entry names **how it was found** — because that's the interesting part.
-Of the twenty-three below:
+Of the twenty-four below:
 
 | Found via | Count |
 |---|---|
-| Only when the real thing ran (a live deploy or end-to-end verification) | 10 |
+| Only when the real thing ran (a live deploy or end-to-end verification) | 11 |
 | An adversarial code review, before it could bite | 7 |
 | CI, after passing locally | 2 |
 | A security gate doing its job | 1 |
@@ -198,7 +198,7 @@ the artifact is** (#19).
 - **Takeaway:** an unpinned linter is a gate whose rules change without a commit. If local and CI can disagree about what passes, local verification is advisory — and one unpinned tool in an otherwise-pinned toolchain is the one that will bite.
 
 
-## Milestone 4 follow-up — the permissions boundary (#109)
+## Milestone 4 follow-ups
 
 ### 22. The obvious live test exercised the wrong principal
 - **Found via:** planning the live verification — the blind spot was reasoned out before the run, then confirmed by it.
@@ -236,6 +236,23 @@ it's run headless *outside* CI — and this one fails past the expensive step. F
 an unattended `demo-up`, provide the Neon URL non-interactively via
 `DB_URL_FILE`; the prompt is a convenience for a human at a terminal, not a
 headless path.
+
+### 24. A "graceful" error path that handled only one of two failure modes
+- **Found via:** live use — running `make demo-cost` to pull the real cost figure.
+
+`demo-cost.sh` filtered near-zero services with a JMESPath comparison,
+`Amount > 0.001`. PR #52 had already made the tool graceful for the **no-data**
+case — a new account's `DataUnavailableException` falls back to an estimate and
+exits 0. But Cost Explorer returns `Amount` as a **string**, and a newer awscli
+refuses `string > number` (*"'>' not supported between instances of 'str' and
+'float'"*) where older builds silently coerced — so the tool broke for the
+**has-data** case, the one it exists to serve, while the no-data path kept
+working. The graceful handler made the failure *look* covered. The fix (#115)
+moves the threshold out of JMESPath into awk, whose numeric context coerces the
+string. **Takeaway:** a graceful path that catches one failure mode is easy to
+mistake for robustness — it handles the case you thought of and silently exposes
+the one you didn't. When you add a fallback for error X, enumerate the *other*
+ways the same step can fail; "handles errors" is not "handles this error."
 
 ## The meta-lesson
 
