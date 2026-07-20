@@ -1,7 +1,7 @@
 <!-- doc-status: dated -->
 
 # ADR-0010: The demo pipeline's apply role — broad by necessity, AdministratorAccess-equivalent by consequence
-- Status: accepted
+- Status: accepted; Path-B acceptance superseded by ADR-0012
 - Date: 2026-07-15
 
 ## Context

@@ -11,7 +11,8 @@
 # role, attach AdministratorAccess, pass it to EC2, and read admin credentials
 # off instance metadata). That is an accepted risk — the account is dedicated
 # and disposable and the only trigger is maintainer-only — and ADR-0010
-# discloses it in full. A permissions boundary is the real fix and is ticketed.
+# discloses it in full. The permissions boundary that closes Path B is now
+# implemented (boundary.tf + the Deny block below; issue #109, ADR-0012).
 #
 # Trust: exactly one OIDC subject — the unprotected `aws-deploy` GitHub
 # Environment. workflow_dispatch/schedule can't be triggered by forks and
@@ -165,8 +166,9 @@ data "aws_iam_policy_document" "deployer_permissions" {
   # attach AdministratorAccess, pass it to EC2, read creds off IMDS) still
   # yields admin as a DIFFERENT principal, which can then strip this Deny.
   # One API call becomes ~4 plus an instance boot. Worth having — it is what
-  # any scanner flags first — but see ADR-0010; the permissions boundary that
-  # actually closes Path B is ticketed.
+  # any scanner flags first — but see ADR-0010. The permissions boundary that
+  # actually closes Path B is implemented in boundary.tf and the DenyRoleCreate
+  # WithoutBoundary/DenyGrantWithoutBoundary statements below (ADR-0012).
   statement {
     sid    = "NoSelfEscalation"
     effect = "Deny"
@@ -179,7 +181,7 @@ data "aws_iam_policy_document" "deployer_permissions" {
       "iam:DeleteRolePolicy",
       # Widen its own trust to admit new principals
       "iam:UpdateAssumeRolePolicy",
-      # Escape a permissions boundary (the ticketed Path-B fix) once one exists
+      # Escape the permissions boundary (the Path-B fix, now in boundary.tf)
       "iam:PutRolePermissionsBoundary",
       "iam:DeleteRolePermissionsBoundary",
       # Delete-and-recreate itself with a fresh policy
@@ -194,6 +196,86 @@ data "aws_iam_policy_document" "deployer_permissions" {
     # assume_role_policy sources from a separate document, so role →
     # permissions doc → role policy is a DAG.)
     resources = [aws_iam_role.deployer.arn]
+  }
+
+  # --- Path B closure (issue #109, ADR-0012) --------------------------------
+  # NoSelfEscalation above stops the deployer escalating ITSELF. These force a
+  # permissions boundary onto every role the deployer CREATES, so laundering
+  # into a new admin role (Path B) is capped to the demo's service surface —
+  # no iam:*, no sns/budgets/s3, so it cannot strip a Deny or delete a
+  # guardrail. Precise mutating actions only — never iam:* — so iam:GetRole
+  # (the aws_iam_session_context scar) and iam:CreateServiceLinkedRole (the SLR
+  # scar) stay allowed by the statements above.
+
+  # Every role the deployer creates must be born under the boundary. An absent
+  # iam:PermissionsBoundary key satisfies StringNotEquals, so a CreateRole that
+  # omits the boundary is denied. This is the AWS-documented delegation pattern.
+  statement {
+    sid       = "DenyRoleCreateWithoutBoundary"
+    effect    = "Deny"
+    actions   = ["iam:CreateRole"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "iam:PermissionsBoundary"
+      values   = [aws_iam_policy.deployer_boundary.arn]
+    }
+  }
+
+  # Granting permissions to a role that lacks the boundary is denied. On these
+  # actions iam:PermissionsBoundary reflects the TARGET role's attached
+  # boundary, so empowering any non-bounded role is blocked; the three demo
+  # roles carry the boundary, so their legitimate grants still succeed.
+  statement {
+    sid       = "DenyGrantWithoutBoundary"
+    effect    = "Deny"
+    actions   = ["iam:AttachRolePolicy", "iam:PutRolePolicy"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "iam:PermissionsBoundary"
+      values   = [aws_iam_policy.deployer_boundary.arn]
+    }
+  }
+
+  # Removing a role's boundary is never legitimate for this stack. Unconditional
+  # Deny (NoSelfEscalation already covers the deployer's own ARN; this covers
+  # every other role).
+  statement {
+    sid       = "DenyBoundaryRemoval"
+    effect    = "Deny"
+    actions   = ["iam:DeleteRolePermissionsBoundary"]
+    resources = ["*"]
+  }
+
+  # Setting/replacing a boundary is allowed ONLY to the canonical ARN, so
+  # terraform can adopt the boundary on a role that didn't get it at
+  # CreateRole time, but a swap to a weaker boundary is denied.
+  statement {
+    sid       = "DenyBoundarySwap"
+    effect    = "Deny"
+    actions   = ["iam:PutRolePermissionsBoundary"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "iam:PermissionsBoundary"
+      values   = [aws_iam_policy.deployer_boundary.arn]
+    }
+  }
+
+  # The boundary policy is named inside the annotated-maps-* prefix, so
+  # IamWithinPrefix would otherwise let the deployer rewrite its default version
+  # — a one-call bypass of this entire design. Deny editing it.
+  statement {
+    sid    = "BoundaryPolicyImmutable"
+    effect = "Deny"
+    actions = [
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+      "iam:DeletePolicy",
+    ]
+    resources = [aws_iam_policy.deployer_boundary.arn]
   }
 }
 

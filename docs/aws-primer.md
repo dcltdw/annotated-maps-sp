@@ -71,9 +71,10 @@ deploy/terraform/
 │   ├── state.tf               S3 state bucket (+ versioning, encryption)
 │   ├── iam-ci.tf              GitHub OIDC provider + read-only CI role
 │   ├── iam-deployer.tf        apply-capable deploy role (ADR-0010)
+│   ├── boundary.tf            permissions boundary for deployer-created roles (ADR-0012)
 │   ├── budgets.tf             cost guardrail
 │   ├── sns.tf                 teardown-failure alert topic
-│   ├── outputs.tf             state_bucket, ci_role_arn, deployer_role_arn, alerts_topic_arn
+│   ├── outputs.tf             state_bucket, ci_role_arn, deployer_role_arn, alerts_topic_arn, deployer_boundary_arn
 │   ├── providers.tf           AWS provider + default tags
 │   ├── variables.tf           region / alert email
 │   └── versions.tf            Terraform + provider version pins
@@ -82,6 +83,7 @@ deploy/terraform/
     ├── eks.tf                 EKS cluster + node group
     ├── ecr.tf                 image repos
     ├── iam-irsa.tf            ALB-controller IRSA role
+    ├── boundary.tf            deployer boundary ARN (by-convention) for created roles
     ├── outputs.tf             values the scripts consume
     ├── backend.tf             where state lives
     ├── providers.tf           AWS provider + default tags
@@ -91,22 +93,24 @@ deploy/terraform/
         └── alb-controller-iam-policy.json   vendored controller IAM policy
 ```
 
-<!-- fact: tier=pr cmd="ls deploy/terraform/demo/*.tf | wc -l" expect="9" prose="nine" -->
-The demo stack is nine `.tf` files:
+<!-- fact: tier=pr cmd="ls deploy/terraform/demo/*.tf | wc -l" expect="10" prose="ten" -->
+The demo stack is ten `.tf` files:
 
 | File | What it does |
 |---|---|
 | [`foundation/state.tf`](../deploy/terraform/foundation/state.tf) | Creates the S3 bucket that holds `demo/`'s remote state — applied once, with *local* state (the bucket can't store the state that creates it), gitignored. |
 | [`foundation/iam-ci.tf`](../deploy/terraform/foundation/iam-ci.tf) | Hand-written: the GitHub OIDC provider and the `annotated-maps-ci` role — read-only `plan` permissions, trust restricted to a job running under the protected `aws-plan` GitHub Environment (see §1 and [ADR-0009](adr/0009-eks-over-ecs.md)). |
 | [`foundation/iam-deployer.tf`](../deploy/terraform/foundation/iam-deployer.tf) | Hand-written: the apply-capable `annotated-maps-deployer` role the pipeline assumes — broad service powers, but IAM scoped to the `annotated-maps-*` prefix, S3 to the state bucket, SNS to the alerts topic, plus a self-escalation `Deny`. The milestone's security centerpiece; see [ADR-0010](adr/0010-pipeline-apply-role.md). |
+| [`foundation/boundary.tf`](../deploy/terraform/foundation/boundary.tf) | Hand-written: the `annotated-maps-boundary` permissions boundary that caps every role the deployer creates, closing Path B (issue #109, [ADR-0012](adr/0012-deployer-permissions-boundary.md)). A service-level mirror of the deployer's own powers — high enough that the cluster/node/ALB roles still work, low enough that a laundered role can't reach IAM, SNS, budgets, or state. |
 | [`foundation/budgets.tf`](../deploy/terraform/foundation/budgets.tf) | A $10/month AWS Budget with actual alerts at 50/80/100% and a forecast alert, emailed to the account owner — applied before any EKS spend exists, and never torn down, so the guardrail always covers the account. |
 | [`foundation/sns.tf`](../deploy/terraform/foundation/sns.tf) | The `annotated-maps-alerts` SNS topic and a `severity=alert`-filtered email subscription — the pipeline's teardown-failure alarm channel (its second, AWS-independent channel is a GitHub issue). |
-| [`foundation/outputs.tf`](../deploy/terraform/foundation/outputs.tf) | The state bucket name, the CI role ARN, and (Milestone 4) the deployer role ARN + alerts topic ARN — consumed by `demo/backend.tf`, CI's `terraform plan` job, and the pipeline's repo variables. |
+| [`foundation/outputs.tf`](../deploy/terraform/foundation/outputs.tf) | The state bucket name, the CI role ARN, (Milestone 4) the deployer role ARN + alerts topic ARN, and (issue #109) the boundary policy ARN — consumed by `demo/backend.tf`, CI's `terraform plan` job, and the pipeline's repo variables. |
 | [`foundation/providers.tf`](../deploy/terraform/foundation/providers.tf), [`foundation/variables.tf`](../deploy/terraform/foundation/variables.tf), [`foundation/versions.tf`](../deploy/terraform/foundation/versions.tf) | Provider config + default tags, input variables (region, budget alert email — no default, never committed), and version pins. Plumbing, not exhibits. |
 | [`demo/network.tf`](../deploy/terraform/demo/network.tf) | Community VPC module: 2 AZs, public + private subnets, **one** shared NAT gateway (not one per AZ) — an ephemeral demo doesn't need AZ-fault-tolerant egress, and a second NAT is another ~$0.045/hr for redundancy nobody's paying to keep up. |
 | [`demo/eks.tf`](../deploy/terraform/demo/eks.tf) | Community EKS module: the cluster, a public API endpoint (no bastion for a throwaway demo), IRSA/OIDC enabled, one managed node group of 2× `t3.medium` on-demand (spot rejected — reclaims mid-debug-cycle cost more than they save at this scale). |
 | [`demo/ecr.tf`](../deploy/terraform/demo/ecr.tf) | Two image repos (`annotated-maps-api`, `annotated-maps-web`), scan-on-push, `force_delete = true` so a repo still holding images never blocks `terraform destroy`. |
 | [`demo/iam-irsa.tf`](../deploy/terraform/demo/iam-irsa.tf) | Hand-written: the `annotated-maps-alb-controller` role, trust-bound to exactly one ServiceAccount in this cluster, holding the vendored [ALB-controller policy](../deploy/terraform/demo/policies/alb-controller-iam-policy.json). This role stays in `demo/`, not `foundation/`, because it's bound to the per-demo cluster's own OIDC provider — it can't outlive the cluster it's tied to. |
+| [`demo/boundary.tf`](../deploy/terraform/demo/boundary.tf) | Reconstructs the `annotated-maps-boundary` ARN by naming convention (foundation's local state can't be read cross-stack) so the cluster, node, and ALB roles this stack creates are born under the boundary — without it the deployer's `CreateRole` is denied ([ADR-0012](adr/0012-deployer-permissions-boundary.md)). |
 | [`demo/outputs.tf`](../deploy/terraform/demo/outputs.tf) | Cluster name, region, VPC id, ECR URLs, and the ALB-controller role ARN — everything `demo-up.sh`/`demo-down.sh` read via `terraform output`. |
 | [`demo/backend.tf`](../deploy/terraform/demo/backend.tf) | Points `demo/` at the S3 bucket `foundation/` created, using Terraform ≥1.10's native S3 lockfile (no DynamoDB lock table). Inert under `init -backend=false`, which is what static CI runs. |
 | [`demo/providers.tf`](../deploy/terraform/demo/providers.tf), [`demo/variables.tf`](../deploy/terraform/demo/variables.tf), [`demo/versions.tf`](../deploy/terraform/demo/versions.tf) | Provider config + default tags, input variables (region, cluster name), and version pins. Plumbing, not exhibits. |

@@ -14,6 +14,10 @@ module "eks" {
   # one. Final apply-time compatibility is proven by the next live run.
   cluster_version = "1.33"
 
+  # Cap the module-created cluster role under the deployer's permissions
+  # boundary (issue #109); without it the deployer's CreateRole is denied.
+  iam_role_permissions_boundary = local.deployer_boundary_arn
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
@@ -56,6 +60,9 @@ module "eks" {
       # outside it. Name it inside.
       iam_role_name            = "annotated-maps-node"
       iam_role_use_name_prefix = true
+
+      # Same boundary on the node role the module creates (issue #109).
+      iam_role_permissions_boundary = local.deployer_boundary_arn
     }
   }
 }
