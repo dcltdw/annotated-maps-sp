@@ -255,16 +255,12 @@ jobs:
         uses: helm/kind-action@v1
         with:
           cluster_name: chart-testing
-      - name: Build images
-        run: |
-          docker build -f backend/Dockerfile -t annotated-maps-api:dev .
-          docker build -f frontend/Dockerfile -t annotated-maps-web:dev frontend
-      - name: Load images into kind
-        run: |
-          kind load docker-image annotated-maps-api:dev --name chart-testing
-          kind load docker-image annotated-maps-web:dev --name chart-testing
-      - name: Install the chart
-        run: helm install annotated-maps deploy/helm/annotated-maps -n annotated-maps --create-namespace --wait --timeout 5m
+      # Build + load + install via `make deploy` so the image tags, Dockerfile
+      # paths, and install command live in exactly one place — no drift between
+      # CI and the local target (#103). CLUSTER=chart-testing targets the
+      # kind-action cluster created above.
+      - name: Build, load, and install the chart
+        run: make deploy CLUSTER=chart-testing
       - name: Rollout status
         run: |
           kubectl -n annotated-maps rollout status deploy/annotated-maps-api --timeout 120s
@@ -274,7 +270,14 @@ jobs:
       - name: Smoke the web tier
         run: |
           kubectl -n annotated-maps port-forward svc/annotated-maps-web 8081:80 &
-          sleep 3
+          pf=$!
+          trap 'kill $pf 2>/dev/null || true' EXIT
+          # Poll for the forward instead of a fixed sleep, which flakes under load (#103).
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8081/ >/dev/null 2>&1 && break
+            [ "$i" -eq 30 ] && { echo "web port-forward not ready after 30s" >&2; exit 1; }
+            sleep 1
+          done
           curl -fsS http://localhost:8081/ | grep -qi "<!doctype html"
       - name: Smoke the metrics endpoint (cluster-internal)
         run: |
@@ -289,7 +292,14 @@ jobs:
             | jq -r '[.items[] | select(.metadata.deletionTimestamp == null)][0].metadata.name')
           POD_IP=$(kubectl -n annotated-maps get pod "$POD" -o jsonpath='{.status.podIP}')
           kubectl -n annotated-maps port-forward "pod/$POD" 8082:8000 &
-          sleep 3
+          pf=$!
+          trap 'kill $pf 2>/dev/null || true' EXIT
+          # Poll for the forward instead of a fixed sleep, which flakes under load (#103).
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8082/metrics >/dev/null 2>&1 && break
+            [ "$i" -eq 30 ] && { echo "metrics port-forward not ready after 30s" >&2; exit 1; }
+            sleep 1
+          done
           curl -fsS http://localhost:8082/metrics | grep -q django_http_responses_total_by_status_total
           curl -fsS -H "Host: ${POD_IP}:8000" http://localhost:8082/metrics \
             | grep -q django_http_responses_total_by_status_total
