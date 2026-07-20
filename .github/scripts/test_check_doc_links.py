@@ -145,15 +145,16 @@ class MainOverrideTests(unittest.TestCase):
     def setUp(self):
         self.addCleanup(os.chdir, os.getcwd())
 
-    def run_main(self, argv, env_body=""):
+    def run_main(self, argv, env_body="", file_errors=("fake.md:1: broken link -> x",)):
+        self.out, self.err = io.StringIO(), io.StringIO()
         with mock.patch.object(sys, "argv", ["check_doc_links.py", *argv]), \
                 mock.patch.dict(os.environ, {"PR_BODY": env_body}), \
                 mock.patch.object(mod, "tracked_md_files",
                                   return_value=[Path("fake.md")]), \
                 mock.patch.object(mod, "check_file",
-                                  return_value=["fake.md:1: broken link -> x"]), \
-                contextlib.redirect_stdout(io.StringIO()), \
-                contextlib.redirect_stderr(io.StringIO()):
+                                  return_value=list(file_errors)), \
+                contextlib.redirect_stdout(self.out), \
+                contextlib.redirect_stderr(self.err):
             try:
                 mod.main()
             except SystemExit as e:
@@ -163,9 +164,31 @@ class MainOverrideTests(unittest.TestCase):
     def test_valid_override_exits_zero(self):
         self.assertEqual(
             self.run_main(["--allow-override"], "Docs-Checks-Override: mid-restructure\n"), 0)
+        self.assertIn("OVERRIDDEN", self.out.getvalue())
 
     def test_failure_without_override_exits_one(self):
         self.assertEqual(self.run_main([]), 1)
+
+    def test_override_line_ignored_without_flag(self):
+        self.assertEqual(
+            self.run_main([], "Docs-Checks-Override: mid-restructure\n"), 1)
+
+    def test_reasonless_override_still_fails(self):
+        self.assertEqual(
+            self.run_main(["--allow-override"], "Docs-Checks-Override:   \n"), 1)
+        self.assertNotIn("OVERRIDDEN", self.out.getvalue())
+
+    def test_success_path_exits_zero_and_reports_file_count(self):
+        self.assertEqual(self.run_main([], file_errors=[]), 0)
+        self.assertIn("Doc link check passed (1 files).", self.out.getvalue())
+        self.assertEqual(self.err.getvalue(), "")
+
+    def test_success_path_prints_nothing_about_overrides(self):
+        """A clean run must not mention the escape hatch even when it is armed."""
+        self.assertEqual(
+            self.run_main(["--allow-override"],
+                          "Docs-Checks-Override: mid-restructure\n", file_errors=[]), 0)
+        self.assertNotIn("OVERRIDDEN", self.out.getvalue())
 
 
 if __name__ == "__main__":

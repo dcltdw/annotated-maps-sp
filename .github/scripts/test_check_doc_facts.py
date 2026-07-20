@@ -227,21 +227,6 @@ class ExecutionTests(unittest.TestCase):
         self.assertIn("expect must be non-empty", err)
 
 
-class OverrideTests(unittest.TestCase):
-    def test_reason_extracted(self):
-        from docs_common import override_reason
-        body = "## Summary\nstuff\nDocs-Checks-Override: mid-restructure, tracked in #99\n"
-        self.assertEqual(override_reason(body), "mid-restructure, tracked in #99")
-
-    def test_no_override_line(self):
-        from docs_common import override_reason
-        self.assertIsNone(override_reason("## Summary\nstuff\n"))
-
-    def test_empty_reason_is_not_a_valid_override(self):
-        from docs_common import override_reason
-        self.assertIsNone(override_reason("Docs-Checks-Override:   \n"))
-
-
 class MainMissingLivingDocTests(unittest.TestCase):
     """A LIVING entry renamed or deleted must be a reported error, not a
     FileNotFoundError traceback out of main()."""
@@ -278,14 +263,15 @@ class MainOverrideTests(unittest.TestCase):
     def setUp(self):
         self.addCleanup(os.chdir, os.getcwd())
 
-    def run_main(self, argv, env_body=""):
+    def run_main(self, argv, env_body="", taxonomy=("x.md: synthetic failure",)):
+        self.out, self.err = io.StringIO(), io.StringIO()
         with mock.patch.object(sys, "argv", ["check_doc_facts.py", *argv]), \
                 mock.patch.dict(os.environ, {"PR_BODY": env_body}), \
                 mock.patch.object(mod, "taxonomy_errors",
-                                  return_value=["x.md: synthetic failure"]), \
+                                  return_value=list(taxonomy)), \
                 mock.patch.object(mod, "LIVING", set()), \
-                contextlib.redirect_stdout(io.StringIO()), \
-                contextlib.redirect_stderr(io.StringIO()):
+                contextlib.redirect_stdout(self.out), \
+                contextlib.redirect_stderr(self.err):
             try:
                 mod.main()
             except SystemExit as e:
@@ -303,6 +289,19 @@ class MainOverrideTests(unittest.TestCase):
     def test_reasonless_override_still_fails(self):
         self.assertEqual(
             self.run_main(["--allow-override"], "Docs-Checks-Override:   \n"), 1)
+        self.assertNotIn("OVERRIDDEN", self.out.getvalue())
+
+    def test_success_path_exits_zero_and_reports_the_tier(self):
+        self.assertEqual(self.run_main([], taxonomy=[]), 0)
+        self.assertIn("Doc facts check passed (0 facts, tier=pr).", self.out.getvalue())
+        self.assertEqual(self.err.getvalue(), "")
+
+    def test_success_path_prints_nothing_about_overrides(self):
+        """A clean run must not mention the escape hatch even when it is armed."""
+        self.assertEqual(
+            self.run_main(["--allow-override"],
+                          "Docs-Checks-Override: mid-restructure\n", taxonomy=[]), 0)
+        self.assertNotIn("OVERRIDDEN", self.out.getvalue())
 
 
 if __name__ == "__main__":

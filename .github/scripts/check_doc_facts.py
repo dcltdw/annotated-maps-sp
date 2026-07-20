@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from docs_common import (
-    DocReadError, read_doc_text, repo_root, tracked_md_files, override_reason,
+    DocReadError, read_doc_text, repo_root, tracked_md_files, overridden,
 )
 
 LIVING = {
@@ -254,14 +254,8 @@ def main() -> None:
         print(f"Doc facts check passed ({n_facts} facts, tier={args.tier}).")
         return
 
-    if args.allow_override:
-        reason = override_reason(os.environ.get("PR_BODY", ""))
-        if reason:
-            print(f"OVERRIDDEN ({len(errors)} failure(s)) — reason: {reason}")
-            print("Deferred, not erased: the main-push and scheduled runs ignore overrides.")
-            for e in errors:
-                print(f"  warning: {e}")
-            return
+    if overridden(errors, args.allow_override):
+        return
 
     print("Doc facts check failed:", file=sys.stderr)
     for e in errors:

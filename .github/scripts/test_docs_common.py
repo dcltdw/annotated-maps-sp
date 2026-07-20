@@ -1,9 +1,11 @@
 """Tests for the shared docs-checker helpers (ADR-0011)."""
 import contextlib
+import io
 import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import docs_common
 
@@ -75,6 +77,80 @@ class ReadDocTextTests(unittest.TestCase):
         """Callers catch DocReadError specifically; it must not be swallowed
         by an incidental OSError handler."""
         self.assertFalse(issubclass(docs_common.DocReadError, OSError))
+
+
+class OverriddenTests(unittest.TestCase):
+    """The warn-and-continue block both checkers share."""
+
+    def run_overridden(self, errors, allow, body=""):
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {"PR_BODY": body}), \
+                contextlib.redirect_stdout(out):
+            result = docs_common.overridden(errors, allow)
+        return result, out.getvalue()
+
+    def test_valid_override_accepted(self):
+        result, out = self.run_overridden(
+            ["a.md:1: broken"], True, "Docs-Checks-Override: mid-restructure\n")
+        self.assertTrue(result)
+        self.assertIn("OVERRIDDEN (1 failure(s))", out)
+        self.assertIn("mid-restructure", out)
+
+    def test_failures_are_printed_as_warnings(self):
+        _, out = self.run_overridden(
+            ["a.md:1: broken", "b.md:2: broken"], True,
+            "Docs-Checks-Override: reason\n")
+        self.assertIn("  warning: a.md:1: broken", out)
+        self.assertIn("  warning: b.md:2: broken", out)
+        self.assertIn("OVERRIDDEN (2 failure(s))", out)
+
+    def test_deferral_is_stated_explicitly(self):
+        """The override defers, never erases — the message must say so."""
+        _, out = self.run_overridden(["a.md:1: x"], True,
+                                     "Docs-Checks-Override: reason\n")
+        self.assertIn("Deferred, not erased", out)
+
+    def test_rejected_without_the_flag(self):
+        result, out = self.run_overridden(
+            ["a.md:1: x"], False, "Docs-Checks-Override: reason\n")
+        self.assertFalse(result)
+        self.assertEqual(out, "")
+
+    def test_rejected_without_a_reason(self):
+        result, out = self.run_overridden(
+            ["a.md:1: x"], True, "Docs-Checks-Override:   \n")
+        self.assertFalse(result)
+        self.assertEqual(out, "")
+
+    def test_rejected_with_no_override_line(self):
+        result, _ = self.run_overridden(["a.md:1: x"], True, "A normal PR body.\n")
+        self.assertFalse(result)
+
+    def test_missing_pr_body_env_var_is_not_an_error(self):
+        with mock.patch.dict(os.environ, {}, clear=True), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertFalse(docs_common.overridden(["a.md:1: x"], True))
+
+
+class OverrideReasonTests(unittest.TestCase):
+    """Moved here from test_check_doc_facts.py — override_reason lives in
+    docs_common and is used by both checkers."""
+
+    def test_reason_extracted_from_a_full_pr_body(self):
+        body = "## Summary\nstuff\nDocs-Checks-Override: mid-restructure, tracked in #99\n"
+        self.assertEqual(
+            docs_common.override_reason(body), "mid-restructure, tracked in #99")
+
+    def test_trailing_whitespace_trimmed(self):
+        self.assertEqual(
+            docs_common.override_reason("Docs-Checks-Override: reason   \n"),
+            "reason")
+
+    def test_no_override_line(self):
+        self.assertIsNone(docs_common.override_reason("Nothing here.\n"))
+
+    def test_empty_reason_rejected(self):
+        self.assertIsNone(docs_common.override_reason("Docs-Checks-Override:   \n"))
 
 
 if __name__ == "__main__":
