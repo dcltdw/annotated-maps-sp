@@ -221,11 +221,16 @@ issue (which does not depend on AWS auth working) and an SNS email. Then:
 2. If that fails, run `make demo-down` locally against the same state.
 3. Check the sweep at the end of `demo-down` — every line must be empty.
 
-**Known sharp edge:** a `terraform` PR opened *while a pipeline run is in
-flight* can fail its `infra-plan` job. That job plans with the read-only CI
-role and `-lock=false`, so it refreshes state the pipeline is actively
-writing. Re-run it after the pipeline's teardown finishes — the demo state is
-empty again and the plan passes.
+**Known sharp edge (auto-handled):** a `terraform` PR whose `infra-plan` job
+runs *while a pipeline run is in flight* would refresh state the pipeline is
+actively writing. A read-only `-lock=false` plan against a mid-apply state is
+unreliable even with perfect permissions, and it exercises read-permission gaps
+an empty-state plan never touches (the first was `logs:ListTagsForResource`).
+Rather than chase those gaps or trust a mid-apply plan, `infra-plan` now
+**skips itself** when it detects an active `demo-pipeline` run — the `changes`
+job checks the Actions API for in-flight runs (issue #112). `infra-plan` is not
+a required check, so a skip does not block the PR; re-run it after the
+pipeline's teardown finishes and the plan passes against the (empty) demo state.
 
 ## 7. Going deeper
 

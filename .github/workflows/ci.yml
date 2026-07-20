@@ -162,8 +162,12 @@ jobs:
   changes:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       terraform: ${{ steps.f.outputs.terraform }}
+      pipeline_inflight: ${{ steps.p.outputs.inflight }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -177,6 +181,32 @@ jobs:
           else
             echo "terraform=false" >> "$GITHUB_OUTPUT"
           fi
+      - id: p
+        name: Is a demo-pipeline run in flight?
+        # infra-plan refreshes REAL state with -lock=false. If a demo-pipeline
+        # run is mid-apply, the state is being written, so a read-only plan is
+        # unreliable — and it exercises read-permission gaps an empty-state plan
+        # never touches (the first was logs:ListTagsForResource; issue #112).
+        # If a run is active, skip infra-plan entirely rather than fail on a
+        # spurious AccessDenied / inconsistent refresh; re-run after teardown.
+        # Fail-open: if the check itself errors, treat as not-in-flight so
+        # infra-plan still runs (worst case is the pre-existing behavior).
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=0
+          for s in in_progress queued waiting; do
+            c=$(gh api -X GET \
+              "repos/${{ github.repository }}/actions/workflows/demo-pipeline.yml/runs" \
+              -f status="$s" --jq '.total_count' 2>/dev/null || echo 0)
+            n=$((n + ${c:-0}))
+          done
+          if [ "$n" -gt 0 ]; then
+            echo "A demo-pipeline run is in flight ($n) — infra-plan will skip (issue #112)."
+            echo "inflight=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "inflight=false" >> "$GITHUB_OUTPUT"
+          fi
 
   infra-plan:
     # Fork-safe `terraform plan`, only on PRs that change the Terraform. It runs
@@ -185,8 +215,13 @@ jobs:
     # is issued. The CI role's trust policy only accepts the
     # `...:environment:aws-plan` sub, so nothing outside this Environment can
     # assume it. The role is read-only: it can plan, never apply.
+    #
+    # Skipped when a demo-pipeline run is in flight (issue #112): planning
+    # against a state that a live apply is actively writing is unreliable even
+    # with perfect read permissions, so the honest answer is to skip and re-run
+    # after teardown, not to chase read-permission gaps or trust a mid-apply plan.
     needs: changes
-    if: needs.changes.outputs.terraform == 'true'
+    if: needs.changes.outputs.terraform == 'true' && needs.changes.outputs.pipeline_inflight != 'true'
     runs-on: ubuntu-latest
     environment: aws-plan
     permissions:
