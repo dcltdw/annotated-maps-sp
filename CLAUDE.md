@@ -50,9 +50,12 @@ Everything else in `universal.md` applies as written.
 convention and the refinement/triage terminology — this file just records the
 option IDs above and the repo-specific note below.)
 
-Items are currently **draft issues**, so no `Closes #N` and no auto-close —
-every close is manual, which is why tickets go stale here. Converting them to
-real issues is ticketed.
+Board items are **real GitHub issues** (converted from draft issues on
+2026-07-20). A PR that resolves one should use `Closes #N` so the merge
+auto-closes the issue — the fix for the stale-ticket problem that draft issues
+used to cause. Moving the board card to Done still needs the manual step below;
+`Closes #N` closes the *issue*, and the board Status field is independent of
+issue open/closed state.
 
 Re-derive the IDs if they drift:
 
