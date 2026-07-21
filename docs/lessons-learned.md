@@ -9,11 +9,11 @@ the ephemeral pipeline), and the lesson each one carries. It complements the
 things that were wrong and how they surfaced.
 
 Each entry names **how it was found** — because that's the interesting part.
-Of the twenty-four below:
+Of the twenty-five below:
 
 | Found via | Count |
 |---|---|
-| Only when the real thing ran (a live deploy or end-to-end verification) | 11 |
+| Only when the real thing ran (a live deploy or end-to-end verification) | 12 |
 | An adversarial code review, before it could bite | 7 |
 | CI, after passing locally | 2 |
 | A security gate doing its job | 1 |
@@ -253,6 +253,26 @@ string. **Takeaway:** a graceful path that catches one failure mode is easy to
 mistake for robustness — it handles the case you thought of and silently exposes
 the one you didn't. When you add a fallback for error X, enumerate the *other*
 ways the same step can fail; "handles errors" is not "handles this error."
+
+### 25. A read-permission gap that hid for three milestones
+- **Found via:** live run — the first `infra-plan` that ever refreshed a *populated* demo state (M4's first live pipeline run, 2026-07-15).
+
+The read-only CI plan role grants `logs:Describe*` but not
+`logs:ListTagsForResource` — and almost certainly has other such gaps. It went
+unnoticed across three milestones of terraform PRs because the demo stack is
+ephemeral: between runs it is destroyed, so `terraform plan` refreshed an
+**empty** state and touched none of the resources whose tags/attributes the
+missing reads cover. The gap surfaced only the first time a plan happened to run
+while a pipeline was mid-apply — the one moment the state actually held
+resources to refresh (`AccessDeniedException` on `logs:ListTagsForResource` for
+the EKS log group). **Takeaway:** a permission is only exercised when the thing
+it guards exists. For an ephemeral stack that is usually torn down, an
+incomplete read-only policy looks complete on every plan against empty state —
+the passing plans are evidence that the *untested path never ran*, not that the
+policy is sufficient. (The fix, #112, deliberately does not chase the full gap
+list: the deeper problem is that planning against a state being actively written
+is unreliable regardless of permissions, so `infra-plan` now skips during a live
+run instead.)
 
 ## The meta-lesson
 
