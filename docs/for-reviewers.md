@@ -138,8 +138,8 @@ overlapping runs, `timeout-minutes` on every job, and teardown on
 `if: always()`.
 
 An always-on cluster would be a more impressive screenshot and worse
-engineering. The durable artifact is the evidence, not a URL that costs $75/month
-to keep warm.
+engineering. The durable artifact is the evidence, not a URL kept warm at a
+standing monthly cost for the sake of a screenshot.
 
 ## Verify any of it yourself
 
