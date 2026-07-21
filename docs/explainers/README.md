@@ -67,6 +67,11 @@ Explainers as they land, Foundations-first.
 
 ### Foundations (read first)
 
+- [The visibility model](backend/foundation-visibility-model.md) *(backend)* —
+  the app's signature idea: per-section, per-viewer access resolved by a small
+  pure engine into visible/teaser/hidden. Viewer, the four rule types, the
+  fail-closed rule mapping, and how a request wires it together. The vocabulary
+  the backend walkthroughs assume.
 - [AWS IAM from zero](infra/foundation-aws-iam.md) *(infra)* — accounts, roles,
   ARNs, the Allow/Deny model, assuming a role, instance profiles and instance
   metadata, `PassRole`, service-linked roles, permissions boundaries, and OIDC
