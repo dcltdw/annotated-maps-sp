@@ -20,22 +20,23 @@ delete, versioning, timestamps), and **a `Tenant` scopes the content while a
 
 ```mermaid
 erDiagram
-    TENANT ||--o{ MAP        : has
-    TENANT ||--o{ GROUP      : has
-    TENANT ||--o{ MEMBERSHIP : scopes
-    USER   ||--o{ MEMBERSHIP : "has a role via"
-    USER   }o--o{ GROUP      : "member of"
+    USER   ||--o{ MEMBERSHIP  : "has role via"
+    USER   }o--o{ GROUP       : "member of"
     USER   ||--o{ AUTHSESSION : owns
-    USER   ||--o{ NOTE       : authors
-    MAP    ||--o{ NOTE       : holds
-    NOTE   ||--o{ NOTE       : "appends (parent → child)"
-    NOTE   ||--o{ SECTION    : "made of"
+    USER   ||--o{ NOTE        : authors
+    TENANT ||--o{ MEMBERSHIP  : scopes
+    TENANT ||--o{ GROUP       : has
+    TENANT ||--o{ MAP         : has
+    MAP    ||--o{ NOTE        : holds
+    NOTE   ||--o{ SECTION     : "made of"
 ```
 
 Read it as two clusters that meet at `Note`: an **identity** side (`User`,
 `Group`, `Membership`, `AuthSession`) and a **content** side (`Map` → `Note` →
 `Section`). A `User` authors notes; everything else about who-sees-what is the
-visibility model reading this same graph.
+visibility model reading this same graph. (`Note` also references *itself* — an
+append is a child note — which §4 draws on its own so the reflexive edge stays
+legible.)
 
 ## 2. What every row gets for free (`BaseModel`)
 
@@ -101,6 +102,18 @@ So "can act in a tenant" (`Membership.role`) and "is in this friend circle"
 separate tables.
 
 ## 4. The content tree: `Map` → `Note` → `Section`
+
+The content side is a shallow tree. A map holds top-level notes; a note both
+carries its own ordered sections *and* can hold child notes (its appends), each
+of which is itself a note with its own sections:
+
+```mermaid
+graph TD
+    MAP["Map"] -->|holds| N1["Note<br/>(top-level, anchored)"]
+    N1 -->|"appends (self-FK)"| N2["Note<br/>(child = an append)"]
+    N1 -->|"ordered sections"| S1["Section · Section · …"]
+    N2 -->|"ordered sections"| S2["Section · Section · …"]
+```
 
 - **`Map`** (tenant-scoped) — a `name`, a `center` point, a default zoom. It
   holds notes.
