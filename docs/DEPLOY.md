@@ -6,6 +6,26 @@ This runbook covers a first-time deploy of the Annotated Maps public sandbox to
 **Render** (web service + static site + cron) backed by **Neon Postgres/PostGIS**.
 The deploy is manual; you need accounts on both platforms.
 
+> **Two independent deploy targets — this one is Render (the always-on app
+> users hit).** The Kubernetes/Helm work runs on a **separate, ephemeral EKS
+> demo** (the portfolio artifact from Milestones 1 & 3). That cluster is **not
+> a standing environment — there is nothing to update in place.** To run the
+> current code (chart, Terraform, IAM) on EKS you **recreate** it:
+>
+> ```bash
+> make demo-up      # fresh EKS cluster from current main → deploy chart → smoke-test (~$1–2, ~30 min)
+> make demo-down    # destroy to zero — always, same session, never leave it up
+> ```
+>
+> So "deploy the updated Kubernetes to AWS" = a fresh `make demo-up`, not an
+> in-place cluster update. Full runbook (cost rules, phases, troubleshooting):
+> [`aws-primer.md`](aws-primer.md) §3–§4. The one-button, unattended version is
+> [`demo-pipeline.yml`](../.github/workflows/demo-pipeline.yml) (`gh workflow run
+> demo-pipeline.yml`). This Render deploy and the EKS demo are independent: a
+> chart or Terraform change reaches EKS via `demo-up`, never via a Render deploy.
+> `demo-up` needs Docker running and the Neon `DATABASE_URL` (interactive prompt,
+> or `DB_URL_FILE`).
+
 ---
 
 ## 1. Neon — Create the database
