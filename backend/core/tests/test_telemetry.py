@@ -171,7 +171,9 @@ def test_otlp_exporter_delivers_protobuf_over_http():
 
     tracer_provider = TracerProvider()
     meter_provider = MeterProvider(
-        metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{base}/v1/metrics"))]
+        metric_readers=[
+            PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{base}/v1/metrics"))
+        ]
     )
     logger_provider = LoggerProvider()
     logger_provider.add_log_record_processor(
