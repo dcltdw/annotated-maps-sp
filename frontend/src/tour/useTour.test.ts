@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOUR_SEEN_KEY, TOUR_STEPS } from "./tourSteps";
 import { useTour } from "./useTour";
@@ -26,6 +27,21 @@ describe("useTour", () => {
     localStorage.setItem(TOUR_SEEN_KEY, "1");
     const { result } = renderHook(() => useTour(opts()));
     expect(result.current.active).toBe(false);
+  });
+
+  it("auto-starts exactly once under StrictMode (effects double-invoke in dev)", () => {
+    // StrictMode re-runs mount effects (mount → cleanup → mount) in dev, so a
+    // count-based guard would double-fire. The localStorage state-gate must make
+    // the auto-start idempotent: the tour starts, and TOUR_SEEN_KEY is written
+    // exactly once despite the double-invoke (#97, regression guard for PR #41).
+    const setItem = vi.spyOn(localStorage, "setItem");
+    const { result } = renderHook(() => useTour(opts()), { wrapper: StrictMode });
+
+    expect(result.current.active).toBe(true);
+    const seenWrites = setItem.mock.calls.filter(([key]) => key === TOUR_SEEN_KEY);
+    expect(seenWrites).toHaveLength(1);
+
+    setItem.mockRestore();
   });
 
   it("does not auto-start until ready, then starts when ready flips", () => {
