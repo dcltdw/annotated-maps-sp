@@ -27,7 +27,8 @@ public, no login, real request rate / latency / error ratio from the demo
 above. OpenTelemetry instrumentation, exported to Grafana Cloud, with
 [SLOs](slos.md) and [dashboards as code](../deploy/observability/dashboards/).
 
-**3. [Lessons learned](lessons-learned.md)** — 21 real bugs, each naming **how
+<!-- fact: tier=pr cmd="grep -c '^### [0-9]' docs/lessons-learned.md" expect="25" prose="25 real bugs" -->
+**3. [Lessons learned](lessons-learned.md)** — 25 real bugs, each naming **how
 it was found**. **Zero were caught by unit tests.** Several are my own
 mistakes, including one that survived an adversarial code review and a green
 CI run.
@@ -41,8 +42,11 @@ CI run.
 | **3 — AWS infrastructure as code** | Terraform stands up EKS + VPC + IRSA + ECR, serves traffic through an ALB, and destroys to zero — hand-written IAM, OIDC, no long-lived keys | [demo run + screenshot](m3-demo-run.md) · [terraform](../deploy/terraform/) · [ADR-0009](adr/0009-eks-over-ecs.md) · [primer](aws-primer.md) |
 | **4 — One-button pipeline** | The whole lifecycle, automated and safe to fail: scan-gated images, per-run database branches, tests against the live URL, guaranteed teardown | [run record](m4-pipeline.md) · [workflow](../.github/workflows/demo-pipeline.yml) · [ADR-0010](adr/0010-pipeline-apply-role.md) |
 
-Supporting: [10 ADRs](adr/) (decisions, with alternatives and consequences),
-[13 design specs](superpowers/specs/), and an
+Supporting:
+<!-- fact: tier=pr cmd="ls docs/adr | grep -E '^[0-9]{4}-' | grep -vc 0000-template" expect="12" prose="12 ADRs" -->
+[12 ADRs](adr/) (decisions, with alternatives and consequences),
+<!-- fact: tier=pr cmd="ls docs/superpowers/specs | grep -c '\.md$'" expect="15" prose="15 design specs" -->
+[15 design specs](superpowers/specs/), and an
 [day-one architectural triage](architecture/2026-06-09-production-lenses.md) recording what would
 earn its place as the system grows.
 
