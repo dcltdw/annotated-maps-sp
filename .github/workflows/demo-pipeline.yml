@@ -1,6 +1,6 @@
 name: Demo pipeline
 # One button: provision → scan-gated images → deploy (per-run Neon branch) →
-# e2e vs the live ALB → GUARANTEED destroy. ADR-0010. ~$1-2 and ~35min per run.
+# e2e vs the live ALB → GUARANTEED destroy. ADR-0010. ~$0.20-0.30 and ~35min per run.
 on:
   workflow_dispatch:
   schedule:
