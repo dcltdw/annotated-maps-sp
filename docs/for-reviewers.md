@@ -84,10 +84,14 @@ and a full live run. A human opening the PNG caught it. The rule it produced:
 [ADR-0010](adr/0010-pipeline-apply-role.md) states plainly that the pipeline's
 deploy role is **AdministratorAccess-equivalent** within the demo account, that
 the `annotated-maps-*` IAM prefix is a blast-radius guard and **not** a security
-boundary against a malicious principal, and exactly which escalation path
-remains open and why that's accepted (a dedicated, disposable account reachable
-only by a maintainer). The real fix — a permissions boundary — is
-[ticketed, not pretended](https://github.com/users/dcltdw/projects/6).
+boundary against a malicious principal, and exactly which escalation path it
+left open and why that was accepted (a dedicated, disposable account reachable
+only by a maintainer). That path — "Path B" — has since been **closed**: an IAM
+permissions boundary now caps every role the deploy role creates, so a laundered
+admin role can't exceed the demo's own service surface
+([ADR-0012](adr/0012-deployer-permissions-boundary.md)), verified against the
+live account. ADR-0010's disclosure stays as the record of the interim, not
+pretended away.
 
 **A fix that turned out to be wrong, and what replaced it.** A ticket said a
 deployment-branch policy would close the risk that a future `pull_request_target`
@@ -102,11 +106,14 @@ it fail. The branch policy went in anyway, for the honest reason: it stops a
 modified pipeline being dispatched from an *unreviewed branch*.
 [ADR-0010](adr/0010-pipeline-apply-role.md) records the correction.
 
-**Known gaps, tracked openly:** a permissions boundary to close the IAM path
-above, and read-permission gaps in the plan-only CI role that only surface while
-a pipeline run is in flight. Both on the
-[board](https://github.com/users/dcltdw/projects/6), with the diagnosis written
-down.
+**Gaps disclosed here, since closed:** the permissions boundary shipped
+([ADR-0012](adr/0012-deployer-permissions-boundary.md)), so the IAM path above no
+longer reaches account-admin; and `infra-plan` now skips itself when a pipeline
+run is in flight rather than failing on the plan-only role's read gaps (issue
+#112) — planning against a state a live apply is actively writing is unreliable
+regardless of permissions, so the honest fix was to skip and re-run after
+teardown. The diagnoses stay written down (in the ADRs and `aws-primer.md`), not
+just asserted.
 
 **What I deliberately didn't build** — service mesh, multi-region, a parallel
 ECS implementation, a microservice split, Datadog — and *why*, is
