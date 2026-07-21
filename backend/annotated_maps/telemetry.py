@@ -50,8 +50,13 @@ def setup_telemetry(
     )
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.django import DjangoInstrumentor
+
+    # The non-deprecated LoggingHandler now lives in instrumentation-logging
+    # (the SDK one is deprecated, #132); still bridges to the LoggerProvider for
+    # OTLP log export, so it's a drop-in — same (level, logger_provider) call.
+    from opentelemetry.instrumentation.logging.handler import LoggingHandler
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
-    from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+    from opentelemetry.sdk._logs import LoggerProvider
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader

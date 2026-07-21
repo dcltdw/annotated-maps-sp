@@ -18,6 +18,7 @@ dependencies = [
     # 1.43, so gate them explicitly to the 0.64 line.
     "opentelemetry-sdk~=1.43.0",
     "opentelemetry-instrumentation-django>=0.64b0,<0.65",
+    "opentelemetry-instrumentation-logging>=0.64b0,<0.65",
     "opentelemetry-instrumentation-psycopg>=0.64b0,<0.65",
     "opentelemetry-exporter-otlp-proto-http~=1.43.0",
     "django-prometheus~=2.3",
