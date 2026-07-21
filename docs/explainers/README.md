@@ -56,6 +56,14 @@ Two axes, kept deliberately separate:
   `foundation-` primer that the walkthroughs build on.
 - **Links, not copies.** Facts and decisions live in their canonical homes
   (ADRs, specs, code). Explainers point at them.
+- **Describe what is, not how it got there.** No build-history asides ("this
+  fixed…", "we used to…", "closed a hole") — that's provenance, not explanation.
+  An explainer reads as if the system was always this way.
+- **Diagram interactions.** Prefer a fenced ```mermaid diagram for structural or
+  interaction relationships (how the pieces connect / a decision flow) — it
+  renders on GitHub and stays text-diffable. Keep each diagram scoped to the
+  explainer's subject; a full domain-wide entity-relationship diagram belongs in
+  that domain's model/foundation explainer.
 
 ## Index
 
@@ -67,6 +75,11 @@ Explainers as they land, Foundations-first.
 
 ### Foundations (read first)
 
+- [The visibility model](backend/foundation-visibility-model.md) *(backend)* —
+  the app's signature idea: per-section, per-viewer access resolved by a small
+  pure engine into visible/teaser/hidden. Viewer, the four rule types, the
+  fail-closed rule mapping, and how a request wires it together. The vocabulary
+  the backend walkthroughs assume.
 - [AWS IAM from zero](infra/foundation-aws-iam.md) *(infra)* — accounts, roles,
   ARNs, the Allow/Deny model, assuming a role, instance profiles and instance
   metadata, `PassRole`, service-linked roles, permissions boundaries, and OIDC
