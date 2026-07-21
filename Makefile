@@ -48,8 +48,8 @@ monitoring-up: ## kube-prometheus-stack as a separate release (heavy: ~1GB RAM)
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	helm repo update prometheus-community
 	helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
-	  -n monitoring --create-namespace --wait --timeout 10m \
-	  --set grafana.sidecar.dashboards.searchNamespace=ALL
+		-n monitoring --create-namespace --wait --timeout 10m \
+		--set grafana.sidecar.dashboards.searchNamespace=ALL
 
 helm-checks: ## Static chart verification — same commands CI runs
 	helm lint $(CHART)
