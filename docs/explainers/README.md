@@ -56,6 +56,14 @@ Two axes, kept deliberately separate:
   `foundation-` primer that the walkthroughs build on.
 - **Links, not copies.** Facts and decisions live in their canonical homes
   (ADRs, specs, code). Explainers point at them.
+- **Describe what is, not how it got there.** No build-history asides ("this
+  fixed…", "we used to…", "closed a hole") — that's provenance, not explanation.
+  An explainer reads as if the system was always this way.
+- **Diagram interactions.** Prefer a fenced ```mermaid diagram for structural or
+  interaction relationships (how the pieces connect / a decision flow) — it
+  renders on GitHub and stays text-diffable. Keep each diagram scoped to the
+  explainer's subject; a full domain-wide entity-relationship diagram belongs in
+  that domain's model/foundation explainer.
 
 ## Index
 

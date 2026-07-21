@@ -45,6 +45,28 @@ So visibility is decided at the **section** level, not the note level. One note
 can have a public teaser section, a friends-only section, and a
 reputation-gated section, all at once.
 
+Visually — the two sides (who's looking, what's being read) meet at one
+function, `can_view`, which produces the answer. Everything below is a closer
+look at each box:
+
+```mermaid
+graph TD
+    User["User<br/>(reputation)"] -->|member of| Group["Group"]
+    User -->|resolve_viewer| Viewer["Viewer<br/>user_id · group_ids · attributes"]
+    Group -.->|group_ids| Viewer
+    Map["Map"] --> Note["Note<br/>(author = a User)"]
+    User -->|authors| Note
+    Note --> Section["Section<br/>content + rule_type / rule_params"]
+    Section -->|rule_for| Rule["VisibilityRule<br/>Public · Private · Audience · AttributeGate"]
+    Viewer --> canview{{"can_view()"}}
+    Rule --> canview
+    Note -.->|owner_id| canview
+    canview --> Vis["Visibility<br/>visible · teaser · hidden"]
+```
+
+(A full entity-relationship diagram of the whole data model belongs in the
+domain-model explainer; this one is scoped to the visibility mechanism.)
+
 ## 3. The pure engine (`core/visibility/`)
 
 The heart is four small pieces with **no database access and no Django** — just
@@ -158,8 +180,7 @@ This is a security boundary worth pausing on. A valid **bearer token always
 wins**; `preview_as` (the demo's persona switcher) is honored **only** when
 there's no authenticated user *and* only under `SANDBOX_MODE`. So `preview_as`
 is not "impersonate anyone" — outside the sandbox it's ignored entirely, and it
-can never override a real login. (This closed a real impersonation hole earlier
-in the build.)
+can never override a real login.
 
 **2. Resolve the viewer** — `resolve_viewer(user_id, tenant)` turns that id into
 a `Viewer`, loading the user's groups *in this tenant* and their reputation as
