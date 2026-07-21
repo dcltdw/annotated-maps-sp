@@ -61,27 +61,27 @@ def setup_telemetry(
 
     resource = Resource.create({"service.name": service_name, "deployment.environment": deploy_env})
 
+    # Build a real OTLP exporter only when no override is injected — the `or`
+    # short-circuits, so an injected test exporter no longer eagerly constructs
+    # (and starts) a live OTLPExporter alongside it (#107).
     tracer_provider = TracerProvider(resource=resource)
-    span_otlp_exporter = (
+    span_exporter = span_exporter or (
         OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces") if endpoint else OTLPSpanExporter()
     )
-    tracer_provider.add_span_processor(BatchSpanProcessor(span_exporter or span_otlp_exporter))
+    tracer_provider.add_span_processor(BatchSpanProcessor(span_exporter))
     trace.set_tracer_provider(tracer_provider)
 
-    metric_otlp_exporter = (
+    reader = metric_reader or PeriodicExportingMetricReader(
         OTLPMetricExporter(endpoint=f"{endpoint}/v1/metrics") if endpoint else OTLPMetricExporter()
     )
-    reader = metric_reader or PeriodicExportingMetricReader(metric_otlp_exporter)
     meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
     metrics.set_meter_provider(meter_provider)
 
     logger_provider = LoggerProvider(resource=resource)
-    log_otlp_exporter = (
+    log_exporter = log_exporter or (
         OTLPLogExporter(endpoint=f"{endpoint}/v1/logs") if endpoint else OTLPLogExporter()
     )
-    logger_provider.add_log_record_processor(
-        BatchLogRecordProcessor(log_exporter or log_otlp_exporter)
-    )
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
     set_logger_provider(logger_provider)
     handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
     logging.getLogger().addHandler(handler)

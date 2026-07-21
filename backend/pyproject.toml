@@ -11,10 +11,15 @@ dependencies = [
     "gunicorn>=26.0.0",
     "psycopg[binary]>=3.2",
     "structlog>=26.1.0",
-    "opentelemetry-sdk~=1.27",
-    "opentelemetry-instrumentation-django~=0.48b0",
-    "opentelemetry-instrumentation-psycopg~=0.48b0",
-    "opentelemetry-exporter-otlp-proto-http~=1.27",
+    # Pinned to the minor so a bump is a deliberate edit + relock, not a silent
+    # resolve: telemetry._reset_for_tests() reaches into SDK `_internal` globals
+    # that a minor bump could move (#107). `~=1.43.0` == >=1.43.0,<1.44; the
+    # instrumentation packages are beta-versioned (0.64b0) and paired with SDK
+    # 1.43, so gate them explicitly to the 0.64 line.
+    "opentelemetry-sdk~=1.43.0",
+    "opentelemetry-instrumentation-django>=0.64b0,<0.65",
+    "opentelemetry-instrumentation-psycopg>=0.64b0,<0.65",
+    "opentelemetry-exporter-otlp-proto-http~=1.43.0",
     "django-prometheus~=2.3",
 ]
 
