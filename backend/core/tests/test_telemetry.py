@@ -9,7 +9,13 @@ import pytest
 import structlog
 from django.test import Client
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
@@ -152,24 +158,53 @@ class _CapturingHandler(BaseHTTPRequestHandler):
 
 
 def test_otlp_exporter_delivers_protobuf_over_http():
-    """A local (non-global) provider + the REAL OTLP exporter, pointed at an
-    in-process HTTP server: proves the wire mechanics our Grafana Cloud
-    export will use, with no external service."""
+    """Local (non-global) providers + the REAL OTLP exporters, pointed at an
+    in-process HTTP server: proves the wire mechanics our Grafana Cloud export
+    will use for all three signals — traces, metrics, AND logs (spec §9.1.3) —
+    with no external service. All three share the one mock receiver."""
     _CapturingHandler.captured = {}
     server = HTTPServer(("127.0.0.1", 0), _CapturingHandler)
     port = server.server_address[1]
+    base = f"http://127.0.0.1:{port}"
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
+
+    tracer_provider = TracerProvider()
+    meter_provider = MeterProvider(
+        metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{base}/v1/metrics"))]
+    )
+    logger_provider = LoggerProvider()
+    logger_provider.add_log_record_processor(
+        SimpleLogRecordProcessor(OTLPLogExporter(endpoint=f"{base}/v1/logs"))
+    )
+    otel_log_handler = LoggingHandler(logger_provider=logger_provider)
+    wire_logger = logging.getLogger("otlp-wire-test")
+    wire_logger.setLevel(logging.INFO)
+    wire_logger.addHandler(otel_log_handler)
+    wire_logger.propagate = False
     try:
-        provider = TracerProvider()
-        provider.add_span_processor(
-            SimpleSpanProcessor(OTLPSpanExporter(endpoint=f"http://127.0.0.1:{port}/v1/traces"))
+        # traces -> /v1/traces
+        tracer_provider.add_span_processor(
+            SimpleSpanProcessor(OTLPSpanExporter(endpoint=f"{base}/v1/traces"))
         )
-        with provider.get_tracer("wire-test").start_as_current_span("ping"):
+        with tracer_provider.get_tracer("wire-test").start_as_current_span("ping"):
             pass
-        provider.force_flush()
+        tracer_provider.force_flush()
+
+        # metrics -> /v1/metrics
+        meter_provider.get_meter("wire-test").create_counter("wire_test_pings").add(1)
+        meter_provider.force_flush()
+
+        # logs -> /v1/logs (SimpleLogRecordProcessor exports on emit)
+        wire_logger.warning("otlp wire-test log line")
+
         assert _CapturingHandler.captured.get("/v1/traces", 0) > 0
+        assert _CapturingHandler.captured.get("/v1/metrics", 0) > 0
+        assert _CapturingHandler.captured.get("/v1/logs", 0) > 0
     finally:
+        wire_logger.removeHandler(otel_log_handler)
+        meter_provider.shutdown()
+        logger_provider.shutdown()
         server.shutdown()
 
 
