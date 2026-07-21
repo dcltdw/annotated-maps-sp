@@ -75,6 +75,11 @@ Explainers as they land, Foundations-first.
 
 ### Foundations (read first)
 
+- [The domain model](backend/foundation-domain-model.md) *(backend)* — the
+  nouns: the shared `BaseModel` machinery (UUID keys, soft delete, versioning)
+  every table inherits, tenant-scoped content vs. global identity, and the
+  `Map → Note → Section` content tree (with appends as child notes). Includes
+  the entity-relationship diagram.
 - [The visibility model](backend/foundation-visibility-model.md) *(backend)* —
   the app's signature idea: per-section, per-viewer access resolved by a small
   pure engine into visible/teaser/hidden. Viewer, the four rule types, the
