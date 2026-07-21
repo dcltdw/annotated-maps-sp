@@ -48,6 +48,47 @@ def test_owner_preview_sees_all_sections(boston):
     assert sections[1]["content"] == "secret"
 
 
+def test_notes_and_appends_are_ordered_by_created_at(db):
+    """list_notes returns a stable, deterministic order — top-level notes AND
+    each note's appends by created_at (tie-broken by id), not arbitrary DB
+    order (#95). Created out of insertion order so a missing .order_by() would
+    return the wrong sequence."""
+    from datetime import UTC, datetime
+
+    t = Tenant.objects.create(name="Ord", slug="ord")
+    owner = User.objects.create(display_name="Owner")
+    m = Map.objects.create(tenant=t, name="Ord", center=Point(0, 0))
+
+    def _stamp(note, day):
+        # created_at is auto_now_add (set on insert); .update() writes it directly.
+        Note.objects.filter(id=note.id).update(created_at=datetime(2026, 1, day, tzinfo=UTC))
+
+    def top(title, day):
+        n = Note.objects.create(tenant=t, map=m, author=owner, title=title, point=Point(0, 0))
+        Section.objects.create(note=n, order=0, content="pub", rule_type=Section.RuleType.PUBLIC)
+        _stamp(n, day)
+        return n
+
+    def append(parent, title, day):
+        ap = Note.objects.create(tenant=t, map=m, author=owner, title=title, parent=parent)
+        Section.objects.create(note=ap, order=0, content="pub", rule_type=Section.RuleType.PUBLIC)
+        _stamp(ap, day)
+        return ap
+
+    # Inserted A, B, C but created_at sorts to B, C, A.
+    a = top("A", 3)
+    top("B", 1)
+    top("C", 2)
+    # Appends under A inserted X, Y but created_at sorts to Y, X.
+    append(a, "X", 9)
+    append(a, "Y", 5)
+
+    notes = Client().get(f"/api/v1/maps/{m.id}/notes").json()
+    assert [n["title"] for n in notes] == ["B", "C", "A"]
+    a_out = next(n for n in notes if n["title"] == "A")
+    assert [ap["title"] for ap in a_out["appends"]] == ["Y", "X"]
+
+
 def test_guest_cannot_see_fully_hidden_note(boston):
     # A note whose sections are all hidden to the viewer must NOT appear at all
     # (no title / coordinate leak).

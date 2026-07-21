@@ -117,10 +117,13 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
     the_map = get_object_or_404(Map, id=map_id)
     identity = resolve_identity(request, preview_as)
     viewer = resolve_viewer(identity.user_id, the_map.tenant)
+    # Deterministic order — insertion order (created_at), tie-broken by the
+    # unique id — so the API isn't at the mercy of arbitrary DB row order (#95).
     top_level = (
         the_map.notes.filter(parent__isnull=True)
         .select_related("author")
         .prefetch_related("sections", "appends__author", "appends__sections")
+        .order_by("created_at", "id")
     )
     out: list[NoteOut] = []
     for note in top_level:
@@ -128,7 +131,9 @@ def list_notes(request, map_id: UUID, preview_as: UUID | None = None):
         if not visible:
             continue
         appends: list[AppendOut] = []
-        for ap in note.appends.all():
+        # Same stable order for the prefetched appends (sorted in Python so the
+        # "appends__*" prefetch cache is reused, not re-queried).
+        for ap in sorted(note.appends.all(), key=lambda a: (a.created_at, a.id)):
             ap_sections = _visible_sections(ap, viewer)
             if not ap_sections:
                 continue
