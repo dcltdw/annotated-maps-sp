@@ -92,6 +92,11 @@ Explainers as they land, Foundations-first.
 
 ### Walkthroughs
 
+- **backend** — [The write path](backend/write-path.md): how notes and appends
+  are created and edited — the asymmetry (appending is open to anyone signed in;
+  editing/deleting is author-only), the optimistic-concurrency `version` check
+  that turns two racing edits into a 409, and the sandbox creation caps. The
+  write counterpart to the visibility model's read tour.
 - **infra** — [The deployer permissions boundary](infra/deployer-permissions-boundary.md):
   the IAM privilege-escalation problem in the AWS demo pipeline (issue #109) and
   the permissions-boundary design that closes it — what
