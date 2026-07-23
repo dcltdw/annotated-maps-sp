@@ -4,7 +4,7 @@
 
 [![Annotated Maps — section-level map annotations, live Boston demo](docs/img/hero.png)](https://annotated-maps-web.onrender.com/)
 
-A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See `docs/superpowers/specs/` for design documents and `docs/architecture/2026-06-09-production-lenses.md` for the day-one production-concern triage (a historical snapshot).
+A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See [`docs/explainers/`](docs/explainers/) for ground-up walkthroughs of how the system works (the visibility model, domain model, write path, auth), `docs/superpowers/specs/` for design documents, and `docs/architecture/2026-06-09-production-lenses.md` for the day-one production-concern triage (a historical snapshot).
 
 **▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
 
@@ -66,8 +66,9 @@ To see the Boston demo (the section-visibility "Viewing as" map), seed it once:
 cd backend && uv run python manage.py seed_demo
 ```
 
-Then open the dev server and switch personas (Guest / A Friend / Run-club Member /
-Reputable Local / owner) to watch the markers and note panel re-filter live.
+Then open the dev server and switch personas (Guest / A Running Friend / A Dim Sum
+Friend / Run-club Member / Reputable Local / owner) to watch the markers and note
+panel re-filter live.
 
 ## Run it on Kubernetes
 
