@@ -141,10 +141,14 @@ Two defenses in those five lines:
   generic `401`, and — crucially — the code runs a `check_password` against a
   dummy hash even when there's no user, so the *timing* of the two cases matches.
   A response-time side channel would otherwise reveal which emails exist.
-- **Blank-password accounts can't log in.** The seeded demo personas have a blank
-  `password` ([domain model](foundation-domain-model.md) §5); `not user.password`
-  short-circuits them out. They exist to be *viewed as* (via `preview_as`), never
-  authenticated as.
+- **Blank-password accounts can't log in.** `User.password` is blank by default,
+  and the `not user.password` check rejects any account that still has none — a
+  defensive floor, so an account created without a credential can never be
+  authenticated. The seeded demo personas are *not* an example of this: they carry
+  the shared demo password ([domain model](foundation-domain-model.md) §5) and
+  *can* be logged in as — and can *also* be previewed anonymously via `preview_as`
+  (§1), which needs no password at all. The two are independent ways to become a
+  persona.
 
 `logout` deletes **only the presenting session** (matched by its token hash), so
 signing out on one device doesn't kill your other sessions. `me` just echoes the
@@ -187,5 +191,5 @@ one — the same reasoning (secret entropy) pointing in opposite directions.
 
 - [The write path](write-path.md) — where `Identity` meets the permission rules
   (`authorize_write`, the real-login vs sandbox-persona branch).
-- A forthcoming **sandbox-mode** explainer — why `preview_as` and blank-password
-  personas exist: the safety model of a public, writable demo.
+- A forthcoming **sandbox-mode** explainer — why `preview_as` and the
+  shared-password demo personas exist: the safety model of a public, writable demo.
