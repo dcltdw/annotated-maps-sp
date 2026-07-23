@@ -152,9 +152,10 @@ mark permanent seed content and to attribute/rate-limit anonymous creations.
 
 - **`User`** — `display_name`, a `reputation` integer (the attribute the
   `AttributeGate` visibility rule gates on), an optional unique `email`, and a
-  `password` hash that is **blank by default** — a blank password means the
-  account simply can't log in (the seeded demo personas you "view as" without
-  authenticating).
+  `password` hash that is **blank by default**, which the login path treats as
+  unusable — an account with no password set can't be authenticated. (The seeded
+  demo personas *do* have a password — the shared demo credential — so they can be
+  logged in as; they can *also* be previewed via `preview_as` without logging in.)
 - **`AuthSession`** — a bearer-token session that stores **only the SHA-256 hash
   of the token**, never the token itself, alongside its expiry, creator IP, and
   user agent. A leaked database row can't be replayed as a session.
