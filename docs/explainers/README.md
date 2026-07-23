@@ -92,6 +92,10 @@ Explainers as they land, Foundations-first.
 
 ### Walkthroughs
 
+- **backend** — [Authentication and identity](backend/auth-and-identity.md): how a
+  request resolves into an `Identity` (bearer login always wins; sandbox persona
+  preview; else guest), hash-only bearer sessions, and timing-safe login with no
+  user enumeration. The identity resolution the other backend explainers assume.
 - **backend** — [The write path](backend/write-path.md): how notes and appends
   are created and edited — the asymmetry (appending is open to anyone signed in;
   editing/deleting is author-only), the optimistic-concurrency `version` check
