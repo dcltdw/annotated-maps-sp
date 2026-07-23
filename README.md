@@ -108,3 +108,42 @@ cd frontend && npm run test -- --run
 - **annotated-maps-reaper** — Docker cron job that reaps ephemeral sandbox notes daily
 
 The database is external (Neon Postgres + PostGIS); set the `DATABASE_URL` environment variable per environment in the Render dashboard. `DJANGO_ALLOWED_HOSTS` must also be set per environment to include the service's public hostname. See `docs/DEPLOY.md` for the full runbook.
+
+## Technical skills demonstrated here
+
+Every item below is exercised somewhere in this repo and links to the code,
+config, or public run that proves it — not a claim on faith. (For the guided
+tour of the evidence, see [Evaluating this repo](docs/for-reviewers.md).)
+
+**Languages & frameworks** — Python · Django (GeoDjango) · TypeScript · React · Vite
+**Data** — PostgreSQL / PostGIS · Neon (serverless Postgres, a branch per environment)
+**Infrastructure as code** — Terraform · Docker · Kubernetes · Helm
+**AWS** — EKS · ALB · ECR · VPC · IAM (IRSA + OIDC federation, no long-lived keys) · S3 · SNS
+**Observability** — OpenTelemetry · Grafana Cloud · structlog · unit-tested SLOs
+**CI/CD & supply chain** — GitHub Actions · Trivy image scanning · CycloneDX SBOMs
+
+Where each is proven:
+
+- **Kubernetes / Helm** — a production-shaped chart (readiness/liveness probes,
+  HPA, PodDisruptionBudget, migration hooks) installed on a `kind` cluster and
+  exercised with `helm test` on every PR.
+  [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md)
+- **Terraform + AWS** — VPC, EKS, IRSA, ECR, and an ALB stood up from code and
+  destroyed back to zero on demand, with hand-written least-privilege IAM, OIDC
+  federation, and no long-lived keys stored anywhere.
+  [terraform](deploy/terraform/) · [demo run](docs/m3-demo-run.md) · [ADR-0009](docs/adr/0009-eks-over-ecs.md)
+- **CI/CD** — one dispatch provisions the whole AWS environment, gates images on
+  a security scan, deploys, tests against the live URL, and guarantees teardown
+  even when a step fails.
+  [pipeline](.github/workflows/demo-pipeline.yml) · [run record](docs/m4-pipeline.md)
+- **Observability** — traces, metrics, and logs exported to a public Grafana
+  dashboard, with SLOs and alert rules that are unit-tested.
+  [dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) · [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md)
+- **GeoDjango / PostGIS** — a permissioned geospatial API where each section of
+  a map note is resolved to a different face per viewer by a small pure engine.
+  [explainer](docs/explainers/backend/foundation-visibility-model.md)
+<!-- fact: tier=pr cmd="ls docs/adr | grep -E '^[0-9]{4}-' | grep -vc 0000-template" expect="12" prose="12 ADRs" -->
+- **Engineering practice** — 12 ADRs recording decisions with alternatives, a
+  CI-enforced documentation-accuracy check, and a bias toward evidence over
+  assertion throughout.
+  [ADRs](docs/adr/) · [ADR-0011](docs/adr/0011-documentation-accuracy-practice.md)
