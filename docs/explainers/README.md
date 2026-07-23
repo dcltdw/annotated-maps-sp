@@ -96,6 +96,10 @@ Explainers as they land, Foundations-first.
   request resolves into an `Identity` (bearer login always wins; sandbox persona
   preview; else guest), hash-only bearer sessions, and timing-safe login with no
   user enumeration. The identity resolution the other backend explainers assume.
+- **backend** — [Sandbox mode](backend/sandbox-mode.md): how a public, writable
+  demo stays safe and cheap — the `is_seed` split between permanent demo content
+  and disposable visitor content, the creation caps (`429`), the 7-day reaper,
+  and the `session_key`/`created_ip` tracking that meters anonymous visitors.
 - **backend** — [The write path](backend/write-path.md): how notes and appends
   are created and edited — the asymmetry (appending is open to anyone signed in;
   editing/deleting is author-only), the optimistic-concurrency `version` check
