@@ -24,12 +24,12 @@ top.
 
 This repo's CI enforces its own PR-body headings (the `pr-rigor` check,
 `.github/scripts/check_pr_body.py`), so a PR here MUST use these exact headings
-instead of the heading list in `universal.md` § PR bodies — each with real
+instead of the heading list in `AGENTS.md` § PR bodies — each with real
 content, or CI fails:
 
 `## Summary`, `## Provenance`, `## Reasoning`, `## Testing`, `## Risk & rollback`
 
-Only the headings differ — `universal.md`'s PR-body intent still applies and
+Only the headings differ — `AGENTS.md`'s PR-body intent still applies and
 still propagates. Its fields map onto these sections:
 
 - Files changed + Work breakdown → **Summary**
@@ -38,7 +38,7 @@ still propagates. Its fields map onto these sections:
 - Provenance (`Agent:` + `Model / version:`) → **Provenance**, unchanged
 - design rationale / alternatives considered → **Reasoning**
 
-Everything else in `universal.md` applies as written.
+Everything else in `AGENTS.md` applies as written.
 
 ## Project board
 
@@ -46,7 +46,7 @@ Everything else in `universal.md` applies as written.
 - Status field `PVTSSF_lAHOAAdfes4BcevpzhXHOIs`:
   Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`, Won't Do `fa5df384`
 
-(`universal.md` § "Project board" now carries the **Done** vs **Won't Do**
+(`AGENTS.md` § "Project board" now carries the **Done** vs **Won't Do**
 convention and the refinement/triage terminology — this file just records the
 option IDs above and the repo-specific note below.)
 
@@ -66,7 +66,7 @@ gh api graphql -f query='{ user(login:"dcltdw"){ projectV2(number:6){ id
 
 ## After a PR merges
 
-`universal.md` § "After a PR merges" carries the generic spine (pull, verify
+`AGENTS.md` § "After a PR merges" carries the generic spine (pull, verify
 `main` actually contains the change, move the board card, ask what went stale,
 delete the branch — with the squash-merge caveats). Repo-specific additions:
 
