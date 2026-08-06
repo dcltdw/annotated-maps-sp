@@ -147,3 +147,18 @@ Where each is proven:
   CI-enforced documentation-accuracy check, and a bias toward evidence over
   assertion throughout.
   [ADRs](docs/adr/) · [ADR-0011](docs/adr/0011-documentation-accuracy-practice.md)
+
+## License
+
+AGPL-3.0-or-later — see [LICENSE](LICENSE).
+
+The repository carried no licence before, which meant "all rights reserved" by
+default; this grants rights rather than removing any.
+
+AGPL rather than plain GPL because this is a **hosted service**. GPL's copyleft
+triggers on *conveying* a copy, and users of a web app never receive one — so a
+plain GPL would let anyone run a closed, competing service off this code and owe
+nothing. AGPL section 13 closes exactly that gap: if you run a modified version
+and let users interact with it over a network, you must offer them its source.
+
+Contributions are accepted under the same licence as the project.
