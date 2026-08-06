@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { modRecent, modDelete, type ModItem, type ModDeleteBody } from "./api/mod";
+import { SourceFooter } from "./components/SourceFooter";
 
 export function ModerationScreen() {
   const { t } = useTranslation();
@@ -125,6 +126,7 @@ export function ModerationScreen() {
           ))}
         </tbody>
       </table>
+      <SourceFooter />
     </main>
   );
 }

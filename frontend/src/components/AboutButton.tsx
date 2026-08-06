@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-const REPO_URL = "https://github.com/dcltdw/annotated-maps-sp";
+import { REPO_URL } from "../lib/repo";
 
 /** Small "About" popover in the topbar: who built it + a link to the source repo. */
 export function AboutButton() {

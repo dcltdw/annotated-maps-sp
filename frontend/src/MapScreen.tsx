@@ -10,6 +10,7 @@ import { PreviewSwitcher } from "./components/PreviewSwitcher";
 import { me } from "./api/auth";
 import { AuthBar } from "./components/AuthBar";
 import { AboutButton } from "./components/AboutButton";
+import { SourceFooter } from "./components/SourceFooter";
 import { TourOverlay } from "./tour/TourOverlay";
 import { SHOWCASE_TITLE, TOUR_PERSONA_NAME } from "./tour/tourSteps";
 import { useTour } from "./tour/useTour";
@@ -288,8 +289,24 @@ export function MapScreen() {
     }
   }, [canWrite, previewAs, loadNotes, handleAuthExpiry, t]);
 
-  if (loadError) return <p className="loading">{t("screen.error")}</p>;
-  if (!map) return <p className="loading">{t(waking ? "screen.waking" : "screen.loading")}</p>;
+  // The source offer has to survive the pre-map states too: on free hosting the
+  // backend spins down, so a first-time visitor can sit on "waking up" for a
+  // minute. A footer only on the loaded map would leave that visitor with no
+  // offer at all, which is precisely what AGPL section 13 forbids.
+  if (loadError)
+    return (
+      <>
+        <p className="loading">{t("screen.error")}</p>
+        <SourceFooter />
+      </>
+    );
+  if (!map)
+    return (
+      <>
+        <p className="loading">{t(waking ? "screen.waking" : "screen.loading")}</p>
+        <SourceFooter />
+      </>
+    );
 
   // Coordinates for the editor: edit uses the stored note's coords, create uses the draft pin.
   const editorLng = mode === "edit" ? (editing?.lng ?? map.lng) : (draft?.[0] ?? map.lng);
@@ -442,6 +459,7 @@ export function MapScreen() {
           onSkip={tour.skip}
         />
       )}
+      <SourceFooter />
     </div>
   );
 }
