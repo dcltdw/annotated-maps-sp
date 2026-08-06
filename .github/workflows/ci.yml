@@ -1,6 +1,12 @@
 name: CI
 on:
   pull_request:
+    # `edited` matters: pr-rigor and the docs checks read the PR body from the
+    # event payload, which is a snapshot taken when the event fired. Without
+    # `edited`, fixing the body does not re-trigger, and re-running the old run
+    # just replays the stale payload -- the only ways out were an empty commit
+    # or close/reopen. Defaults are [opened, synchronize, reopened].
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
