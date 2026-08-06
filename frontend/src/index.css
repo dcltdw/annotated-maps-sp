@@ -143,3 +143,11 @@ body {
 .tour-card__buttons { display: flex; gap: 8px; }
 .tour-card__next { font-weight: 600; }
 .tour-pill { border-radius: 999px; padding: 4px 12px; font-weight: 600; }
+
+/* AGPL section 13 source offer. A flex child of the screen (not an overlay), so
+   it cannot cover maplibre's attribution control and cannot trip the
+   `.map-wrap > .map` specificity trap noted above. */
+.source-footer { display: flex; align-items: center; gap: 10px; padding: 4px 12px; border-top: 1px solid #8883; background: #fff; color: #444; font-size: 12px; flex: 0 0 auto; }
+.source-footer__license { color: #666; }
+.source-footer__link { color: #2563eb; text-decoration: none; }
+.source-footer__link:hover { text-decoration: underline; }
