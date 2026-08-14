@@ -10,6 +10,18 @@ on:
   push:
     branches: [main]
 
+# A superseded PR run is normally just wasted minutes. With infra-plan's
+# approval gate it is worse: the job sits in `waiting` for a reviewer who will
+# never approve a stale commit, until GitHub's hard 30-day job cap force-fails
+# it — a "CI failed" notification a month late, on a branch already deleted
+# (issue #158). Cancelling at supersede time is the honest answer.
+#
+# pull_request only: a push to main must never cancel the run that gates the
+# deploy. Keyed on the PR number so a PR's runs contend only with each other.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   backend:
     runs-on: ubuntu-latest
