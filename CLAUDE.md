@@ -8,7 +8,8 @@ production-engineering roadmap.
 
 A multi-tenant, permissioned map-annotation platform: a Django/PostGIS backend
 exposing a JSON API and a Vite/TypeScript frontend. Deployed on Render + Neon
-(live demo: https://annotated-maps-web.onrender.com/).
+until September 2026; the public demo is now shut down (`render.yaml` and
+`docs/DEPLOY.md` remain the deploy runbook).
 
 ## PR bodies (repo-specific — section headings only)
 

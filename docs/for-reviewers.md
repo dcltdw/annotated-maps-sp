@@ -3,13 +3,13 @@
 # Evaluating this repo
 
 A three-minute map for anyone assessing this as engineering work. Everything
-below links to something you can check yourself — a public CI run, a live
+below links to something you can check yourself — a public CI run, a public
 dashboard, an artifact a machine produced. Nothing here asks you to take a
 claim on faith.
 
-**What this is:** a real, deployed product — a multi-tenant, permissioned
-map-annotation platform ([live demo](https://annotated-maps-web.onrender.com/),
-Django/PostGIS + Vite/TypeScript) — plus a
+**What this is:** a real product — a multi-tenant, permissioned
+map-annotation platform (Django/PostGIS + Vite/TypeScript; its public demo ran
+on Render until September 2026) — plus a
 [production-engineering roadmap](../ROADMAP.md) taking it from "solid deployed
 app" to production-grade. All four milestones are shipped: Kubernetes/Helm,
 OpenTelemetry, Terraform + EKS, and a one-button ephemeral pipeline.
@@ -22,9 +22,10 @@ destroys it: [green, 35 minutes](https://github.com/dcltdw/annotated-maps-sp/act
 The screenshot on that page is *the pipeline's own artifact* — Playwright drove
 the ALB the pipeline had just created. Not a screenshot taken by hand.
 
-**2. [The live telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** —
-public, no login, real request rate / latency / error ratio from the demo
-above. OpenTelemetry instrumentation, exported to Grafana Cloud, with
+**2. [The telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** —
+public, no login, real request rate / latency / error ratio from the public
+demo while it ran (idle since the demo was retired, so the panels now show no
+data). OpenTelemetry instrumentation, exported to Grafana Cloud, with
 [SLOs](slos.md) and [dashboards as code](../deploy/observability/dashboards/).
 
 <!-- fact: tier=pr cmd="grep -c '^### [0-9]' docs/lessons-learned.md" expect="25" prose="25 real bugs" -->

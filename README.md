@@ -2,17 +2,17 @@
 
 # Annotated Maps
 
-[![Annotated Maps — section-level map annotations, live Boston demo](docs/img/hero.png)](https://annotated-maps-web.onrender.com/)
+![Annotated Maps — section-level map annotations on a Boston map](docs/img/hero.png)
 
 A multi-tenant, permissioned map-annotation platform. Teams can create and share annotated map layers with fine-grained access control. The Django/PostGIS backend exposes a JSON API; a Vite/TypeScript frontend renders interactive maps. See [`docs/explainers/`](docs/explainers/) for ground-up walkthroughs of how the system works (the visibility model, domain model, write path, auth), `docs/superpowers/specs/` for design documents, and `docs/architecture/2026-06-09-production-lenses.md` for the day-one production-concern triage (a historical snapshot).
 
-**▶ Live demo: https://annotated-maps-web.onrender.com/** — a public Boston sandbox (free-tier hosting, so the first load may take ~30s while the instance wakes).
+**▶ The public demo has been retired.** It ran as a public Boston sandbox on Render's free tier until September 2026; [`docs/DEPLOY.md`](docs/DEPLOY.md) is the runbook for standing up your own.
 
 **▶ [Evaluating this repo?](docs/for-reviewers.md)** — a three-minute map to the strongest evidence, what each milestone proves, and the honest parts (what broke, what my own review missed, what I chose not to build).
 
 **▶ [Production-engineering roadmap](ROADMAP.md)** — Kubernetes/Helm, OpenTelemetry, Terraform + EKS, and a one-button ephemeral pipeline: all four milestones shipped, with proof links for each.
 
-**▶ [Live telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** — request rate, latency, and error ratio from the demo above, instrumented with OpenTelemetry and exported to Grafana Cloud (public, no login).
+**▶ [Telemetry dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d)** — request rate, latency, and error ratio from the public demo while it ran, instrumented with OpenTelemetry and exported to Grafana Cloud (public, no login). Idle since the demo was retired, so its panels now show no data.
 
 ## Section-level visibility
 
