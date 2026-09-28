@@ -2,7 +2,7 @@
 
 # Production-Engineering Roadmap
 
-Annotated Maps is a working, deployed product — a multi-tenant map-annotation platform ([Django](https://www.djangoproject.com/)/[PostGIS](https://postgis.net/) backend, Vite/TypeScript frontend) with a [live demo](https://annotated-maps-web.onrender.com/) you can use right now. This roadmap tracks the work of taking it from "solid deployed application" to **production-grade**: Kubernetes and Helm, AWS infrastructure as code, observability, and automated deployment pipelines.
+Annotated Maps is a working product — a multi-tenant map-annotation platform ([Django](https://www.djangoproject.com/)/[PostGIS](https://postgis.net/) backend, Vite/TypeScript frontend) that ran as a public demo on Render until September 2026. This roadmap tracks the work of taking it from "solid deployed application" to **production-grade**: Kubernetes and Helm, AWS infrastructure as code, observability, and automated deployment pipelines.
 
 **How to read this:** the table below is the summary; each milestone has a section with the reasoning and trade-offs. Every completed milestone links to verifiable evidence — a merged PR, a public CI run, a dashboard, an architecture decision record — not just a claim.
 
@@ -14,7 +14,7 @@ Annotated Maps is a working, deployed product — a multi-tenant map-annotation 
 |---|---|---|---|
 | [CI quality gates](#phase-0--already-shipped) | **GitHub Actions**, lint/type/test/e2e gates, **Playwright** | ✅ Shipped | [ci.yml](.github/workflows/ci.yml) · [runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
 | [Containerized backend](#phase-0--already-shipped) | **Docker**, **docker-compose**, **PostGIS** | ✅ Shipped | [Dockerfile](backend/Dockerfile) · [docker-compose.yml](backend/docker-compose.yml) |
-| [Declarative cloud deployment](#phase-0--already-shipped) | Blueprint-as-code, zero-downtime migrations, cron jobs | ✅ Shipped | [render.yaml](render.yaml) · [live demo](https://annotated-maps-web.onrender.com/) |
+| [Declarative cloud deployment](#phase-0--already-shipped) | Blueprint-as-code, zero-downtime migrations, cron jobs | ✅ Shipped | [render.yaml](render.yaml) · [deploy runbook](docs/DEPLOY.md) |
 | [Architecture as a written practice](#phase-0--already-shipped) | **ADRs**, design specs, production-concern triage | ✅ Shipped | [ADRs](docs/adr/) · [production lenses](docs/architecture/2026-06-09-production-lenses.md) · [specs](docs/superpowers/specs/) |
 | [1 — Kubernetes & Helm](#milestone-1--kubernetes--helm) | **Kubernetes**, **Helm**, probes, HPA, CronJobs, **kind** | ✅ Shipped | [chart](deploy/helm/annotated-maps/) · [ADR-0007](docs/adr/0007-migrations-via-helm-hooks.md) · [primer](docs/kubernetes-primer.md) · [CI runs](https://github.com/dcltdw/annotated-maps-sp/actions) |
 | [2 — Observability](#milestone-2--observability) | **OpenTelemetry**, **Grafana**, **Prometheus**, SLOs | ✅ Shipped | [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) · [dashboards-as-code](deploy/observability/dashboards/) · [SLOs](docs/slos.md) · [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) |
@@ -66,7 +66,7 @@ On pull requests, a PR-rigor check on the description runs too. Nothing merges r
 
 **Trade-off considerations:** why OpenTelemetry rather than a vendor SDK — instrumenting once against the vendor-neutral standard makes Grafana/Datadog/Honeycomb a config change, not a re-instrumentation. Proven, not just asserted: the same app config points at a local collector, the in-cluster Prometheus, or Grafana Cloud by changing one env var.
 
-**Done:** a [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) showing live-demo request rate, latency, and error ratio; [dashboards-as-code](deploy/observability/dashboards/) and [SLOs with a runbook](docs/slos.md) in-repo; and [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) recording the vendor-neutral decision.
+**Done:** a [public dashboard](https://friendlynewt1033.grafana.net/public-dashboards/20407e8eaf204a899c3feb0af005935d) that showed the public demo's request rate, latency, and error ratio while it ran (idle since the demo was retired in September 2026); [dashboards-as-code](deploy/observability/dashboards/) and [SLOs with a runbook](docs/slos.md) in-repo; and [ADR-0008](docs/adr/0008-opentelemetry-over-vendor-sdks.md) recording the vendor-neutral decision.
 
 ## Milestone 3 — AWS infrastructure as code
 
